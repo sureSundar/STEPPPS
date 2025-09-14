@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Image STEPPPS Renderer</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 20px;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    .main-container {
+      display: flex;
+      gap: 20px;
+    }
+    .canvas-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .controls {
+      margin: 15px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .file-input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    .file-button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .file-button:hover {
+      background: #45a049;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: bold;
+    }
+    .controls select, .controls input[type="range"] {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    .controls button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background: #1976D2;
+    }
+    #originalCanvas, #stepppsCanvas {
+      border: 2px solid #000;
+      margin: 5px;
+    }
+    #originalCanvas {
+      background: #f9f9f9;
+    }
+    #stepppsCanvas {
+      background: #fff;
+      cursor: crosshair;
+    }
+    .canvas-labels {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+    .canvas-label {
+      font-weight: bold;
+      padding: 5px 10px;
+      background: white;
+      border-radius: 4px;
+    }
+    .info-panel {
+      width: 400px;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 800px;
+      overflow-y: auto;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+    .status.loading {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .pixel-data {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .stat-item {
+      background: #e3f2fd;
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .depth-demo {
+      margin: 15px 0;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+    .depth-bar {
+      height: 20px;
+      background: linear-gradient(to right, #000 0%, #666 50%, #fff 100%);
+      border-radius: 10px;
+      position: relative;
+      margin: 10px 0;
+    }
+    .depth-indicator {
+      position: absolute;
+      top: 0;
+      width: 3px;
+      height: 20px;
+      background: #ff0000;
+      border-radius: 1px;
+      transition: left 0.2s;
+    }
+    #dropZone {
+      border: 2px dashed #ccc;
+      padding: 20px;
+      text-align: center;
+      border-radius: 8px;
+      transition: border-color 0.3s;
+      margin: 10px 0;
+      background: #fafafa;
+    }
+    #dropZone.dragover {
+      border-color: #4CAF50;
+      background: #f0fff0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Image STEPPPS Renderer - True Depth from Real Images</h1>
+
+  <div class="controls">
+    <div class="file-input-wrapper">
+      <input type="file" id="imageInput" class="file-input" accept="image/*">
+      <div class="file-button">📁 Choose Image File</div>
+    </div>
+
+    <div id="dropZone">
+      Or drag & drop an image here
+    </div>
+
+    <label>Resolution:
+      <select id="resolution">
+        <option value="64">64x64</option>
+        <option value="128" selected>128x128</option>
+        <option value="256">256x256</option>
+        <option value="512">512x512</option>
+      </select>
+    </label>
+
+    <label>Depth Mode:
+      <select id="depthMode">
+        <option value="brightness">Brightness → Depth</option>
+        <option value="color" selected>Color Intensity → Depth</option>
+        <option value="gradient">Gradient → Depth</option>
+        <option value="edges">Edge Detection → Depth</option>
+      </select>
+    </label>
+
+    <label>Depth Scale:
+      <input type="range" id="depthScale" min="0.1" max="3" step="0.1" value="1">
+      <span id="depthValue">1.0</span>
+    </label>
+
+    <button onclick="processImage()">🔄 Reprocess</button>
+    <button onclick="exportCanvas()">💾 Export PNG</button>
+    <button onclick="loadSampleImage()">🎨 Load Sample</button>
+  </div>
+
+  <div class="main-container">
+    <div class="canvas-section">
+      <div class="canvas-labels">
+        <div class="canvas-label">Original Image</div>
+        <div class="canvas-label">STEPPPS Rendering</div>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <canvas id="originalCanvas" width="400" height="400"></canvas>
+        <canvas id="stepppsCanvas" width="400" height="400"></canvas>
+      </div>
+
+      <div class="status" id="status">Drop an image or choose file to begin</div>
+    </div>
+
+    <div class="info-panel">
+      <h3>STEPPPS Image Analysis</h3>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div>Total Pixels</div>
+          <div id="pixelCount">0</div>
+        </div>
+        <div class="stat-item">
+          <div>Depth Layers</div>
+          <div id="depthLayers">0</div>
+        </div>
+        <div class="stat-item">
+          <div>Processing Time</div>
+          <div id="processTime">0ms</div>
+        </div>
+        <div class="stat-item">
+          <div>Memory Usage</div>
+          <div id="memoryUsage">0 KB</div>
+        </div>
+      </div>
+
+      <div class="depth-demo">
+        <h4>Selected Pixel Depth</h4>
+        <div class="depth-bar">
+          <div class="depth-indicator" id="depthIndicator"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+          <span>Near (0.0)</span>
+          <span>Far (1.0)</span>
+        </div>
+      </div>
+
+      <h4>Selected Pixel Data</h4>
+      <div id="pixelInfo">Click on STEPPPS canvas to inspect a pixel</div>
+
+      <h4>Complete STEPPPS JSON</h4>
+      <div class="pixel-data" id="pixelData">No pixel selected</div>
+    </div>
+  </div>
+
+  <script src="image_steppps.js"></script>
+</body>
+</html>
