@@ -1,0 +1,43 @@
+{
+  "space": {
+    "width": 120,
+    "height": 35,
+    "padding": 10,
+    "margin": 5
+  },
+  "temporal": {
+    "animation_duration": 200,
+    "hover_delay": 100,
+    "click_feedback": 50
+  },
+  "event": {
+    "hover_enabled": true,
+    "click_enabled": true,
+    "keyboard_shortcuts": true
+  },
+  "psychology": {
+    "state": "enabled",
+    "confidence": "high",
+    "responsiveness": "immediate",
+    "feedback_style": "smooth"
+  },
+  "pixel": {
+    "color": "#3498db",
+    "text_color": "#ffffff",
+    "hover_color": "#2980b9",
+    "active_color": "#21618c",
+    "border_radius": 5,
+    "font_size": 12,
+    "font_weight": "normal"
+  },
+  "prompt": {
+    "text": "Generate button styling that feels modern, accessible, and responsive",
+    "accessibility": "high_contrast",
+    "usability": "intuitive"
+  },
+  "script": {
+    "hover_animation": "subtle_lift",
+    "click_animation": "gentle_press",
+    "state_management": "reactive"
+  }
+}

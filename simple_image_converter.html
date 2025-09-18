@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Image to STEPPPS Converter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .converter-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .converter-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .file-input-group {
+            margin: 20px 0;
+        }
+
+        .file-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input:hover {
+            border-color: #4ecdc4;
+            background: #f0fffe;
+        }
+
+        .options-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .option-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .option-item label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .option-item select, .option-item input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .preview-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .preview-panel h4 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            display: block;
+            margin: 15px auto;
+        }
+
+        .json-preview {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border-left: 3px solid #4ecdc4;
+        }
+
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .download-link {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .download-link:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ Simple Image ↔ STEPPPS Converter</h1>
+            <p>Convert JPEG/PNG images to STEPPPS JSON format and vice versa</p>
+        </div>
+
+        <div class="content">
+            <!-- Image to STEPPPS Section -->
+            <div class="converter-section">
+                <h3>📸 Image → STEPPPS JSON</h3>
+                
+                <div class="file-input-group">
+                    <label for="imageInput">Select Image File (JPEG/PNG):</label>
+                    <input type="file" id="imageInput" class="file-input" accept="image/*">
+                </div>
+
+                <div class="options-group">
+                    <div class="option-item">
+                        <label for="analysisMode">Analysis Mode:</label>
+                        <select id="analysisMode">
+                            <option value="full" selected>Full (All pixels - True STEPPPS)</option>
+                            <option value="grid">Grid (Systematic sampling)</option>
+                            <option value="sample">Sample (Random pixels - Demo only)</option>
+                            <option value="edges">Edges (Border + interior)</option>
+                        </select>
+                    </div>
+                    <div class="option-item">
+                        <label for="maxPixels">Max Pixels (ignored in Full mode):</label>
+                        <input type="number" id="maxPixels" value="100000" min="10" max="10000000" disabled>
+                    </div>
+                </div>
+
+                <button class="button" onclick="convertImageToSteppps()">🔄 Convert to STEPPPS</button>
+                
+                <div id="imageStatus"></div>
+            </div>
+
+            <!-- STEPPPS to Image Section -->
+            <div class="converter-section">
+                <h3>🧠 STEPPPS JSON → Image</h3>
+                
+                <div class="file-input-group">
+                    <label for="jsonInput">Select STEPPPS JSON File:</label>
+                    <input type="file" id="jsonInput" class="file-input" accept=".json">
+                </div>
+
+                <button class="button" onclick="convertStepppsToImage()">🎨 Convert to Image</button>
+                
+                <div id="jsonStatus"></div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalPixels">0</div>
+                    <div class="stat-label">Total Pixels</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="analyzedPixels">0</div>
+                    <div class="stat-label">Analyzed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="fileSize">0KB</div>
+                    <div class="stat-label">JSON Size</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="conversionTime">0s</div>
+                    <div class="stat-label">Process Time</div>
+                </div>
+            </div>
+
+            <!-- Results Area -->
+            <div class="results-area">
+                <div class="preview-panel">
+                    <h4>🖼️ Image Preview</h4>
+                    <img id="imagePreview" class="image-preview" style="display: none;" alt="Image preview">
+                    <div id="imageInfo">Select an image to see preview...</div>
+                </div>
+
+                <div class="preview-panel">
+                    <h4>📄 STEPPPS JSON Preview</h4>
+                    <div id="jsonPreview" class="json-preview">Select or generate STEPPPS data to see preview...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStepppsData = null;
+        let conversionStartTime = 0;
+
+        // Handle image file selection
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Create a temporary image to get dimensions
+                    const img = new Image();
+                    img.onload = function() {
+                        document.getElementById('imageInfo').innerHTML = `
+                            <strong>File:</strong> ${file.name}<br>
+                            <strong>Size:</strong> ${(file.size / 1024).toFixed(1)} KB<br>
+                            <strong>Dimensions:</strong> ${img.width} × ${img.height}<br>
+                            <strong>Total Pixels:</strong> ${(img.width * img.height).toLocaleString()}
+                        `;
+                        document.getElementById('totalPixels').textContent = (img.width * img.height).toLocaleString();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle JSON file selection
+        document.getElementById('jsonInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const stepppsData = JSON.parse(e.target.result);
+                        currentStepppsData = stepppsData;
+                        displayStepppsPreview(stepppsData);
+                        showStatus('jsonStatus', 'STEPPPS JSON loaded successfully', 'success');
+                    } catch (error) {
+                        showStatus('jsonStatus', `Invalid JSON file: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        async function convertImageToSteppps() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('imageStatus', 'Please select an image file', 'error');
+                return;
+            }
+
+            const analysisMode = document.getElementById('analysisMode').value;
+            const maxPixels = parseInt(document.getElementById('maxPixels').value);
+
+            conversionStartTime = Date.now();
+            showStatus('imageStatus', '🔄 Converting image to STEPPPS...', 'loading');
+
+            try {
+                // Convert image to STEPPPS using client-side processing
+                const stepppsData = await processImageToSteppps(file, analysisMode, maxPixels);
+                currentStepppsData = stepppsData;
+                
+                // Display results
+                displayStepppsPreview(stepppsData);
+                updateStats(stepppsData);
+                
+                // Create download link
+                const jsonBlob = new Blob([JSON.stringify(stepppsData, null, 2)], {type: 'application/json'});
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(jsonBlob);
+                downloadLink.download = `${file.name.split('.')[0]}_steppps.json`;
+                downloadLink.className = 'download-link';
+                downloadLink.textContent = '💾 Download STEPPPS JSON';
+                
+                const statusDiv = document.getElementById('imageStatus');
+                statusDiv.innerHTML = '';
+                statusDiv.appendChild(document.createTextNode('✅ Conversion completed! '));
+                statusDiv.appendChild(downloadLink);
+                statusDiv.className = 'status success';
+
+            } catch (error) {
+                showStatus('imageStatus', `❌ Conversion failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function convertStepppsToImage() {
+            if (!currentStepppsData) {
+                showStatus('jsonStatus', 'Please select a STEPPPS JSON file first', 'error');
+                return;
+            }
+
+            showStatus('jsonStatus', '🎨 Converting STEPPPS to image...', 'loading');
+
+            try {
+                const canvas = await renderStepppsToCanvas(currentStepppsData);
+                
+                // Display preview
+                const preview = document.getElementById('imagePreview');
+                preview.src = canvas.toDataURL();
+                preview.style.display = 'block';
+                
+                // Create download link
+                canvas.toBlob(function(blob) {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = 'steppps_reconstructed.png';
+                    downloadLink.className = 'download-link';
+                    downloadLink.textContent = '💾 Download Reconstructed Image';
+                    
+                    const statusDiv = document.getElementById('jsonStatus');
+                    statusDiv.innerHTML = '';
+                    statusDiv.appendChild(document.createTextNode('✅ Image generated! '));
+                    statusDiv.appendChild(downloadLink);
+                    statusDiv.className = 'status success';
+                });
+
+            } catch (error) {
+                showStatus('jsonStatus', `❌ Image generation failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function processImageToSteppps(file, analysisMode, maxPixels) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                        const stepppsData = extractStepppsFromImageData(imageData, analysisMode, maxPixels, file.name);
+                        
+                        resolve(stepppsData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function extractStepppsFromImageData(imageData, mode, maxPixels, filename) {
+            const { width, height, data } = imageData;
+            const totalPixels = width * height;
+            
+            // For true STEPPPS, we need ALL pixels
+            let positions = [];
+            
+            if (mode === 'full') {
+                // TRUE STEPPPS: Every single pixel
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        positions.push([x, y]);
+                    }
+                }
+            } else if (mode === 'grid') {
+                // Grid sampling - still comprehensive
+                const step = Math.max(1, Math.ceil(Math.sqrt(totalPixels / maxPixels)));
+                for (let y = 0; y < height; y += step) {
+                    for (let x = 0; x < width; x += step) {
+                        positions.push([x, y]);
+                    }
+                }
+            } else if (mode === 'edges') {
+                // Edge sampling
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        if (x === 0 || x === width-1 || y === 0 || y === height-1) {
+                            positions.push([x, y]);
+                        } else if (positions.length < maxPixels && (x + y) % 10 === 0) {
+                            positions.push([x, y]);
+                        }
+                    }
+                }
+                positions = positions.slice(0, maxPixels);
+            } else { // sample - demo only
+                const sampleCount = Math.min(maxPixels, totalPixels);
+                for (let i = 0; i < sampleCount; i++) {
+                    const x = Math.floor(Math.random() * width);
+                    const y = Math.floor(Math.random() * height);
+                    positions.push([x, y]);
+                }
+            }
+
+            // Extract pixel data
+            const pixels = {};
+            positions.forEach(([x, y]) => {
+                const index = (y * width + x) * 4;
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                const a = data[index + 3];
+
+                pixels[`${x},${y}`] = {
+                    space: {
+                        coordinates: [x, y],
+                        region: determineRegion(x, y, width, height)
+                    },
+                    pixel: {
+                        rgba: [r, g, b, a],
+                        hex: `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`,
+                        luminance: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
+                        saturation: calculateSaturation(r, g, b)
+                    },
+                    time: {
+                        extracted: new Date().toISOString()
+                    },
+                    intelligence: {
+                        ai_analyzed: false,
+                        description: null,
+                        context: null
+                    }
+                };
+            });
+
+            return {
+                metadata: {
+                    version: "1.0.0",
+                    source_type: "static_image",
+                    source_path: filename,
+                    resolution: `${width}x${height}`,
+                    analysis_mode: mode,
+                    created_at: new Date().toISOString(),
+                    total_pixels: totalPixels,
+                    analyzed_pixels: positions.length,
+                    format: "STEPPPS-JSON-v1.0"
+                },
+                canvas: {
+                    width: width,
+                    height: height,
+                    color_space: "RGBA"
+                },
+                pixels: pixels
+            };
+        }
+
+        function determineRegion(x, y, width, height) {
+            const thirdW = Math.floor(width / 3);
+            const thirdH = Math.floor(height / 3);
+            
+            if (x < thirdW && y < thirdH) return 'top-left';
+            if (x >= 2 * thirdW && y < thirdH) return 'top-right';
+            if (x < thirdW && y >= 2 * thirdH) return 'bottom-left';
+            if (x >= 2 * thirdW && y >= 2 * thirdH) return 'bottom-right';
+            if (y < thirdH) return 'top-center';
+            if (y >= 2 * thirdH) return 'bottom-center';
+            if (x < thirdW) return 'left-center';
+            if (x >= 2 * thirdW) return 'right-center';
+            return 'center';
+        }
+
+        function calculateSaturation(r, g, b) {
+            const max = Math.max(r, g, b) / 255;
+            const min = Math.min(r, g, b) / 255;
+            const diff = max - min;
+            
+            if (diff === 0) return 0;
+            
+            const lightness = (max + min) / 2;
+            return lightness > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+        }
+
+        async function renderStepppsToCanvas(stepppsData) {
+            const canvas = document.createElement('canvas');
+            const metadata = stepppsData.metadata || {};
+            const canvasInfo = stepppsData.canvas || {};
+            
+            canvas.width = canvasInfo.width || 800;
+            canvas.height = canvasInfo.height || 600;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // For full STEPPPS, use direct pixel-perfect reconstruction
+            const pixels = Object.entries(stepppsData.pixels || {});
+            const analysisMode = metadata.analysis_mode || 'full';
+            
+            if (analysisMode === 'full') {
+                // Perfect pixel reconstruction - no background needed
+                return renderPixelPerfect(canvas, ctx, pixels);
+            } else {
+                // Legacy modes with background
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (pixels.length < canvas.width * canvas.height * 0.1) {
+                    return renderSparsePixels(canvas, ctx, pixels);
+                } else {
+                    return renderDensePixels(canvas, ctx, pixels);
+                }
+            }
+        }
+
+        function renderSparsePixels(canvas, ctx, pixels) {
+            // Use larger brush sizes for sparse pixel data
+            const brushSize = Math.max(3, Math.min(canvas.width, canvas.height) / 50);
+            
+            pixels.forEach(([coord, pixelData]) => {
+                const [x, y] = coord.split(',').map(Number);
+                const rgba = pixelData.pixel.rgba;
+                
+                if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                    // Create gradient for smoother appearance
+                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, brushSize);
+                    gradient.addColorStop(0, `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]/255})`);
+                    gradient.addColorStop(1, `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]/255 * 0.3})`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, brushSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            return canvas;
+        }
+
+        function renderPixelPerfect(canvas, ctx, pixels) {
+            // Perfect pixel-by-pixel reconstruction for full STEPPPS
+            pixels.forEach(([coord, pixelData]) => {
+                const [x, y] = coord.split(',').map(Number);
+                const rgba = pixelData.pixel.rgba;
+                
+                if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                    ctx.fillStyle = `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]/255})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            });
+            
+            return canvas;
+        }
+
+        function renderDensePixels(canvas, ctx, pixels) {
+            // Direct pixel rendering for dense data
+            pixels.forEach(([coord, pixelData]) => {
+                const [x, y] = coord.split(',').map(Number);
+                const rgba = pixelData.pixel.rgba;
+                
+                if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                    ctx.fillStyle = `rgba(${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]/255})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            });
+            
+            return canvas;
+        }
+
+        function displayStepppsPreview(stepppsData) {
+            const preview = document.getElementById('jsonPreview');
+            const previewData = {
+                metadata: stepppsData.metadata,
+                canvas: stepppsData.canvas,
+                pixel_count: Object.keys(stepppsData.pixels || {}).length,
+                sample_pixels: Object.entries(stepppsData.pixels || {}).slice(0, 3).reduce((obj, [key, value]) => {
+                    obj[key] = value;
+                    return obj;
+                }, {})
+            };
+            
+            preview.textContent = JSON.stringify(previewData, null, 2);
+        }
+
+        function updateStats(stepppsData) {
+            const metadata = stepppsData.metadata || {};
+            document.getElementById('totalPixels').textContent = (metadata.total_pixels || 0).toLocaleString();
+            document.getElementById('analyzedPixels').textContent = (metadata.analyzed_pixels || 0).toLocaleString();
+            document.getElementById('fileSize').textContent = Math.round(JSON.stringify(stepppsData).length / 1024) + 'KB';
+            
+            const conversionTime = ((Date.now() - conversionStartTime) / 1000).toFixed(1);
+            document.getElementById('conversionTime').textContent = conversionTime + 's';
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+    </script>
+</body>
+</html>

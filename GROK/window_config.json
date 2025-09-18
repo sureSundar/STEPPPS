@@ -1,0 +1,40 @@
+{
+  "space": {
+    "x": 100,
+    "y": 100,
+    "width": 1400,
+    "height": 900
+  },
+  "temporal": {
+    "timestamp": "2025-01-17T00:00:00Z",
+    "created": "2025-01-17T00:00:00Z",
+    "last_modified": "2025-01-17T00:00:00Z"
+  },
+  "event": {
+    "lastEvent": "platform_initialized",
+    "startup_mode": "development"
+  },
+  "psychology": {
+    "mood": "innovative",
+    "energy": "high",
+    "focus": "creativity",
+    "user_experience": "intuitive"
+  },
+  "pixel": {
+    "background": "#2c3e50",
+    "accent": "#3498db",
+    "text": "#ecf0f1",
+    "theme": "dark_professional"
+  },
+  "prompt": {
+    "text": "Bootstrap a professional STEPPPS development platform that empowers users to create with intelligence",
+    "llm_model": "local_ollama",
+    "creativity_level": 0.8
+  },
+  "script": {
+    "platform_type": "development_environment",
+    "auto_save": true,
+    "collaborative": true,
+    "real_time_sync": true
+  }
+}

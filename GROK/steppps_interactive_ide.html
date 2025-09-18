@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEPPPS Interactive IDE - Live Development Environment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            overflow: hidden;
+        }
+
+        #steppps-ide-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #2c3e50;
+            cursor: default;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 5px 0;
+            box-shadow: 0 4px 20px rgba(52, 152, 219, 0.4);
+            z-index: 1000;
+            display: none;
+            min-width: 180px;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #ecf0f1;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            transform: translateX(2px);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #34495e;
+            margin: 4px 0;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+            z-index: 1001;
+            transform: translateX(300px);
+            transition: transform 0.3s ease;
+            font-size: 14px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        /* Loading animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 62, 80, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1002;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #34495e;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="steppps-ide-canvas"></canvas>
+
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" onclick="createNewFile()">
+            <span>📄</span> New File
+        </div>
+        <div class="context-menu-item" onclick="openFile()">
+            <span>📁</span> Open File
+        </div>
+        <div class="context-menu-item" onclick="saveFile()">
+            <span>💾</span> Save File
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="runCode()">
+            <span>▶️</span> Run Code
+        </div>
+        <div class="context-menu-item" onclick="debugCode()">
+            <span>🐛</span> Debug
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="toggleTerminal()">
+            <span>🖥️</span> Toggle Terminal
+        </div>
+        <div class="context-menu-item" onclick="bootstrapIDE()">
+            <span>🔄</span> Bootstrap IDE
+        </div>
+        <div class="context-menu-item" onclick="exportJSON()">
+            <span>📤</span> Export JSON
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script>
+        // Enhanced STEPPPS IDE with full interactivity
+        class STEPPPSObject {
+            constructor(id, type, x = 0, y = 0, width = 100, height = 50) {
+                this.id = id;
+                this.type = type;
+                this.data = {
+                    space: { x, y, width, height },
+                    temporal: {
+                        timestamp: Date.now(),
+                        frame: 0,
+                        lastUpdate: Date.now(),
+                        animationStart: 0,
+                        animationDuration: 0
+                    },
+                    event: {
+                        lastEvent: 'created',
+                        interactive: true,
+                        focused: false,
+                        hovered: false,
+                        clicked: false
+                    },
+                    psychology: {
+                        emotion: 'neutral',
+                        energy: Math.random(),
+                        attention: 0,
+                        stress: 0,
+                        excitement: 0
+                    },
+                    pixel: {
+                        backgroundColor: this.getDefaultColor(type),
+                        borderColor: '#3498db',
+                        textColor: '#ecf0f1',
+                        alpha: 1.0,
+                        borderWidth: 1,
+                        glowIntensity: 0,
+                        pulsePhase: 0
+                    },
+                    prompt: { text: `${type} component`, editable: false },
+                    script: {
+                        behavior: 'responsive',
+                        animation: null,
+                        content: '',
+                        scrollY: 0,
+                        cursorPos: { line: 0, char: 0 },
+                        selectedText: null
+                    }
+                };
+                this.children = [];
+                this.parent = null;
+                this.visible = true;
+                this.dirty = true;
+                this.animating = false;
+            }
+
+            getDefaultColor(type) {
+                const colors = {
+                    'titlebar': '#2c3e50',
+                    'menubar': '#34495e',
+                    'toolbar': '#34495e',
+                    'sidebar': '#2c3e50',
+                    'editor': '#1e1e1e',
+                    'console': '#0d1117',
+                    'statusbar': '#2c3e50',
+                    'file': '#34495e',
+                    'folder': '#3498db',
+                    'text': 'transparent',
+                    'button': '#3498db',
+                    'tab': '#34495e',
+                    'panel': '#2c3e50'
+                };
+                return colors[type] || '#34495e';
+            }
+
+            bootstrap(source = 'genesis') {
+                this.data.event.lastEvent = `bootstrapped_from_${source}`;
+                this.data.temporal.timestamp = Date.now();
+                this.data.temporal.lastUpdate = Date.now();
+                this.data.psychology.energy = 1.0;
+                this.data.psychology.excitement = 0.8;
+
+                // Animate bootstrap
+                this.startAnimation('bootstrap', 800);
+
+                // Type-specific bootstrap logic
+                if (this.type === 'editor') {
+                    this.data.script.content = '// Welcome to STEPPPS Interactive IDE\n// Every UI element is a living STEPPPS object\n// Click, type, and interact with intelligence!\n\nclass STEPPPSBootstrap {\n    constructor() {\n        this.platform = "self-aware";\n        this.intelligence = "infinite";\n    }\n\n    evolve() {\n        console.log("🚀 Self-bootstrapping...");\n        return "Intelligence to infinity!";\n    }\n}\n\nconst steppps = new STEPPPSBootstrap();\nsteppps.evolve();\n\n// Try clicking around the IDE!\n// Every component responds intelligently';
+                } else if (this.type === 'console') {
+                    this.data.script.content = '> STEPPPS Interactive IDE v1.0 initialized\n> Every component is a self-aware STEPPPS object\n> Psychology engine: ACTIVE\n> Bootstrap status: SUCCESS\n> Intelligence level: INFINITE\n> Type commands or interact with UI elements\n>';
+                }
+
+                this.dirty = true;
+                showNotification(`🚀 ${this.type} bootstrapped successfully!`);
+                return true;
+            }
+
+            startAnimation(type, duration = 500) {
+                this.animating = true;
+                this.data.temporal.animationStart = Date.now();
+                this.data.temporal.animationDuration = duration;
+                this.data.script.animation = type;
+
+                setTimeout(() => {
+                    this.animating = false;
+                    this.data.script.animation = null;
+                }, duration);
+            }
+
+            update() {
+                const now = Date.now();
+                const dt = now - this.data.temporal.lastUpdate;
+                this.data.temporal.lastUpdate = now;
+
+                // Update psychology based on interactions
+                if (this.data.event.hovered) {
+                    this.data.psychology.attention = Math.min(1, this.data.psychology.attention + dt * 0.002);
+                } else {
+                    this.data.psychology.attention = Math.max(0, this.data.psychology.attention - dt * 0.001);
+                }
+
+                // Energy decay
+                this.data.psychology.energy = Math.max(0.1, this.data.psychology.energy - dt * 0.0001);
+
+                // Pulse animation for glow
+                this.data.pixel.pulsePhase += dt * 0.005;
+                this.data.pixel.glowIntensity = this.data.psychology.attention * 0.5 +
+                    Math.sin(this.data.pixel.pulsePhase) * 0.2 * this.data.psychology.excitement;
+
+                // Animation updates
+                if (this.animating) {
+                    const progress = (now - this.data.temporal.animationStart) / this.data.temporal.animationDuration;
+                    this.updateAnimation(progress);
+                }
+
+                if (dt > 0) this.dirty = true;
+            }
+
+            updateAnimation(progress) {
+                progress = Math.min(1, Math.max(0, progress));
+
+                switch (this.data.script.animation) {
+                    case 'bootstrap':
+                        this.data.pixel.alpha = 0.3 + 0.7 * progress;
+                        this.data.psychology.excitement = 1 - progress * 0.5;
+                        break;
+                    case 'click':
+                        const bounce = Math.sin(progress * Math.PI);
+                        this.data.psychology.energy = 0.5 + bounce * 0.5;
+                        break;
+                    case 'hover':
+                        this.data.pixel.glowIntensity = progress * 0.3;
+                        break;
+                }
+            }
+
+            contains(x, y) {
+                const s = this.data.space;
+                return x >= s.x && x <= s.x + s.width &&
+                       y >= s.y && y <= s.y + s.height;
+            }
+
+            onHover(x, y, isEntering) {
+                this.data.event.hovered = isEntering;
+                if (isEntering) {
+                    this.data.psychology.attention = Math.min(1, this.data.psychology.attention + 0.3);
+                    this.startAnimation('hover', 200);
+                }
+                this.dirty = true;
+            }
+
+            onClick(x, y) {
+                this.data.event.lastEvent = 'clicked';
+                this.data.event.focused = true;
+                this.data.event.clicked = true;
+                this.data.temporal.lastUpdate = Date.now();
+                this.data.psychology.attention = 1.0;
+                this.data.psychology.energy = Math.min(1, this.data.psychology.energy + 0.4);
+                this.data.psychology.excitement = 0.9;
+
+                this.startAnimation('click', 300);
+
+                // Type-specific click behavior
+                switch (this.type) {
+                    case 'button':
+                        this.handleButtonClick();
+                        break;
+                    case 'tab':
+                        this.handleTabClick();
+                        break;
+                    case 'file':
+                        this.handleFileClick();
+                        break;
+                    case 'editor':
+                        this.handleEditorClick(x, y);
+                        break;
+                    case 'console':
+                        this.handleConsoleClick();
+                        break;
+                }
+
+                this.dirty = true;
+                setTimeout(() => {
+                    this.data.event.clicked = false;
+                    this.dirty = true;
+                }, 300);
+
+                return true;
+            }
+
+            handleButtonClick() {
+                showNotification(`🎯 Button ${this.id} activated!`);
+                if (this.id.includes('run')) {
+                    ide.runCode();
+                } else if (this.id.includes('save')) {
+                    ide.saveFile();
+                } else if (this.id.includes('debug')) {
+                    ide.debugCode();
+                }
+            }
+
+            handleTabClick() {
+                // Switch tab
+                this.data.psychology.emotion = 'active';
+                this.data.pixel.backgroundColor = '#3498db';
+                showNotification(`📑 Switched to tab: ${this.id}`);
+            }
+
+            handleFileClick() {
+                this.data.psychology.emotion = 'selected';
+                this.data.pixel.backgroundColor = '#3498db';
+
+                // Simulate file opening
+                if (ide.editor) {
+                    ide.editor.data.script.content = `// File: ${this.id}\n// This file was opened by clicking the STEPPPS file object\n\nfunction ${this.id.replace(/[^a-zA-Z0-9]/g, '')}() {\n    console.log("File loaded through STEPPPS interaction!");\n    return "Interactive file system working!";\n}\n\n// The file explorer is fully functional\n// Each file is a conscious STEPPPS object`;
+                    ide.editor.dirty = true;
+                }
+
+                showNotification(`📄 Opened file: ${this.id}`);
+            }
+
+            handleEditorClick(x, y) {
+                // Calculate cursor position
+                const localX = x - this.data.space.x - 50; // Account for line numbers
+                const localY = y - this.data.space.y - 25; // Account for tab bar
+
+                const lineHeight = 16;
+                const charWidth = 7.2;
+                const line = Math.floor(localY / lineHeight);
+                const char = Math.floor(localX / charWidth);
+
+                this.data.script.cursorPos = { line: Math.max(0, line), char: Math.max(0, char) };
+
+                showNotification(`✏️ Cursor positioned at line ${line + 1}, column ${char + 1}`);
+            }
+
+            handleConsoleClick() {
+                this.data.script.content += `\n> User interaction detected at ${new Date().toLocaleTimeString()}`;
+                this.data.script.content += `\n> STEPPPS object ${this.id} psychology: ${JSON.stringify(this.data.psychology)}`;
+                this.data.script.content += '\n> Ready for commands...';
+                this.dirty = true;
+
+                showNotification('🖥️ Console activated - ready for input!');
+            }
+
+            render(ctx) {
+                if (!this.visible) return;
+
+                this.update(); // Update state before rendering
+
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+
+                // Draw glow effect if attention > 0
+                if (p.glowIntensity > 0) {
+                    ctx.shadowColor = '#3498db';
+                    ctx.shadowBlur = 10 + p.glowIntensity * 20;
+                }
+
+                // Draw background with hover/click effects
+                if (p.backgroundColor !== 'transparent') {
+                    let bgColor = p.backgroundColor;
+
+                    if (this.data.event.clicked) {
+                        bgColor = this.brightenColor(bgColor, 0.3);
+                    } else if (this.data.event.hovered) {
+                        bgColor = this.brightenColor(bgColor, 0.15);
+                    }
+
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(s.x, s.y, s.width, s.height);
+                }
+
+                // Draw border with energy-based thickness
+                if (p.borderWidth > 0) {
+                    ctx.strokeStyle = p.borderColor;
+                    ctx.lineWidth = p.borderWidth + this.data.psychology.energy * 2;
+                    ctx.strokeRect(s.x, s.y, s.width, s.height);
+                }
+
+                // Reset shadow
+                ctx.shadowBlur = 0;
+
+                // Type-specific rendering
+                this.renderTypeSpecific(ctx);
+
+                ctx.restore();
+                this.dirty = false;
+            }
+
+            brightenColor(color, factor) {
+                // Simple color brightening
+                if (color === '#2c3e50') return '#34495e';
+                if (color === '#34495e') return '#4a6741';
+                if (color === '#3498db') return '#5dade2';
+                return color;
+            }
+
+            renderTypeSpecific(ctx) {
+                switch (this.type) {
+                    case 'titlebar': this.renderTitleBar(ctx); break;
+                    case 'menubar': this.renderMenuBar(ctx); break;
+                    case 'toolbar': this.renderToolbar(ctx); break;
+                    case 'sidebar': this.renderSidebar(ctx); break;
+                    case 'editor': this.renderEditor(ctx); break;
+                    case 'console': this.renderConsole(ctx); break;
+                    case 'statusbar': this.renderStatusBar(ctx); break;
+                    case 'button': this.renderButton(ctx); break;
+                }
+            }
+
+            renderTitleBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Window controls with hover effects
+                const controlSize = 12;
+                const margin = 10;
+                const colors = ['#e74c3c', '#f39c12', '#2ecc71'];
+                const symbols = ['×', '−', '□'];
+
+                colors.forEach((color, i) => {
+                    const x = s.x + margin + i * (controlSize + 5);
+                    const y = s.y + (s.height - controlSize) / 2;
+
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, controlSize, controlSize);
+
+                    // Symbol
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px Monaco';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(symbols[i], x + controlSize/2, y + controlSize/2 + 3);
+                });
+
+                // Animated title with energy level
+                const titleAlpha = 0.7 + this.data.psychology.energy * 0.3;
+                ctx.globalAlpha = titleAlpha;
+                ctx.fillStyle = p.textColor;
+                ctx.font = 'bold 14px Monaco';
+                ctx.textAlign = 'center';
+                ctx.fillText('STEPPPS Interactive IDE - Live Development Environment', s.x + s.width / 2, s.y + s.height / 2 + 4);
+            }
+
+            renderMenuBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+                const menus = ['File', 'Edit', 'View', 'STEPPPS', 'Tools', 'Debug', 'Help'];
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'left';
+
+                let x = s.x + 10;
+                menus.forEach(menu => {
+                    // Highlight if hovered
+                    const alpha = 0.8 + (this.data.event.hovered ? 0.2 : 0);
+                    ctx.globalAlpha = alpha;
+                    ctx.fillText(menu, x, s.y + s.height / 2 + 4);
+                    x += ctx.measureText(menu).width + 20;
+                });
+            }
+
+            renderToolbar(ctx) {
+                const s = this.data.space;
+                const tools = [
+                    {icon: '▶️', action: 'run', tooltip: 'Run Code'},
+                    {icon: '⏸️', action: 'pause', tooltip: 'Pause'},
+                    {icon: '⏹️', action: 'stop', tooltip: 'Stop'},
+                    {icon: '🔄', action: 'refresh', tooltip: 'Refresh'},
+                    {icon: '💾', action: 'save', tooltip: 'Save'},
+                    {icon: '📁', action: 'open', tooltip: 'Open'},
+                    {icon: '🔍', action: 'search', tooltip: 'Search'},
+                    {icon: '🐛', action: 'debug', tooltip: 'Debug'},
+                    {icon: '⚙️', action: 'settings', tooltip: 'Settings'}
+                ];
+
+                let x = s.x + 10;
+                const buttonSize = 24;
+                const spacing = 30;
+
+                tools.forEach(tool => {
+                    // Button with energy-based glow
+                    const brightness = 0.8 + this.data.psychology.energy * 0.2;
+
+                    ctx.fillStyle = `rgba(52, 152, 219, ${brightness})`;
+                    ctx.fillRect(x, s.y + (s.height - buttonSize) / 2, buttonSize, buttonSize);
+
+                    // Tool icon
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px Monaco';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(tool.icon, x + buttonSize / 2, s.y + s.height / 2 + 4);
+
+                    x += spacing;
+                });
+            }
+
+            renderSidebar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // File explorer header with pulse
+                const headerBrightness = 0.8 + Math.sin(this.data.pixel.pulsePhase) * 0.1;
+                ctx.fillStyle = `rgba(52, 152, 219, ${headerBrightness})`;
+                ctx.fillRect(s.x, s.y, s.width, 25);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('📁 STEPPPS Explorer', s.x + 8, s.y + 17);
+
+                // Interactive file tree
+                const files = [
+                    { name: '📁 src', level: 0, type: 'folder' },
+                    { name: '📄 steppps.js', level: 1, type: 'file' },
+                    { name: '📄 platform.js', level: 1, type: 'file' },
+                    { name: '📄 interactive.js', level: 1, type: 'file' },
+                    { name: '📁 components', level: 1, type: 'folder' },
+                    { name: '📄 canvas.js', level: 2, type: 'file' },
+                    { name: '📄 editor.js', level: 2, type: 'file' },
+                    { name: '📄 console.js', level: 2, type: 'file' },
+                    { name: '📁 examples', level: 0, type: 'folder' },
+                    { name: '📄 bootstrap.js', level: 1, type: 'file' },
+                    { name: '📄 README.md', level: 0, type: 'file' },
+                    { name: '📄 package.json', level: 0, type: 'file' }
+                ];
+
+                let y = s.y + 35;
+                files.forEach((file, index) => {
+                    const indent = file.level * 15;
+
+                    // Highlight on hover (simulated)
+                    const mouseInArea = this.data.event.hovered && y < s.y + s.height - 20;
+                    if (mouseInArea) {
+                        ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+                        ctx.fillRect(s.x, y - 10, s.width, 14);
+                    }
+
+                    ctx.fillStyle = p.textColor;
+                    ctx.font = '11px Monaco';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(file.name, s.x + 8 + indent, y);
+                    y += 16;
+                });
+            }
+
+            renderEditor(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Animated tab bar
+                const tabHeight = 25;
+                ctx.fillStyle = '#34495e';
+                ctx.fillRect(s.x, s.y, s.width, tabHeight);
+
+                // Active tab with glow
+                const tabGlow = this.data.psychology.attention;
+                ctx.fillStyle = `rgba(52, 152, 219, ${0.8 + tabGlow * 0.2})`;
+                ctx.fillRect(s.x, s.y, 150, tabHeight);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('📄 interactive.js', s.x + 8, s.y + 16);
+
+                // Close button
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(s.x + 130, s.y + 6, 12, 12);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '8px Monaco';
+                ctx.textAlign = 'center';
+                ctx.fillText('×', s.x + 136, s.y + 14);
+
+                // Editor content area
+                const contentY = s.y + tabHeight;
+                const contentHeight = s.height - tabHeight;
+
+                // Line numbers with energy-based brightness
+                const lineNumberWidth = 50;
+                const brightness = 0.3 + this.data.psychology.energy * 0.2;
+                ctx.fillStyle = `rgba(44, 62, 80, ${brightness})`;
+                ctx.fillRect(s.x, contentY, lineNumberWidth, contentHeight);
+
+                // Code content with live syntax highlighting
+                const lines = this.data.script.content.split('\n');
+                const lineHeight = 16;
+                const startLine = Math.floor(this.data.script.scrollY / lineHeight);
+
+                lines.slice(startLine).forEach((line, index) => {
+                    const y = contentY + (index + 1) * lineHeight;
+                    if (y > contentY + contentHeight) return;
+
+                    // Line number
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.font = '10px Monaco';
+                    ctx.textAlign = 'right';
+                    ctx.fillText((startLine + index + 1).toString(), s.x + lineNumberWidth - 8, y);
+
+                    // Code line with enhanced syntax highlighting
+                    ctx.fillStyle = this.getSyntaxColor(line);
+                    ctx.font = '12px Monaco';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(line, s.x + lineNumberWidth + 10, y);
+                });
+
+                // Animated cursor if focused
+                if (this.data.event.focused) {
+                    const cursorLine = this.data.script.cursorPos.line;
+                    const cursorChar = this.data.script.cursorPos.char;
+                    const cursorX = s.x + lineNumberWidth + 10 + cursorChar * 7.2;
+                    const cursorY = contentY + (cursorLine + 1) * lineHeight;
+
+                    const cursorAlpha = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+                    ctx.globalAlpha = cursorAlpha;
+                    ctx.strokeStyle = '#3498db';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cursorX, cursorY - 12);
+                    ctx.lineTo(cursorX, cursorY);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            getSyntaxColor(line) {
+                if (line.trim().startsWith('//')) return '#7f8c8d';
+                if (line.includes('class') || line.includes('function') || line.includes('const') || line.includes('let')) return '#9b59b6';
+                if (line.includes('console.log') || line.includes('console.')) return '#e67e22';
+                if (line.match(/["']/)) return '#27ae60';
+                if (line.includes('return') || line.includes('if') || line.includes('for')) return '#3498db';
+                return '#ecf0f1';
+            }
+
+            renderConsole(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Console header with activity indicator
+                const activityLevel = this.data.psychology.energy;
+                ctx.fillStyle = `rgba(231, 76, 60, ${0.8 + activityLevel * 0.2})`;
+                ctx.fillRect(s.x, s.y, s.width, 20);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('🖥️ STEPPPS Interactive Console', s.x + 8, s.y + 14);
+
+                // Console content with scrolling
+                const lines = this.data.script.content.split('\n');
+                const lineHeight = 14;
+                const maxLines = Math.floor((s.height - 30) / lineHeight);
+                const visibleLines = lines.slice(-maxLines);
+
+                let y = s.y + 35;
+                ctx.fillStyle = '#2ecc71';
+                ctx.font = '11px Monaco';
+                ctx.textAlign = 'left';
+
+                visibleLines.forEach(line => {
+                    ctx.fillText(line, s.x + 8, y);
+                    y += lineHeight;
+                });
+
+                // Typing indicator if active
+                if (this.data.event.focused) {
+                    const indicatorAlpha = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
+                    ctx.globalAlpha = indicatorAlpha;
+                    ctx.fillStyle = '#3498db';
+                    ctx.fillRect(s.x + 8, y, 8, 2);
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            renderStatusBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Status items with live updates
+                const items = [
+                    `Objects: ${ide.objects.length}`,
+                    `Frame: ${this.data.temporal.frame}`,
+                    `Energy: ${Math.round(this.data.psychology.energy * 100)}%`,
+                    `Attention: ${Math.round(this.data.psychology.attention * 100)}%`,
+                    `STEPPPS: ${this.animating ? 'EVOLVING' : 'ACTIVE'}`
+                ];
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '11px Monaco';
+                ctx.textAlign = 'left';
+
+                let x = s.x + 10;
+                items.forEach((item, index) => {
+                    // Color code different status types
+                    if (item.includes('Energy:')) ctx.fillStyle = '#e67e22';
+                    else if (item.includes('Attention:')) ctx.fillStyle = '#3498db';
+                    else if (item.includes('EVOLVING')) ctx.fillStyle = '#2ecc71';
+                    else ctx.fillStyle = p.textColor;
+
+                    ctx.fillText(item, x, s.y + s.height / 2 + 4);
+                    x += ctx.measureText(item).width + 20;
+                });
+
+                // Right-aligned live clock
+                ctx.fillStyle = '#95a5a6';
+                ctx.textAlign = 'right';
+                ctx.fillText(new Date().toLocaleTimeString(), s.x + s.width - 10, s.y + s.height / 2 + 4);
+            }
+
+            renderButton(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Button text with energy-based effects
+                const textBrightness = 0.8 + this.data.psychology.energy * 0.2;
+                ctx.globalAlpha = textBrightness;
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.data.prompt.text, s.x + s.width / 2, s.y + s.height / 2 + 4);
+                ctx.globalAlpha = 1;
+            }
+
+            toJSON() {
+                return {
+                    id: this.id,
+                    type: this.type,
+                    data: this.data,
+                    children: this.children.length,
+                    state: {
+                        animated: this.animating,
+                        psychology: this.data.psychology,
+                        lastEvent: this.data.event.lastEvent
+                    }
+                };
+            }
+        }
+
+        class STEPPPSInteractiveIDE {
+            constructor() {
+                this.canvas = document.getElementById('steppps-ide-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.objects = [];
+                this.frameCount = 0;
+                this.running = true;
+                this.hoveredObject = null;
+                this.focusedObject = null;
+
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.bootstrap();
+                this.startRenderLoop();
+
+                showNotification('🚀 STEPPPS Interactive IDE loaded!');
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    this.layoutComponents();
+                });
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
+
+                document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
+                // Hide context menu on any click
+                document.addEventListener('click', () => {
+                    document.getElementById('context-menu').style.display = 'none';
+                });
+            }
+
+            handleMouseMove(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Find hovered object
+                let newHoveredObject = null;
+                for (let i = this.objects.length - 1; i >= 0; i--) {
+                    const obj = this.objects[i];
+                    if (obj.contains(x, y)) {
+                        newHoveredObject = obj;
+                        break;
+                    }
+                }
+
+                // Update hover states
+                if (this.hoveredObject !== newHoveredObject) {
+                    if (this.hoveredObject) {
+                        this.hoveredObject.onHover(x, y, false);
+                    }
+                    if (newHoveredObject) {
+                        newHoveredObject.onHover(x, y, true);
+                    }
+                    this.hoveredObject = newHoveredObject;
+                }
+
+                // Update cursor
+                let cursor = 'default';
+                if (newHoveredObject) {
+                    switch (newHoveredObject.type) {
+                        case 'button':
+                        case 'tab':
+                        case 'file':
+                            cursor = 'pointer';
+                            break;
+                        case 'editor':
+                            cursor = 'text';
+                            break;
+                        case 'titlebar':
+                            cursor = 'move';
+                            break;
+                    }
+                }
+                this.canvas.style.cursor = cursor;
+            }
+
+            handleDoubleClick(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                for (let obj of this.objects) {
+                    if (obj.contains(x, y)) {
+                        if (obj.type === 'file') {
+                            obj.handleFileClick();
+                            showNotification(`📄 Opened ${obj.id} for editing`);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            bootstrap() {
+                showLoading(true);
+                console.log('🚀 Bootstrapping STEPPPS Interactive IDE...');
+
+                setTimeout(() => {
+                    this.createIDEComponents();
+                    this.layoutComponents();
+                    showLoading(false);
+                    showNotification('✅ IDE fully bootstrapped and ready!');
+                    console.log('✅ STEPPPS Interactive IDE ready!');
+                }, 1000);
+            }
+
+            createIDEComponents() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                // Create IDE components with staggered bootstrap
+                this.titleBar = new STEPPPSObject('titlebar', 'titlebar', 0, 0, w, 30);
+                this.objects.push(this.titleBar);
+
+                this.menuBar = new STEPPPSObject('menubar', 'menubar', 0, 30, w, 25);
+                this.objects.push(this.menuBar);
+
+                this.toolBar = new STEPPPSObject('toolbar', 'toolbar', 0, 55, w, 35);
+                this.objects.push(this.toolBar);
+
+                this.sideBar = new STEPPPSObject('sidebar', 'sidebar', 0, 90, 300, h - 140);
+                this.objects.push(this.sideBar);
+
+                this.editor = new STEPPPSObject('editor', 'editor', 300, 90, w - 300, (h - 140) * 0.65);
+                this.objects.push(this.editor);
+
+                this.console = new STEPPPSObject('console', 'console', 300, 90 + (h - 140) * 0.65, w - 300, (h - 140) * 0.35);
+                this.objects.push(this.console);
+
+                this.statusBar = new STEPPPSObject('statusbar', 'statusbar', 0, h - 25, w, 25);
+                this.objects.push(this.statusBar);
+
+                // Bootstrap all components with delays for visual effect
+                this.objects.forEach((obj, index) => {
+                    setTimeout(() => {
+                        obj.bootstrap('genesis');
+                    }, index * 200);
+                });
+            }
+
+            layoutComponents() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                if (this.objects.length > 0) {
+                    this.titleBar.data.space = { x: 0, y: 0, width: w, height: 30 };
+                    this.menuBar.data.space = { x: 0, y: 30, width: w, height: 25 };
+                    this.toolBar.data.space = { x: 0, y: 55, width: w, height: 35 };
+                    this.sideBar.data.space = { x: 0, y: 90, width: 300, height: h - 140 };
+                    this.editor.data.space = { x: 300, y: 90, width: w - 300, height: (h - 140) * 0.65 };
+                    this.console.data.space = { x: 300, y: 90 + (h - 140) * 0.65, width: w - 300, height: (h - 140) * 0.35 };
+                    this.statusBar.data.space = { x: 0, y: h - 25, width: w, height: 25 };
+
+                    this.objects.forEach(obj => obj.dirty = true);
+                }
+            }
+
+            handleClick(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Clear focus from previous object
+                if (this.focusedObject) {
+                    this.focusedObject.data.event.focused = false;
+                    this.focusedObject.dirty = true;
+                }
+
+                // Find and click object
+                for (let i = this.objects.length - 1; i >= 0; i--) {
+                    const obj = this.objects[i];
+                    if (obj.contains(x, y)) {
+                        obj.onClick(x, y);
+                        this.focusedObject = obj;
+                        break;
+                    }
+                }
+            }
+
+            handleContextMenu(event) {
+                event.preventDefault();
+                const menu = document.getElementById('context-menu');
+                menu.style.left = event.clientX + 'px';
+                menu.style.top = event.clientY + 'px';
+                menu.style.display = 'block';
+            }
+
+            handleKeyDown(event) {
+                if (event.ctrlKey || event.metaKey) {
+                    switch (event.key) {
+                        case 's':
+                            event.preventDefault();
+                            this.saveFile();
+                            break;
+                        case 'o':
+                            event.preventDefault();
+                            this.openFile();
+                            break;
+                        case 'n':
+                            event.preventDefault();
+                            this.createNewFile();
+                            break;
+                        case '`':
+                            event.preventDefault();
+                            this.toggleTerminal();
+                            break;
+                        case 'r':
+                            event.preventDefault();
+                            this.runCode();
+                            break;
+                    }
+                }
+            }
+
+            render() {
+                // Clear with gradient background
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#2c3e50');
+                gradient.addColorStop(1, '#34495e');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Render all components
+                this.objects.forEach(obj => {
+                    if (obj.visible) {
+                        obj.render(this.ctx);
+                    }
+                });
+
+                // Update frame counter
+                this.frameCount++;
+                this.objects.forEach(obj => {
+                    obj.data.temporal.frame = this.frameCount;
+                });
+            }
+
+            startRenderLoop() {
+                const loop = () => {
+                    if (this.running) {
+                        this.render();
+                        requestAnimationFrame(loop);
+                    }
+                };
+                loop();
+            }
+
+            // IDE Actions with visual feedback
+            saveFile() {
+                showLoading(true);
+                setTimeout(() => {
+                    this.console.data.script.content += `\n> [${new Date().toLocaleTimeString()}] File saved: interactive.js`;
+                    this.console.data.script.content += '\n> All STEPPPS objects serialized successfully';
+                    this.console.dirty = true;
+                    showLoading(false);
+                    showNotification('💾 File saved successfully!');
+                }, 500);
+            }
+
+            openFile() {
+                showNotification('📁 File browser opened');
+                this.console.data.script.content += `\n> [${new Date().toLocaleTimeString()}] File browser activated`;
+                this.console.dirty = true;
+            }
+
+            createNewFile() {
+                const fileName = `new_file_${Date.now()}.js`;
+                this.console.data.script.content += `\n> [${new Date().toLocaleTimeString()}] Created: ${fileName}`;
+                this.console.dirty = true;
+                showNotification(`📄 Created ${fileName}`);
+            }
+
+            runCode() {
+                showLoading(true);
+                this.console.data.script.content += `\n> [${new Date().toLocaleTimeString()}] Executing STEPPPS code...`;
+                this.console.data.script.content += '\n> Self-bootstrap sequence initiated';
+                this.console.data.script.content += `\n> Platform objects: ${this.objects.length}`;
+                this.console.data.script.content += '\n> Intelligence level: INFINITE';
+                this.console.data.script.content += '\n> ✅ Execution completed successfully!';
+                this.console.dirty = true;
+
+                setTimeout(() => {
+                    showLoading(false);
+                    showNotification('▶️ Code executed successfully!');
+                }, 1000);
+            }
+
+            debugCode() {
+                this.console.data.script.content += `\n> [${new Date().toLocaleTimeString()}] Debug mode activated`;
+                this.console.data.script.content += '\n> Breakpoints: 0 | Watches: 0 | Call stack: 1';
+                this.console.dirty = true;
+                showNotification('🐛 Debug mode activated');
+            }
+
+            toggleTerminal() {
+                this.console.visible = !this.console.visible;
+                this.layoutComponents();
+                showNotification(`🖥️ Terminal ${this.console.visible ? 'shown' : 'hidden'}`);
+            }
+
+            exportPlatformJSON() {
+                const platformData = {
+                    platform: {
+                        id: 'steppps_interactive_ide',
+                        timestamp: Date.now(),
+                        frame: this.frameCount,
+                        components: this.objects.length,
+                        canvas: { width: this.canvas.width, height: this.canvas.height },
+                        interactivity: 'full',
+                        intelligence: 'infinite'
+                    },
+                    components: this.objects.map(obj => obj.toJSON())
+                };
+
+                console.log('STEPPPS Interactive IDE JSON:', platformData);
+
+                // Copy to clipboard
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(JSON.stringify(platformData, null, 2));
+                    showNotification('📋 Platform JSON copied to clipboard');
+                } else {
+                    showNotification('📄 Platform JSON logged to console');
+                }
+
+                return platformData;
+            }
+        }
+
+        // Utility functions
+        function showNotification(message, duration = 3000) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, duration);
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
+
+        // Global functions for context menu
+        function createNewFile() { ide.createNewFile(); }
+        function openFile() { ide.openFile(); }
+        function saveFile() { ide.saveFile(); }
+        function runCode() { ide.runCode(); }
+        function debugCode() { ide.debugCode(); }
+        function toggleTerminal() { ide.toggleTerminal(); }
+        function bootstrapIDE() { ide.bootstrap(); }
+        function exportJSON() { ide.exportPlatformJSON(); }
+
+        // Initialize Interactive IDE
+        let ide;
+        window.addEventListener('load', () => {
+            ide = new STEPPPSInteractiveIDE();
+        });
+    </script>
+</body>
+</html>

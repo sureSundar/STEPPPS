@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STEPPPS - FastAPI Claude Integration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .config-panel {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+        }
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .test-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .pixel-canvas {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        .pixel-canvas h3 {
+            color: #333;
+            text-align: center;
+            margin-top: 0;
+        }
+        #canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+        }
+        .intelligence-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .intelligence-panel h3 {
+            margin-top: 0;
+            color: #4ecdc4;
+        }
+        .pixel-data {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .ai-response {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        .loading {
+            color: #ffc107;
+            font-style: italic;
+        }
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 STEPPPS Protocol</h1>
+            <p>FastAPI + Claude AI - Revolutionary Pixel Intelligence</p>
+        </div>
+
+        <div class="config-panel">
+            <h3>🔧 Claude AI Configuration</h3>
+            <div style="display: grid; grid-template-columns: 2fr auto; gap: 15px; align-items: end;">
+                <div class="input-group">
+                    <label>Claude API Key</label>
+                    <input type="password" id="apiKey" placeholder="Enter your Claude API key (sk-ant-...)">
+                </div>
+                <div>
+                    <button class="button" onclick="testConnection()">🧪 Test FastAPI</button>
+                </div>
+            </div>
+            <div id="connectionStatus"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="pixelCount">0</div>
+                <div class="stat-label">Smart Pixels</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="aiInteractions">0</div>
+                <div class="stat-label">AI Interactions</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="avgResponseTime">0ms</div>
+                <div class="stat-label">Response Time</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="intelligenceLevel">0%</div>
+                <div class="stat-label">Intelligence</div>
+            </div>
+        </div>
+
+        <div class="test-area">
+            <div class="pixel-canvas">
+                <h3>🎨 Intelligent Canvas - Click Any Pixel</h3>
+                <canvas id="canvas" width="500" height="350"></canvas>
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="button" onclick="loadSampleImage()">🖼️ Load Sample</button>
+                    <button class="button" onclick="clearCanvas()">🧹 Clear</button>
+                    <button class="button" onclick="analyzeRandomPixels()">🎲 Random Analysis</button>
+                </div>
+            </div>
+
+            <div class="intelligence-panel">
+                <h3>🧠 Pixel Intelligence Feed</h3>
+                <div id="intelligenceLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // STEPPPS Framework Core
+        class STEPPPSPixel {
+            constructor(x, y, canvas) {
+                this.space = {
+                    coordinates: [x, y],
+                    canvas_size: [canvas.width, canvas.height],
+                    region: this.determineRegion(x, y, canvas)
+                };
+
+                this.pixel = {
+                    color: this.getPixelColor(x, y, canvas),
+                    rgba: [0, 0, 0, 0],
+                    luminance: 0
+                };
+
+                this.updatePixelProperties(x, y, canvas);
+            }
+
+            determineRegion(x, y, canvas) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const quadW = canvas.width / 3;
+                const quadH = canvas.height / 3;
+
+                if (x < quadW && y < quadH) return 'top-left';
+                if (x > quadW * 2 && y < quadH) return 'top-right';
+                if (x < quadW && y > quadH * 2) return 'bottom-left';
+                if (x > quadW * 2 && y > quadH * 2) return 'bottom-right';
+                if (y < quadH) return 'top-center';
+                if (y > quadH * 2) return 'bottom-center';
+                if (x < quadW) return 'left-center';
+                if (x > quadW * 2) return 'right-center';
+                return 'center';
+            }
+
+            getPixelColor(x, y, canvas) {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(x, y, 1, 1);
+                const [r, g, b, a] = imageData.data;
+                this.pixel.rgba = [r, g, b, a];
+                this.pixel.luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                return `rgba(${r}, ${g}, ${b}, ${a/255})`;
+            }
+
+            updatePixelProperties(x, y, canvas) {
+                this.pixel.color = this.getPixelColor(x, y, canvas);
+            }
+
+            generatePrompt() {
+                return `Analyze this pixel at (${this.space.coordinates[0]}, ${this.space.coordinates[1]}) in the ${this.space.region} region. The pixel color is ${this.pixel.color} with luminance ${(this.pixel.luminance * 100).toFixed(1)}%. What do you represent in this visual composition? Respond as the intelligent pixel in 2-3 creative sentences.`;
+            }
+
+            async getAIResponse() {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                if (!apiKey) {
+                    throw new Error('Please enter your Claude API key');
+                }
+
+                const response = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        request_data: {
+                            model: 'claude-3-sonnet-20240229',
+                            max_tokens: 200,
+                            messages: [{
+                                role: 'user',
+                                content: this.generatePrompt()
+                            }]
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'API request failed');
+                }
+
+                const data = await response.json();
+                return data.content[0].text;
+            }
+        }
+
+        // Global State
+        let intelligentPixels = new Map();
+        let totalInteractions = 0;
+        let responseTimes = [];
+        let canvas, ctx;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            canvas.addEventListener('click', handlePixelClick);
+            loadSampleImage();
+            updateStats();
+            logIntelligence('🚀 STEPPPS FastAPI Protocol initialized!');
+        });
+
+        async function testConnection() {
+            const status = document.getElementById('connectionStatus');
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            if (!apiKey) {
+                status.innerHTML = '<div class="error">Please enter your Claude API key</div>';
+                return;
+            }
+
+            status.innerHTML = '<div class="loading">🔄 Testing FastAPI connection to Claude...</div>';
+
+            try {
+                const response = await fetch('/api/claude', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        request_data: {
+                            model: 'claude-3-sonnet-20240229',
+                            max_tokens: 50,
+                            messages: [{
+                                role: 'user',
+                                content: 'Say "STEPPPS FastAPI Ready!" and nothing else.'
+                            }]
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    status.innerHTML = `<div class="error">❌ ${errorData.detail}</div>`;
+                    return;
+                }
+
+                const data = await response.json();
+                status.innerHTML = `<div class="success">✅ FastAPI Success! Claude says: "${data.content[0].text}"</div>`;
+
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Connection failed: ${error.message}</div>`;
+            }
+        }
+
+        async function handlePixelClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor(event.clientX - rect.left);
+            const y = Math.floor(event.clientY - rect.top);
+
+            const pixel = new STEPPPSPixel(x, y, canvas);
+            intelligentPixels.set(`${x},${y}`, pixel);
+
+            // Visual feedback
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            logIntelligence(`🎯 Intelligent pixel created at (${x}, ${y}) in ${pixel.space.region}`);
+
+            try {
+                logIntelligence(`🧠 Requesting Claude analysis via FastAPI...`);
+                const startTime = performance.now();
+                const aiResponse = await pixel.getAIResponse();
+                const endTime = performance.now();
+
+                responseTimes.push(endTime - startTime);
+                totalInteractions++;
+
+                logIntelligence(`✨ Claude: ${aiResponse}`);
+            } catch (error) {
+                logIntelligence(`❌ AI Analysis failed: ${error.message}`);
+            }
+
+            updateStats();
+        }
+
+        function loadSampleImage() {
+            const gradient = ctx.createRadialGradient(250, 175, 0, 250, 175, 200);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(0.3, '#4ecdc4');
+            gradient.addColorStop(0.6, '#45b7d1');
+            gradient.addColorStop(1, '#96ceb4');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add shapes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(150, 150, 40, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(300, 200, 100, 80);
+
+            ctx.fillStyle = '#ff3838';
+            ctx.beginPath();
+            ctx.moveTo(400, 100);
+            ctx.lineTo(440, 150);
+            ctx.lineTo(360, 150);
+            ctx.closePath();
+            ctx.fill();
+
+            logIntelligence('🖼️ Rich sample image loaded - Ready for intelligent pixel exploration');
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            intelligentPixels.clear();
+            totalInteractions = 0;
+            responseTimes = [];
+            document.getElementById('intelligenceLog').innerHTML = '';
+            logIntelligence('🧹 Canvas cleared - Ready for new exploration');
+            updateStats();
+        }
+
+        async function analyzeRandomPixels() {
+            logIntelligence('🎲 Analyzing 3 random pixels...');
+            for (let i = 0; i < 3; i++) {
+                const x = Math.floor(Math.random() * canvas.width);
+                const y = Math.floor(Math.random() * canvas.height);
+                setTimeout(() => {
+                    const rect = canvas.getBoundingClientRect();
+                    handlePixelClick({
+                        clientX: rect.left + x,
+                        clientY: rect.top + y
+                    });
+                }, i * 2000);
+            }
+        }
+
+        function logIntelligence(message) {
+            const log = document.getElementById('intelligenceLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+
+            if (message.includes('✨') || message.includes('Claude:')) {
+                entry.className = 'ai-response';
+            } else if (message.includes('❌')) {
+                entry.className = 'error';
+            } else {
+                entry.className = 'pixel-data';
+            }
+
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('pixelCount').textContent = intelligentPixels.size;
+            document.getElementById('aiInteractions').textContent = totalInteractions;
+
+            const avgTime = responseTimes.length > 0
+                ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+                : 0;
+            document.getElementById('avgResponseTime').textContent = avgTime + 'ms';
+
+            const intelligence = intelligentPixels.size > 0
+                ? Math.round((totalInteractions / intelligentPixels.size) * 100)
+                : 0;
+            document.getElementById('intelligenceLevel').textContent = intelligence + '%';
+        }
+    </script>
+</body>
+</html>

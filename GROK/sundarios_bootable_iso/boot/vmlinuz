@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+# SundarOS Kernel - VM Boot Entry Point
+import sys
+import os
+
+# Add system paths
+sys.path.insert(0, '/system')
+sys.path.insert(0, './system')
+
+def boot_sundarios():
+    print("🌟 SundarOS v1.0 Booting...")
+    print("AI-Native Operating System Starting...")
+    
+    # Parse boot parameters
+    safe_mode = 'safe=1' in ' '.join(sys.argv)
+    live_mode = 'live=1' in ' '.join(sys.argv)
+    
+    if live_mode:
+        print("🔴 Live Mode: Running without installation")
+        from sundarios_live import main as live_main
+        live_main()
+    elif safe_mode:
+        print("🟡 Safe Mode: Minimal system startup")
+        from sundarios_safe import main as safe_main
+        safe_main()
+    else:
+        print("🟢 Normal Mode: Full system startup")
+        try:
+            from launch_sundarios import main
+            main()
+        except ImportError:
+            print("⚠️ SundarOS components not found")
+            print("Starting minimal shell...")
+            import subprocess
+            subprocess.run(["/bin/bash"])
+
+if __name__ == "__main__":
+    boot_sundarios()

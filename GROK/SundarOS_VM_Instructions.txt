@@ -1,0 +1,30 @@
+# SundarOS VM Setup Instructions
+
+## Files:
+- SundarOS-Test.iso (Main ISO file)
+- SundarOS-Test.iso.md5 (MD5 checksum)
+
+## VirtualBox Setup:
+1. Create new VM: Linux > Other Linux (64-bit)
+2. Memory: 512MB minimum
+3. Settings > Storage > Add optical drive
+4. Select: SundarOS-Test.iso
+5. Boot VM and run: python3 autorun.py
+
+## VMware Setup:
+1. Create new VM: Linux > Other Linux 4.x 64-bit
+2. CD/DVD: Use ISO image > SundarOS-Test.iso
+3. Boot and run: python3 autorun.py
+
+## Expected Experience:
+1. VM boots from ISO
+2. SundarOS files are accessible
+3. Run: python3 autorun.py
+4. SundarOS starts with AI interface
+
+## Troubleshooting:
+- Ensure Python 3 is available in guest OS
+- Try different Linux distributions
+- Minimum 512MB RAM required
+
+Enjoy SundarOS! 🌟

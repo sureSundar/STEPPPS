@@ -1,0 +1,35 @@
+{
+  "salesforce": {
+    "instance_url": "https://your-company.salesforce.com",
+    "access_token": "YOUR_SALESFORCE_TOKEN",
+    "enabled": false
+  },
+  "slack": {
+    "webhook_url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+    "channel": "#sales-alerts",
+    "enabled": false
+  },
+  "email": {
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "username": "your-business-email@company.com",
+    "password": "YOUR_APP_PASSWORD",
+    "enabled": false
+  },
+  "database": {
+    "type": "sqlite",
+    "host": "localhost",
+    "database": "business_data.db",
+    "enabled": true
+  },
+  "quickbooks": {
+    "client_id": "YOUR_QB_CLIENT_ID",
+    "client_secret": "YOUR_QB_CLIENT_SECRET",
+    "access_token": "YOUR_QB_ACCESS_TOKEN",
+    "enabled": false
+  },
+  "stripe": {
+    "api_key": "sk_test_YOUR_STRIPE_KEY",
+    "enabled": false
+  }
+}

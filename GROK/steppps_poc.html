@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STEPPPS PoC</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    .canvas-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas {
+      border: 2px solid #000;
+      background-color: #fff;
+      width: 500px;
+      height: 500px;
+    }
+    .pixel-data-panel {
+      width: 400px;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .pixel-data-panel h3 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    .json-display {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .instructions {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e3f2fd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .editor-section {
+      margin: 15px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    
+    .editor-section label {
+      display: block;
+      margin: 5px 0;
+      font-weight: bold;
+    }
+    
+    .editor-section input, .editor-section select, .editor-section textarea {
+      margin-left: 10px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    
+    .editor-section textarea {
+      width: 90%;
+      resize: vertical;
+    }
+    
+    .editor-section button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    
+    .editor-section button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-container">
+    <h2>STEPPPS Interactive Pixel Grid</h2>
+    <div class="image-controls">
+      <input type="file" id="imageInput" accept="image/*" style="margin-bottom: 10px;">
+      <button onclick="loadRandomColors()">Load Random Grid</button>
+      <div id="conversionStatus" style="margin: 10px 0; font-weight: bold;"></div>
+    </div>
+    <div class="instructions">
+      Load an image or use random grid, then click pixels for AI interaction →
+    </div>
+  </div>
+  
+  <div class="info-panel">
+    <h3>Pixel Data Editor (STEPPPS Schema)</h3>
+    <p>Click on any pixel to edit its STEPPPS data structure:</p>
+    
+    <div id="pixelEditor" style="display: none;">
+      <h4>Editing Pixel: <span id="pixelId"></span></h4>
+      
+      <div class="editor-section">
+        <h5>🎨 Visual Properties</h5>
+        <label>Color: <input type="color" id="editColor" onchange="updatePixelProperty('pixel.color', this.value)"></label>
+        <label>Brightness: <input type="range" id="editBrightness" min="0" max="1" step="0.1" onchange="updatePixelProperty('pixel.brightness', parseFloat(this.value))"></label>
+        <span id="brightnessValue">1.0</span>
+      </div>
+      
+      <div class="editor-section">
+        <h5>🧠 Psychology</h5>
+        <label>Emotion: 
+          <select id="editEmotion" onchange="updatePixelProperty('psychology.emotion', this.value)">
+            <option value="neutral">Neutral</option>
+            <option value="excited">Excited</option>
+            <option value="contemplative">Contemplative</option>
+            <option value="focused">Focused</option>
+            <option value="curious">Curious</option>
+            <option value="energetic">Energetic</option>
+          </select>
+        </label>
+        <label>Attention: <input type="range" id="editAttention" min="0" max="1" step="0.1" onchange="updatePixelProperty('psychology.attentionScore', parseFloat(this.value))"></label>
+        <span id="attentionValue">0.5</span>
+      </div>
+      
+      <div class="editor-section">
+        <h5>💬 Prompt</h5>
+        <textarea id="editPrompt" rows="3" placeholder="Enter custom prompt..." onchange="updatePixelProperty('prompt.text', this.value)"></textarea>
+        <button onclick="triggerLLMResponse()">🤖 Get AI Response</button>
+      </div>
+      
+      <div class="editor-section">
+        <h5>📍 Space & Temporal</h5>
+        <label>X: <input type="number" id="editX" min="0" max="19" onchange="updatePixelPosition()"></label>
+        <label>Y: <input type="number" id="editY" min="0" max="19" onchange="updatePixelPosition()"></label>
+        <div>Neighbors: <span id="neighborCount">0</span></div>
+      </div>
+      
+      <button onclick="resetPixelToOriginal()" style="background: #ff6b6b; color: white; margin-top: 10px;">🔄 Reset Pixel</button>
+    </div>
+    
+    <div id="rawDataView">
+      <h4>Raw JSON Data</h4>
+      <pre id="pixelDataDisplay">Click a pixel to see its data...</pre>
+    </div>
+    
+    <div class="controls">
+      <h4>Interaction Guide:</h4>
+      <ul>
+        <li><strong>Hover:</strong> Pixel becomes curious with white glow</li>
+        <li><strong>Click:</strong> Select pixel (gold border) and view data</li>
+        <li><strong>Double-click:</strong> Animate pixel with pulsing effect</li>
+        <li><strong>Right-click:</strong> Reset pixel to original state</li>
+      </ul>
+      
+      <h4>Keyboard Shortcuts (Bulk Operations):</h4>
+      <ul>
+        <li><strong>F:</strong> Apply fire effect to focused pixels</li>
+        <li><strong>B:</strong> Apply blue wave to curious pixels</li>
+        <li><strong>R:</strong> Reset all pixels to neutral state</li>
+      </ul>
+        
+      <h4>Claude LLM Integration:</h4>
+      <p><strong>Status:</strong> <span id="llmStatus">Checking...</span></p>
+      <p>Real Claude AI responses via FastAPI proxy (localhost:8002)</p>
+      <button onclick="testClaudeConnection()">Test Claude API</button>
+      <button onclick="clearApiKey()">Clear API Key</button>
+    </div>
+  </div>
+  
+  <script src="steppps_poc.js"></script>
+</body>
+</html>

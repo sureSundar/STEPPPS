@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEPPPS Pixel Editor - AI-Powered Image Editing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .file-input-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .file-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .file-input:hover {
+            border-color: #4ecdc4;
+            background: #f0fffe;
+        }
+
+        .claude-api-input {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .canvas-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .canvas-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #stepppsCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .pixel-overlay {
+            position: absolute;
+            pointer-events: none;
+            border: 2px solid #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+            display: none;
+        }
+
+        .editor-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .editor-panel h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+
+        .pixel-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .edit-controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .ai-prompt {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .json-editor {
+            background: #2d3748;
+            color: #e2e8f0;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            width: 100%;
+            height: 200px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 STEPPPS Pixel Editor</h1>
+            <p>AI-Powered Pixel-Level Image Editing with Claude Integration</p>
+        </div>
+
+        <div class="content">
+            <!-- Input Section -->
+            <div class="input-section">
+                <h3>📁 Load Image for STEPPPS Editing</h3>
+                <div class="file-input-group">
+                    <input type="file" id="imageInput" class="file-input" accept="image/*" 
+                           onchange="handleImageUpload(this)">
+                    <input type="password" id="claudeApiKey" class="claude-api-input" 
+                           placeholder="Claude API Key (sk-ant-...) for AI pixel editing">
+                </div>
+                <div id="loadStatus"></div>
+            </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Original STEPPPS JSON -->
+                <div class="panel">
+                    <h3>📄 Original STEPPPS JSON</h3>
+                    <div class="panel-content">
+                        <textarea id="originalStepppsJson" readonly></textarea>
+                        <div class="panel-info">
+                            <div>Pixels: <span id="originalPixelCount">0</span></div>
+                            <div>Size: <span id="originalJsonSize">0 KB</span></div>
+                        </div>
+                    <!-- Single Edit Mode Selection -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                        <label style="display: block; margin-bottom: 8px;"><input type="radio" name="editMode" value="pixel" checked> <strong>🎯 Pixel Edit</strong> - Edit selected pixel only</label>
+                        <label style="display: block;"><input type="radio" name="editMode" value="frame"> <strong>🖼️ Frame Edit</strong> - Edit entire image/multiple pixels</label>
+                    </div>
+                
+                    <!-- Unified Prompt Area -->
+                    <div id="promptArea">
+                        <textarea id="aiPrompt" placeholder="🎯 Pixel mode: Click a pixel first, then describe changes (e.g., 'make it blue', 'brighten it')&#10;🖼️ Frame mode: Describe bulk changes (e.g., 'replace blue pixels with fire', 'brighten dark areas')" style="width: 100%; height: 80px; margin-bottom: 15px; font-family: monospace;"></textarea>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button id="aiEditBtn" onclick="performUnifiedAiEdit()" style="background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; flex: 1; font-weight: bold;">🤖 AI Edit</button>
+                            <button onclick="performReset()" style="background: #f44336; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer;">🔄 Reset</button>
+                        </div>
+                    </div>
+                
+                    <div id="aiStatus" class="status-message" style="margin-top: 10px;"></div>
+                </div>
+
+                <!-- JSON Editor Panel -->
+                <div class="editor-panel">
+                    <h3>📝 STEPPPS JSON Editor</h3>
+
+                    <div id="selectedPixelInfo" class="pixel-info">
+                        Click on a pixel in the canvas to edit it...
+                    </div>
+
+                    <textarea class="json-editor" id="pixelJsonEditor" placeholder="Select a pixel to see its STEPPPS JSON data..."></textarea>
+                    
+                    <div class="edit-controls">
+                        <button class="button secondary" onclick="applyJsonEdit()">✅ Apply JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="steppps_pixel_editor.js"></script>
+    <script>
+        // Update placeholder text based on edit mode
+        document.addEventListener('DOMContentLoaded', function() {
+            const editModeRadios = document.querySelectorAll('input[name="editMode"]');
+            const promptTextarea = document.getElementById('aiPrompt');
+            
+            editModeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'pixel') {
+                        promptTextarea.placeholder = '🎯 Pixel mode: Click a pixel first, then describe changes (e.g., "make it blue", "brighten it", "add red tint")';
+                    } else {
+                        promptTextarea.placeholder = '🖼️ Frame mode: Describe bulk changes (e.g., "replace blue pixels with fire", "brighten dark areas", "make all red pixels green")';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

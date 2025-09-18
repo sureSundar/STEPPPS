@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEPPPS IDE - Self-Bootstrapping Development Environment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            overflow: hidden;
+        }
+
+        #steppps-ide-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #2c3e50;
+            cursor: default;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: #34495e;
+            border: 1px solid #3498db;
+            border-radius: 5px;
+            padding: 5px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #ecf0f1;
+            font-size: 12px;
+        }
+
+        .context-menu-item:hover {
+            background: #3498db;
+        }
+
+        /* Hidden textarea for text input */
+        #text-input {
+            position: absolute;
+            left: -9999px;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="steppps-ide-canvas"></canvas>
+
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" onclick="createNewFile()">New File</div>
+        <div class="context-menu-item" onclick="openFile()">Open File</div>
+        <div class="context-menu-item" onclick="saveFile()">Save File</div>
+        <div class="context-menu-item" onclick="runCode()">Run Code</div>
+        <div class="context-menu-item" onclick="toggleTerminal()">Toggle Terminal</div>
+        <div class="context-menu-item" onclick="bootstrapIDE()">Bootstrap IDE</div>
+    </div>
+
+    <textarea id="text-input"></textarea>
+
+    <script>
+        // STEPPPS IDE - Complete development environment as STEPPPS objects
+        class STEPPPSObject {
+            constructor(id, type, x = 0, y = 0, width = 100, height = 50) {
+                this.id = id;
+                this.type = type;
+                this.data = {
+                    space: { x, y, width, height },
+                    temporal: { timestamp: Date.now(), frame: 0, lastUpdate: Date.now() },
+                    event: { lastEvent: 'created', interactive: true, focused: false },
+                    psychology: {
+                        emotion: 'neutral',
+                        energy: Math.random(),
+                        attention: 0,
+                        stress: 0
+                    },
+                    pixel: {
+                        backgroundColor: this.getDefaultColor(type),
+                        borderColor: '#3498db',
+                        textColor: '#ecf0f1',
+                        alpha: 1.0,
+                        borderWidth: 1
+                    },
+                    prompt: { text: `${type} component`, editable: false },
+                    script: {
+                        behavior: 'responsive',
+                        animation: null,
+                        content: '',
+                        scrollY: 0
+                    }
+                };
+                this.children = [];
+                this.parent = null;
+                this.visible = true;
+                this.dirty = true;
+            }
+
+            getDefaultColor(type) {
+                const colors = {
+                    'titlebar': '#2c3e50',
+                    'menubar': '#34495e',
+                    'toolbar': '#34495e',
+                    'sidebar': '#2c3e50',
+                    'editor': '#1e1e1e',
+                    'console': '#0d1117',
+                    'statusbar': '#2c3e50',
+                    'file': '#34495e',
+                    'folder': '#3498db',
+                    'text': 'transparent',
+                    'button': '#3498db',
+                    'tab': '#34495e',
+                    'panel': '#2c3e50'
+                };
+                return colors[type] || '#34495e';
+            }
+
+            bootstrap(source = 'genesis') {
+                this.data.event.lastEvent = `bootstrapped_from_${source}`;
+                this.data.temporal.timestamp = Date.now();
+                this.data.temporal.lastUpdate = Date.now();
+
+                // Type-specific bootstrap logic
+                if (this.type === 'editor') {
+                    this.data.script.content = '// Welcome to STEPPPS IDE\n// Every UI element is a STEPPPS object\n\nconst steppps = {\n    bootstrap: () => {\n        console.log("Self-bootstrapping...");\n    }\n};\n\nsteppps.bootstrap();';
+                } else if (this.type === 'console') {
+                    this.data.script.content = '> STEPPPS IDE initialized\n> Every component is a STEPPPS object\n> Type commands or click elements to interact\n>';
+                }
+
+                this.dirty = true;
+                return true;
+            }
+
+            contains(x, y) {
+                const s = this.data.space;
+                return x >= s.x && x <= s.x + s.width &&
+                       y >= s.y && y <= s.y + s.height;
+            }
+
+            onClick(x, y) {
+                this.data.event.lastEvent = 'clicked';
+                this.data.event.focused = true;
+                this.data.temporal.lastUpdate = Date.now();
+                this.data.psychology.attention = 1.0;
+
+                // Type-specific click behavior
+                switch (this.type) {
+                    case 'button':
+                        this.data.psychology.energy = 1.0;
+                        this.data.pixel.backgroundColor = '#2980b9';
+                        setTimeout(() => {
+                            this.data.pixel.backgroundColor = '#3498db';
+                            this.dirty = true;
+                        }, 150);
+                        break;
+
+                    case 'tab':
+                        // Activate tab
+                        this.data.pixel.backgroundColor = '#3498db';
+                        this.data.psychology.emotion = 'active';
+                        break;
+
+                    case 'file':
+                        // Open file
+                        this.data.psychology.emotion = 'selected';
+                        this.data.pixel.backgroundColor = '#3498db';
+                        break;
+
+                    case 'editor':
+                        // Focus editor for text input
+                        this.startTextInput(x - this.data.space.x, y - this.data.space.y);
+                        break;
+                }
+
+                this.dirty = true;
+                return true;
+            }
+
+            startTextInput(localX, localY) {
+                // Calculate cursor position in text
+                const lineHeight = 16;
+                const charWidth = 8;
+                const line = Math.floor(localY / lineHeight);
+                const col = Math.floor(localX / charWidth);
+
+                // Position hidden textarea
+                const textInput = document.getElementById('text-input');
+                textInput.style.left = (this.data.space.x + localX) + 'px';
+                textInput.style.top = (this.data.space.y + localY) + 'px';
+                textInput.focus();
+
+                // Handle input
+                textInput.oninput = (e) => {
+                    // Insert text at cursor position
+                    const lines = this.data.script.content.split('\n');
+                    if (lines[line]) {
+                        const lineText = lines[line];
+                        lines[line] = lineText.slice(0, col) + e.target.value + lineText.slice(col);
+                        this.data.script.content = lines.join('\n');
+                        this.dirty = true;
+                    }
+                    e.target.value = '';
+                };
+            }
+
+            render(ctx) {
+                if (!this.visible) return;
+
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+
+                // Draw background
+                if (p.backgroundColor !== 'transparent') {
+                    ctx.fillStyle = p.backgroundColor;
+                    ctx.fillRect(s.x, s.y, s.width, s.height);
+                }
+
+                // Draw border
+                if (p.borderWidth > 0) {
+                    ctx.strokeStyle = p.borderColor;
+                    ctx.lineWidth = p.borderWidth;
+                    ctx.strokeRect(s.x, s.y, s.width, s.height);
+                }
+
+                // Type-specific rendering
+                this.renderTypeSpecific(ctx);
+
+                ctx.restore();
+                this.dirty = false;
+            }
+
+            renderTypeSpecific(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                switch (this.type) {
+                    case 'titlebar':
+                        this.renderTitleBar(ctx);
+                        break;
+                    case 'menubar':
+                        this.renderMenuBar(ctx);
+                        break;
+                    case 'toolbar':
+                        this.renderToolbar(ctx);
+                        break;
+                    case 'sidebar':
+                        this.renderSidebar(ctx);
+                        break;
+                    case 'editor':
+                        this.renderEditor(ctx);
+                        break;
+                    case 'console':
+                        this.renderConsole(ctx);
+                        break;
+                    case 'statusbar':
+                        this.renderStatusBar(ctx);
+                        break;
+                    case 'button':
+                        this.renderButton(ctx);
+                        break;
+                    case 'text':
+                        this.renderText(ctx);
+                        break;
+                }
+            }
+
+            renderTitleBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Window controls
+                const controlSize = 12;
+                const margin = 10;
+
+                // Close button
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(s.x + margin, s.y + (s.height - controlSize) / 2, controlSize, controlSize);
+
+                // Minimize button
+                ctx.fillStyle = '#f39c12';
+                ctx.fillRect(s.x + margin + controlSize + 5, s.y + (s.height - controlSize) / 2, controlSize, controlSize);
+
+                // Maximize button
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(s.x + margin + (controlSize + 5) * 2, s.y + (s.height - controlSize) / 2, controlSize, controlSize);
+
+                // Title text
+                ctx.fillStyle = p.textColor;
+                ctx.font = '14px Monaco';
+                ctx.textAlign = 'center';
+                ctx.fillText('STEPPPS IDE - Self-Bootstrapping Development Environment', s.x + s.width / 2, s.y + s.height / 2 + 4);
+            }
+
+            renderMenuBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+                const menus = ['File', 'Edit', 'View', 'STEPPPS', 'Tools', 'Help'];
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'left';
+
+                let x = s.x + 10;
+                menus.forEach(menu => {
+                    ctx.fillText(menu, x, s.y + s.height / 2 + 4);
+                    x += ctx.measureText(menu).width + 20;
+                });
+            }
+
+            renderToolbar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+                const tools = ['▶️', '⏸️', '⏹️', '🔄', '💾', '📁', '🔍', '⚙️'];
+
+                let x = s.x + 10;
+                const buttonSize = 24;
+                const spacing = 30;
+
+                tools.forEach(tool => {
+                    // Button background
+                    ctx.fillStyle = '#3498db';
+                    ctx.fillRect(x, s.y + (s.height - buttonSize) / 2, buttonSize, buttonSize);
+
+                    // Tool icon
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px Monaco';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(tool, x + buttonSize / 2, s.y + s.height / 2 + 4);
+
+                    x += spacing;
+                });
+            }
+
+            renderSidebar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // File explorer header
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(s.x, s.y, s.width, 25);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('📁 STEPPPS Explorer', s.x + 8, s.y + 17);
+
+                // File tree
+                const files = [
+                    { name: '📁 src', level: 0 },
+                    { name: '📄 steppps.js', level: 1 },
+                    { name: '📄 platform.js', level: 1 },
+                    { name: '📁 components', level: 1 },
+                    { name: '📄 canvas.js', level: 2 },
+                    { name: '📄 editor.js', level: 2 },
+                    { name: '📄 README.md', level: 0 },
+                    { name: '📄 package.json', level: 0 }
+                ];
+
+                let y = s.y + 35;
+                files.forEach(file => {
+                    const indent = file.level * 15;
+                    ctx.fillStyle = p.textColor;
+                    ctx.font = '11px Monaco';
+                    ctx.fillText(file.name, s.x + 8 + indent, y);
+                    y += 16;
+                });
+            }
+
+            renderEditor(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Tab bar
+                const tabHeight = 25;
+                ctx.fillStyle = '#34495e';
+                ctx.fillRect(s.x, s.y, s.width, tabHeight);
+
+                // Active tab
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(s.x, s.y, 120, tabHeight);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('📄 steppps.js', s.x + 8, s.y + 16);
+
+                // Editor content area
+                const contentY = s.y + tabHeight;
+                const contentHeight = s.height - tabHeight;
+
+                // Line numbers background
+                const lineNumberWidth = 40;
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(s.x, contentY, lineNumberWidth, contentHeight);
+
+                // Code content
+                const lines = this.data.script.content.split('\n');
+                const lineHeight = 16;
+                const startLine = Math.floor(this.data.script.scrollY / lineHeight);
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+
+                lines.slice(startLine).forEach((line, index) => {
+                    const y = contentY + (index + 1) * lineHeight;
+                    if (y > contentY + contentHeight) return;
+
+                    // Line number
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.textAlign = 'right';
+                    ctx.fillText((startLine + index + 1).toString(), s.x + lineNumberWidth - 5, y);
+
+                    // Code line with syntax highlighting
+                    ctx.fillStyle = this.getSyntaxColor(line);
+                    ctx.textAlign = 'left';
+                    ctx.fillText(line, s.x + lineNumberWidth + 10, y);
+                });
+
+                // Cursor (if focused)
+                if (this.data.event.focused) {
+                    const cursorX = s.x + lineNumberWidth + 10;
+                    const cursorY = contentY + lineHeight;
+                    ctx.strokeStyle = '#3498db';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(cursorX, cursorY - 12);
+                    ctx.lineTo(cursorX, cursorY);
+                    ctx.stroke();
+                }
+            }
+
+            getSyntaxColor(line) {
+                if (line.trim().startsWith('//')) return '#7f8c8d';
+                if (line.includes('const') || line.includes('function') || line.includes('class')) return '#8e44ad';
+                if (line.includes('console.log')) return '#e67e22';
+                if (line.includes('"') || line.includes("'")) return '#27ae60';
+                return '#ecf0f1';
+            }
+
+            renderConsole(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Console header
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(s.x, s.y, s.width, 20);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText('🖥️ STEPPPS Console', s.x + 8, s.y + 14);
+
+                // Console content
+                const lines = this.data.script.content.split('\n');
+                const lineHeight = 14;
+                let y = s.y + 30;
+
+                ctx.fillStyle = '#2ecc71';
+                ctx.font = '11px Monaco';
+
+                lines.forEach(line => {
+                    if (y > s.y + s.height - 20) return;
+                    ctx.fillText(line, s.x + 8, y);
+                    y += lineHeight;
+                });
+            }
+
+            renderStatusBar(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Status items
+                const items = [
+                    `Objects: ${ide.objects.length}`,
+                    `Frame: ${this.data.temporal.frame}`,
+                    `STEPPPS: Active`,
+                    `Bootstrap: Genesis`
+                ];
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '11px Monaco';
+                ctx.textAlign = 'left';
+
+                let x = s.x + 10;
+                items.forEach(item => {
+                    ctx.fillText(item, x, s.y + s.height / 2 + 4);
+                    x += ctx.measureText(item).width + 20;
+                });
+
+                // Right-aligned items
+                ctx.textAlign = 'right';
+                ctx.fillText('JavaScript | UTF-8 | CRLF', s.x + s.width - 10, s.y + s.height / 2 + 4);
+            }
+
+            renderButton(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                // Button text
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.data.prompt.text, s.x + s.width / 2, s.y + s.height / 2 + 4);
+            }
+
+            renderText(ctx) {
+                const s = this.data.space;
+                const p = this.data.pixel;
+
+                ctx.fillStyle = p.textColor;
+                ctx.font = '12px Monaco';
+                ctx.textAlign = 'left';
+                ctx.fillText(this.data.script.content, s.x, s.y + 12);
+            }
+
+            toJSON() {
+                return {
+                    id: this.id,
+                    type: this.type,
+                    data: this.data,
+                    children: this.children.length
+                };
+            }
+        }
+
+        class STEPPPSIDEPLATFORM {
+            constructor() {
+                this.canvas = document.getElementById('steppps-ide-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.objects = [];
+                this.frameCount = 0;
+                this.running = true;
+
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.bootstrap();
+                this.startRenderLoop();
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    this.layoutComponents();
+                });
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+
+                document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            }
+
+            bootstrap() {
+                console.log('🚀 Bootstrapping STEPPPS IDE Platform...');
+                this.createIDEComponents();
+                this.layoutComponents();
+                console.log('✅ STEPPPS IDE Platform bootstrapped successfully!');
+            }
+
+            createIDEComponents() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                // Title bar
+                this.titleBar = new STEPPPSObject('titlebar', 'titlebar', 0, 0, w, 30);
+                this.titleBar.bootstrap('genesis');
+                this.objects.push(this.titleBar);
+
+                // Menu bar
+                this.menuBar = new STEPPPSObject('menubar', 'menubar', 0, 30, w, 25);
+                this.menuBar.bootstrap('genesis');
+                this.objects.push(this.menuBar);
+
+                // Toolbar
+                this.toolBar = new STEPPPSObject('toolbar', 'toolbar', 0, 55, w, 35);
+                this.toolBar.bootstrap('genesis');
+                this.objects.push(this.toolBar);
+
+                // Sidebar (File Explorer)
+                this.sideBar = new STEPPPSObject('sidebar', 'sidebar', 0, 90, 250, h - 140);
+                this.sideBar.bootstrap('genesis');
+                this.objects.push(this.sideBar);
+
+                // Main editor area
+                this.editor = new STEPPPSObject('editor', 'editor', 250, 90, w - 250, (h - 140) * 0.7);
+                this.editor.bootstrap('genesis');
+                this.objects.push(this.editor);
+
+                // Console/Terminal
+                this.console = new STEPPPSObject('console', 'console', 250, 90 + (h - 140) * 0.7, w - 250, (h - 140) * 0.3);
+                this.console.bootstrap('genesis');
+                this.objects.push(this.console);
+
+                // Status bar
+                this.statusBar = new STEPPPSObject('statusbar', 'statusbar', 0, h - 25, w, 25);
+                this.statusBar.bootstrap('genesis');
+                this.objects.push(this.statusBar);
+            }
+
+            layoutComponents() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                if (this.objects.length > 0) {
+                    this.titleBar.data.space = { x: 0, y: 0, width: w, height: 30 };
+                    this.menuBar.data.space = { x: 0, y: 30, width: w, height: 25 };
+                    this.toolBar.data.space = { x: 0, y: 55, width: w, height: 35 };
+                    this.sideBar.data.space = { x: 0, y: 90, width: 250, height: h - 140 };
+                    this.editor.data.space = { x: 250, y: 90, width: w - 250, height: (h - 140) * 0.7 };
+                    this.console.data.space = { x: 250, y: 90 + (h - 140) * 0.7, width: w - 250, height: (h - 140) * 0.3 };
+                    this.statusBar.data.space = { x: 0, y: h - 25, width: w, height: 25 };
+
+                    this.objects.forEach(obj => obj.dirty = true);
+                }
+            }
+
+            handleClick(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Hide context menu
+                document.getElementById('context-menu').style.display = 'none';
+
+                // Clear all focus
+                this.objects.forEach(obj => obj.data.event.focused = false);
+
+                // Find clicked object
+                for (let i = this.objects.length - 1; i >= 0; i--) {
+                    const obj = this.objects[i];
+                    if (obj.contains(x, y)) {
+                        obj.onClick(x, y);
+                        break;
+                    }
+                }
+            }
+
+            handleContextMenu(event) {
+                event.preventDefault();
+                const menu = document.getElementById('context-menu');
+                menu.style.left = event.clientX + 'px';
+                menu.style.top = event.clientY + 'px';
+                menu.style.display = 'block';
+            }
+
+            handleMouseMove(event) {
+                // Update cursor based on hover
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                let cursor = 'default';
+                for (let obj of this.objects) {
+                    if (obj.contains(x, y)) {
+                        if (obj.type === 'button' || obj.type === 'tab' || obj.type === 'file') {
+                            cursor = 'pointer';
+                        } else if (obj.type === 'editor') {
+                            cursor = 'text';
+                        }
+                        break;
+                    }
+                }
+                this.canvas.style.cursor = cursor;
+            }
+
+            handleKeyDown(event) {
+                // Handle keyboard shortcuts
+                if (event.ctrlKey || event.metaKey) {
+                    switch (event.key) {
+                        case 's':
+                            event.preventDefault();
+                            this.saveFile();
+                            break;
+                        case 'o':
+                            event.preventDefault();
+                            this.openFile();
+                            break;
+                        case 'n':
+                            event.preventDefault();
+                            this.createNewFile();
+                            break;
+                        case '`':
+                            event.preventDefault();
+                            this.toggleTerminal();
+                            break;
+                    }
+                }
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#2c3e50';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Render all IDE components
+                this.objects.forEach(obj => {
+                    if (obj.visible) {
+                        obj.render(this.ctx);
+                    }
+                });
+
+                // Update frame counters
+                this.frameCount++;
+                this.objects.forEach(obj => {
+                    obj.data.temporal.frame = this.frameCount;
+                });
+            }
+
+            startRenderLoop() {
+                const loop = () => {
+                    if (this.running) {
+                        this.render();
+                        requestAnimationFrame(loop);
+                    }
+                };
+                loop();
+            }
+
+            // IDE Actions
+            saveFile() {
+                this.console.data.script.content += '\n> File saved: steppps.js';
+                this.console.dirty = true;
+                console.log('💾 File saved');
+            }
+
+            openFile() {
+                this.console.data.script.content += '\n> Opening file browser...';
+                this.console.dirty = true;
+                console.log('📁 Open file');
+            }
+
+            createNewFile() {
+                this.console.data.script.content += '\n> Created new file: untitled.js';
+                this.console.dirty = true;
+                console.log('📄 New file created');
+            }
+
+            runCode() {
+                this.console.data.script.content += '\n> Running STEPPPS code...\n> Self-bootstrap initiated\n> Platform objects: ' + this.objects.length;
+                this.console.dirty = true;
+                console.log('▶️ Running code');
+            }
+
+            toggleTerminal() {
+                this.console.visible = !this.console.visible;
+                if (this.console.visible) {
+                    this.console.data.script.content += '\n> Terminal activated';
+                }
+                this.layoutComponents();
+                console.log('🖥️ Terminal toggled');
+            }
+
+            exportPlatformJSON() {
+                const platformData = {
+                    platform: {
+                        id: 'steppps_ide_platform',
+                        timestamp: Date.now(),
+                        frame: this.frameCount,
+                        components: this.objects.length,
+                        canvas: {
+                            width: this.canvas.width,
+                            height: this.canvas.height
+                        }
+                    },
+                    components: this.objects.map(obj => obj.toJSON())
+                };
+
+                console.log('STEPPPS IDE Platform JSON:', platformData);
+                return platformData;
+            }
+        }
+
+        // Global functions for context menu
+        function createNewFile() {
+            ide.createNewFile();
+        }
+
+        function openFile() {
+            ide.openFile();
+        }
+
+        function saveFile() {
+            ide.saveFile();
+        }
+
+        function runCode() {
+            ide.runCode();
+        }
+
+        function toggleTerminal() {
+            ide.toggleTerminal();
+        }
+
+        function bootstrapIDE() {
+            ide.bootstrap();
+        }
+
+        // Initialize IDE
+        let ide;
+        window.addEventListener('load', () => {
+            ide = new STEPPPSIDEPLATFORM();
+            console.log('🎯 STEPPPS IDE ready - every component is a STEPPPS object!');
+        });
+
+        // Hide context menu on click outside
+        document.addEventListener('click', () => {
+            document.getElementById('context-menu').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

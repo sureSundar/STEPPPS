@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(isoinfo:*)",
+      "Bash(cp:*)",
+      "Bash(make test:*)",
+      "Bash(make:*)",
+      "Bash(pkill:*)",
+      "Bash(gcc:*)",
+      "Bash(./build/ternarybit_shell_new)",
+      "Bash(chmod:*)",
+      "Bash(./test_tbos_mmap)",
+      "Bash(./test_tbos_network)",
+      "Bash(./test_tbos_complete)",
+      "Bash(./test_tbos_scheduler)",
+      "Bash(./test_tbos_drivers)",
+      "Bash(./test_tbos_ipc)",
+      "Bash(./test_tbos_final)",
+      "Bash(./test_tbos_universal)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

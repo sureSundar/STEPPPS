@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STEPPPS HD Canvas - True Depth Rendering</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    .canvas-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #hdCanvas {
+      border: 2px solid #000;
+      background-color: #fff;
+      cursor: crosshair;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+    }
+    .controls {
+      margin: 15px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: bold;
+    }
+    .controls input, .controls select {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    .controls button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background: #45a049;
+    }
+    .info-panel {
+      width: 400px;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 800px;
+      overflow-y: auto;
+    }
+    .pixel-info {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .depth-visualization {
+      background: linear-gradient(to right, #000, #fff);
+      height: 20px;
+      border-radius: 10px;
+      margin: 10px 0;
+      position: relative;
+    }
+    .depth-marker {
+      position: absolute;
+      top: 0;
+      width: 3px;
+      height: 20px;
+      background: red;
+      border-radius: 1px;
+    }
+    .stats {
+      font-family: monospace;
+      font-size: 12px;
+      background: #e8f4fd;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-container">
+    <h2>STEPPPS HD Canvas with True Depth</h2>
+
+    <div class="controls">
+      <label>Resolution:
+        <select id="resolutionSelect" onchange="updateResolution()">
+          <option value="64">64x64 (4K pixels)</option>
+          <option value="128" selected>128x128 (16K pixels)</option>
+          <option value="256">256x256 (65K pixels)</option>
+          <option value="512">512x512 (262K pixels)</option>
+        </select>
+      </label>
+
+      <label>Canvas Size:
+        <select id="canvasSizeSelect" onchange="updateCanvasSize()">
+          <option value="600">600px</option>
+          <option value="800" selected>800px</option>
+          <option value="1000">1000px</option>
+          <option value="1200">1200px</option>
+        </select>
+      </label>
+
+      <label>Depth Mode:
+        <select id="depthModeSelect" onchange="updateDepthMode()">
+          <option value="flat">Flat Rendering</option>
+          <option value="depth" selected>True Depth</option>
+          <option value="layered">Layered Z-Buffer</option>
+          <option value="volumetric">Volumetric</option>
+        </select>
+      </label>
+
+      <button onclick="loadTestImage()">Load Test Pattern</button>
+      <button onclick="generateDepthField()">Generate 3D Field</button>
+      <button onclick="toggleAnimation()">Toggle Animation</button>
+    </div>
+
+    <canvas id="hdCanvas" width="800" height="800"></canvas>
+
+    <div class="stats" id="statsDisplay">
+      Initializing HD Canvas...
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <h3>HD STEPPPS Pixel Data</h3>
+    <div id="pixelInfo" class="pixel-info">
+      Hover or click on pixels to see detailed information
+    </div>
+
+    <h4>Raw STEPPPS JSON Data</h4>
+    <pre id="pixelJsonData" style="background: #f8f8f8; padding: 10px; border-radius: 4px; font-size: 10px; max-height: 300px; overflow-y: auto;">Click a pixel to see its STEPPPS JSON structure...</pre>
+
+    <h4>Depth Visualization</h4>
+    <div class="depth-visualization" id="depthViz">
+      <div class="depth-marker" id="depthMarker"></div>
+    </div>
+
+    <h4>Rendering Stats</h4>
+    <div id="renderStats" class="stats">
+      Pixels: 0<br>
+      FPS: 0<br>
+      Depth Layers: 0<br>
+      Memory: 0 MB
+    </div>
+
+    <h4>Advanced Controls</h4>
+    <div class="controls">
+      <label>Depth Scale:
+        <input type="range" id="depthScale" min="0.1" max="5" step="0.1" value="1" onchange="updateDepthScale()">
+        <span id="depthScaleValue">1.0</span>
+      </label>
+
+      <label>Anti-aliasing:
+        <input type="checkbox" id="antiAlias" checked onchange="updateAntiAliasing()">
+      </label>
+
+      <label>Blend Mode:
+        <select id="blendMode" onchange="updateBlendMode()">
+          <option value="source-over">Normal</option>
+          <option value="multiply">Multiply</option>
+          <option value="screen">Screen</option>
+          <option value="overlay">Overlay</option>
+          <option value="soft-light">Soft Light</option>
+        </select>
+      </label>
+
+      <button onclick="exportCanvas()">Export PNG</button>
+      <button onclick="resetCanvas()">Reset</button>
+    </div>
+  </div>
+
+  <script src="steppps_hd_renderer.js"></script>
+</body>
+</html>

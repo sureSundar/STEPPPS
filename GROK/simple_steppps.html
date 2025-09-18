@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple STEPPPS Canvas</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      border: 2px solid #000;
+      background-color: #fff;
+      cursor: crosshair;
+    }
+    .info {
+      width: 400px;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+    }
+    .pixel-data {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      background: #e3f2fd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h2>Simple STEPPPS Canvas</h2>
+    <canvas id="canvas" width="600" height="600"></canvas>
+    <div class="status" id="status">Initializing...</div>
+  </div>
+
+  <div class="info">
+    <h3>STEPPPS Pixel Data</h3>
+    <div id="pixelInfo">Click on a pixel to see its data</div>
+    <div class="pixel-data" id="pixelData">No pixel selected</div>
+  </div>
+
+  <script>
+    // Simple STEPPPS Pixel class
+    class SimpleSTEPPPSPixel {
+      constructor(id, x, y, z = 0) {
+        this.id = id;
+        this.data = {
+          space: { x, y, z, neighbors: [] },
+          temporal: { timestamp: new Date().toISOString(), stateHistory: [] },
+          event: { lastEvent: null, eventData: {} },
+          psychology: { emotion: "neutral", attentionScore: 0.5 },
+          pixel: { color: "#FFFFFF", brightness: 1 },
+          depth: { z, layer: Math.floor(z * 10), lightness: 1 - (z * 0.3) },
+          prompt: { text: "", llmConfig: { model: "claude", temperature: 0.7 }, lastResponse: "" },
+          script: { callback: null, params: {} }
+        };
+        this.isSelected = false;
+      }
+
+      render(ctx, pixelSize) {
+        const x = this.data.space.x * pixelSize;
+        const y = this.data.space.y * pixelSize;
+
+        ctx.fillStyle = this.data.pixel.color;
+        ctx.globalAlpha = this.data.pixel.brightness * this.data.depth.lightness;
+        ctx.fillRect(x, y, pixelSize, pixelSize);
+
+        if (this.isSelected) {
+          ctx.strokeStyle = "#FFD700";
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 1;
+          ctx.strokeRect(x, y, pixelSize, pixelSize);
+        }
+      }
+
+      handleClick() {
+        this.data.psychology.emotion = "focused";
+        this.data.psychology.attentionScore = 0.9;
+        this.data.event.lastEvent = "click";
+        this.data.temporal.stateHistory.push({
+          time: new Date().toISOString(),
+          state: "clicked"
+        });
+      }
+    }
+
+    // Canvas setup
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const pixelInfo = document.getElementById('pixelInfo');
+    const pixelData = document.getElementById('pixelData');
+
+    const gridSize = 50; // 50x50 = 2500 pixels
+    const pixelSize = canvas.width / gridSize;
+    let pixels = [];
+    let selectedPixel = null;
+
+    console.log('Creating pixels...');
+    status.textContent = 'Creating pixels...';
+
+    // Create pixels
+    for (let x = 0; x < gridSize; x++) {
+      for (let y = 0; y < gridSize; y++) {
+        const z = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5;
+        const pixel = new SimpleSTEPPPSPixel(`pixel_${x}_${y}`, x, y, z);
+
+        // Color based on position and depth
+        const hue = (x / gridSize) * 360;
+        const sat = 70 + (y / gridSize) * 30;
+        const light = 50 + (z * 30);
+
+        pixel.data.pixel.color = `hsl(${hue}, ${sat}%, ${light}%)`;
+        pixels.push(pixel);
+      }
+    }
+
+    console.log(`Created ${pixels.length} pixels`);
+
+    // Render all pixels
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      pixels.forEach(pixel => {
+        pixel.render(ctx, pixelSize);
+      });
+
+      ctx.globalAlpha = 1;
+    }
+
+    // Click handler
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / pixelSize);
+      const y = Math.floor((e.clientY - rect.top) / pixelSize);
+
+      const pixel = pixels.find(p => p.data.space.x === x && p.data.space.y === y);
+
+      if (pixel) {
+        // Clear previous selection
+        if (selectedPixel) {
+          selectedPixel.isSelected = false;
+        }
+
+        pixel.isSelected = true;
+        pixel.handleClick();
+        selectedPixel = pixel;
+
+        pixelInfo.innerHTML = `
+          <h4>Selected: ${pixel.id}</h4>
+          <p>Position: (${x}, ${y}, ${pixel.data.space.z.toFixed(3)})</p>
+          <p>Color: ${pixel.data.pixel.color}</p>
+          <p>Emotion: ${pixel.data.psychology.emotion}</p>
+        `;
+
+        pixelData.textContent = JSON.stringify(pixel.data, null, 2);
+
+        render();
+      }
+    });
+
+    // Initial render
+    render();
+    status.textContent = `✅ ${pixels.length} STEPPPS pixels rendered! Click to interact.`;
+    status.style.backgroundColor = '#c8e6c9';
+
+    console.log('Canvas ready!');
+  </script>
+</body>
+</html>

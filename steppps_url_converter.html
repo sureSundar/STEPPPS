@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEPPPS URL Converter - Revolutionary Pixel Intelligence</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin: 0;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .converter-panel {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            min-width: 120px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .input-group input, .input-group select {
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .conversion-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .preview-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            color: #333;
+        }
+
+        .preview-panel h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .steppps-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .steppps-panel h3 {
+            margin-top: 0;
+            color: #ff6b6b;
+        }
+
+        #originalPreview, #stepppsCanvas {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            display: block;
+            margin: 15px auto;
+        }
+
+        #stepppsCanvas {
+            border-color: #00ff41;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .status.loading {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+        }
+
+        .pixel-info {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 STEPPPS URL Converter</h1>
+            <p>Convert ANY URL into Intelligent Pixel Arrays - Revolutionary AI-Powered Screenshots</p>
+        </div>
+
+        <div class="converter-panel">
+            <h3>🌐 URL to STEPPPS Intelligence Converter</h3>
+
+            <div class="input-group">
+                <label>Target URL:</label>
+                <input type="url" id="targetUrl" placeholder="https://example.com" value="https://www.google.com">
+            </div>
+
+            <div class="input-group">
+                <label>Resolution:</label>
+                <select id="resolution">
+                    <option value="800x600">800x600 (Fast)</option>
+                    <option value="1024x768" selected>1024x768 (Standard)</option>
+                    <option value="1920x1080">1920x1080 (HD)</option>
+                    <option value="1366x768">1366x768 (Laptop)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Claude API Key:</label>
+                <input type="password" id="apiKey" placeholder="sk-ant-... (for pixel intelligence)">
+            </div>
+
+            <div class="input-group">
+                <label>Analysis Mode:</label>
+                <select id="analysisMode">
+                    <option value="sample">Sample Analysis (Fast - 100 pixels)</option>
+                    <option value="grid">Grid Analysis (Medium - Every 10th pixel)</option>
+                    <option value="full">Full Analysis (Slow - Every pixel)</option>
+                </select>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="button" onclick="convertUrlToSteppps()">🔄 Convert URL to STEPPPS</button>
+                <button class="button" onclick="renderStepppsToCanvas()">🎨 Render STEPPPS to Canvas</button>
+                <button class="button" onclick="exportStepppsData()">💾 Export STEPPPS Data</button>
+            </div>
+
+            <div id="conversionStatus"></div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-number" id="totalPixels">0</div>
+                <div class="stat-label">Total Pixels</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="intelligentPixels">0</div>
+                <div class="stat-label">AI Analyzed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="conversionTime">0s</div>
+                <div class="stat-label">Conversion Time</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="dataSize">0KB</div>
+                <div class="stat-label">STEPPPS Data</div>
+            </div>
+        </div>
+
+        <div class="conversion-area">
+            <div class="preview-panel">
+                <h3>📸 Original URL Screenshot</h3>
+                <img id="originalPreview" alt="Original screenshot will appear here" style="display: none;">
+                <div id="screenshotStatus">Ready to capture URL screenshot...</div>
+            </div>
+
+            <div class="steppps-panel">
+                <h3>🧠 STEPPPS Intelligent Canvas</h3>
+                <canvas id="stepppsCanvas" width="500" height="400"></canvas>
+                <div class="pixel-info" id="pixelInfo">
+                    Click on any pixel in the STEPPPS canvas to see its AI intelligence...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global STEPPPS data
+        let stepppsData = null;
+        let originalImageData = null;
+        let conversionStartTime = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupStepppsCanvas();
+            console.log('STEPPPS URL Converter initialized');
+        });
+
+        function setupStepppsCanvas() {
+            const canvas = document.getElementById('stepppsCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Draw placeholder
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#00ff41';
+            ctx.font = '16px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('STEPPPS Intelligent Canvas', canvas.width/2, canvas.height/2 - 20);
+            ctx.fillText('Convert a URL to see pixel intelligence', canvas.width/2, canvas.height/2 + 20);
+
+            // Add click handler
+            canvas.addEventListener('click', handleStepppsPixelClick);
+        }
+
+        async function convertUrlToSteppps() {
+            const url = document.getElementById('targetUrl').value.trim();
+            const resolution = document.getElementById('resolution').value;
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const analysisMode = document.getElementById('analysisMode').value;
+
+            if (!url) {
+                showStatus('Please enter a valid URL', 'error');
+                return;
+            }
+
+            conversionStartTime = Date.now();
+            showStatus('🚀 Starting STEPPPS conversion...', 'loading');
+
+            try {
+                // Step 1: Capture screenshot
+                await captureUrlScreenshot(url, resolution);
+
+                // Step 2: Convert to STEPPPS format
+                await convertImageToSteppps(analysisMode, apiKey);
+
+                // Step 3: Render STEPPPS canvas
+                renderStepppsToCanvas();
+
+                const conversionTime = ((Date.now() - conversionStartTime) / 1000).toFixed(1);
+                document.getElementById('conversionTime').textContent = conversionTime + 's';
+
+                showStatus('✅ STEPPPS conversion completed successfully!', 'success');
+
+            } catch (error) {
+                console.error('Conversion failed:', error);
+                showStatus(`❌ Conversion failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function captureUrlScreenshot(url, resolution) {
+            showStatus('📸 Capturing URL screenshot...', 'loading');
+
+            // For demo, we'll use a placeholder service or simulate
+            // In production, you'd use a headless browser service
+            try {
+                // Simulate screenshot capture
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+
+                // Using a screenshot service (placeholder - would need real service)
+                const screenshotUrl = `https://api.screenshotlayer.com/api/capture?access_key=YOUR_KEY&url=${encodeURIComponent(url)}&width=${resolution.split('x')[0]}&viewport=${resolution}`;
+
+                // For demo, let's create a canvas with the URL text
+                await createDemoScreenshot(url, resolution);
+
+            } catch (error) {
+                throw new Error(`Screenshot capture failed: ${error.message}`);
+            }
+        }
+
+        async function createDemoScreenshot(url, resolution) {
+            const [width, height] = resolution.split('x').map(Number);
+
+            // Create demo canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(width, 800);
+            canvas.height = Math.min(height, 600);
+            const ctx = canvas.getContext('2d');
+
+            // Create demo "screenshot"
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(0.5, '#4ecdc4');
+            gradient.addColorStop(1, '#45b7d1');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add URL text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('DEMO SCREENSHOT', canvas.width/2, canvas.height/2 - 40);
+            ctx.font = '16px Arial';
+            ctx.fillText(url, canvas.width/2, canvas.height/2);
+            ctx.fillText('(Real implementation would capture actual webpage)', canvas.width/2, canvas.height/2 + 40);
+
+            // Add some demo elements
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(50, 50, 100, 30);
+            ctx.fillRect(200, 100, 150, 40);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(400, 200, 120, 50);
+
+            // Show preview
+            const dataUrl = canvas.toDataURL();
+            const preview = document.getElementById('originalPreview');
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+
+            // Store image data
+            originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            document.getElementById('screenshotStatus').textContent = `Screenshot captured: ${canvas.width}x${canvas.height}`;
+            document.getElementById('totalPixels').textContent = (canvas.width * canvas.height).toLocaleString();
+        }
+
+        async function convertImageToSteppps(analysisMode, apiKey) {
+            showStatus('🧠 Converting pixels to STEPPPS intelligence...', 'loading');
+
+            if (!originalImageData) {
+                throw new Error('No screenshot data available');
+            }
+
+            const { width, height, data } = originalImageData;
+            const pixelCount = width * height;
+
+            // Determine sampling strategy
+            let pixelsToAnalyze = [];
+
+            switch (analysisMode) {
+                case 'sample':
+                    // Sample 100 random pixels
+                    for (let i = 0; i < Math.min(100, pixelCount); i++) {
+                        const x = Math.floor(Math.random() * width);
+                        const y = Math.floor(Math.random() * height);
+                        pixelsToAnalyze.push({x, y});
+                    }
+                    break;
+
+                case 'grid':
+                    // Every 10th pixel
+                    for (let y = 0; y < height; y += 10) {
+                        for (let x = 0; x < width; x += 10) {
+                            pixelsToAnalyze.push({x, y});
+                        }
+                    }
+                    break;
+
+                case 'full':
+                    // Every pixel (computationally intensive)
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            pixelsToAnalyze.push({x, y});
+                        }
+                    }
+                    break;
+            }
+
+            // Initialize STEPPPS data structure
+            stepppsData = {
+                metadata: {
+                    source_url: document.getElementById('targetUrl').value,
+                    resolution: `${width}x${height}`,
+                    analysis_mode: analysisMode,
+                    created_at: new Date().toISOString(),
+                    total_pixels: pixelCount,
+                    analyzed_pixels: pixelsToAnalyze.length
+                },
+                pixels: {}
+            };
+
+            // Convert pixels to STEPPPS format
+            let processedCount = 0;
+            const useAI = apiKey && apiKey.startsWith('sk-ant-');
+
+            for (const {x, y} of pixelsToAnalyze) {
+                const pixelIndex = (y * width + x) * 4;
+                const r = data[pixelIndex];
+                const g = data[pixelIndex + 1];
+                const b = data[pixelIndex + 2];
+                const a = data[pixelIndex + 3];
+
+                // Create STEPPPS pixel object
+                const stepppsPixel = {
+                    space: {
+                        coordinates: [x, y],
+                        canvas_size: [width, height],
+                        region: determineRegion(x, y, width, height)
+                    },
+                    pixel: {
+                        color: `rgba(${r}, ${g}, ${b}, ${a/255})`,
+                        rgba: [r, g, b, a],
+                        luminance: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
+                        saturation: calculateSaturation(r, g, b)
+                    },
+                    time: {
+                        created: Date.now(),
+                        analyzed: null
+                    },
+                    intelligence: {
+                        ai_analyzed: false,
+                        ai_response: null,
+                        context_understanding: null
+                    }
+                };
+
+                // Add AI analysis if API key provided
+                if (useAI && processedCount < 10) { // Limit AI calls for demo
+                    try {
+                        const aiResponse = await analyzePixelWithClaude(stepppsPixel, apiKey);
+                        stepppsPixel.intelligence.ai_analyzed = true;
+                        stepppsPixel.intelligence.ai_response = aiResponse;
+                        stepppsPixel.time.analyzed = Date.now();
+                    } catch (error) {
+                        console.warn(`AI analysis failed for pixel (${x}, ${y}):`, error);
+                    }
+                }
+
+                stepppsData.pixels[`${x},${y}`] = stepppsPixel;
+                processedCount++;
+
+                // Update progress
+                if (processedCount % Math.floor(pixelsToAnalyze.length / 10) === 0) {
+                    const progress = Math.round((processedCount / pixelsToAnalyze.length) * 100);
+                    showStatus(`🧠 Processing pixels: ${progress}% (${processedCount}/${pixelsToAnalyze.length})`, 'loading');
+                }
+            }
+
+            // Update stats
+            document.getElementById('intelligentPixels').textContent = Object.values(stepppsData.pixels).filter(p => p.intelligence.ai_analyzed).length;
+            document.getElementById('dataSize').textContent = Math.round(JSON.stringify(stepppsData).length / 1024) + 'KB';
+        }
+
+        function determineRegion(x, y, width, height) {
+            const quadW = width / 3;
+            const quadH = height / 3;
+
+            if (x < quadW && y < quadH) return 'top-left';
+            if (x > quadW * 2 && y < quadH) return 'top-right';
+            if (x < quadW && y > quadH * 2) return 'bottom-left';
+            if (x > quadW * 2 && y > quadH * 2) return 'bottom-right';
+            if (y < quadH) return 'top-center';
+            if (y > quadH * 2) return 'bottom-center';
+            if (x < quadW) return 'left-center';
+            if (x > quadW * 2) return 'right-center';
+            return 'center';
+        }
+
+        function calculateSaturation(r, g, b) {
+            const max = Math.max(r, g, b) / 255;
+            const min = Math.min(r, g, b) / 255;
+            const diff = max - min;
+            const sum = max + min;
+
+            if (diff === 0) return 0;
+            return diff / (sum > 1 ? 2 - sum : sum);
+        }
+
+        async function analyzePixelWithClaude(pixelData, apiKey) {
+            const prompt = `STEPPPS Pixel Analysis:
+
+Position: (${pixelData.space.coordinates[0]}, ${pixelData.space.coordinates[1]}) in ${pixelData.space.region}
+Color: ${pixelData.pixel.color}
+Luminance: ${(pixelData.pixel.luminance * 100).toFixed(1)}%
+
+As an intelligent pixel in a webpage screenshot, what visual element or content do you likely represent? Respond in 1-2 sentences as the pixel itself.`;
+
+            const response = await fetch('/api/claude', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    request_data: {
+                        model: 'claude-3-sonnet-20240229',
+                        max_tokens: 100,
+                        messages: [{
+                            role: 'user',
+                            content: prompt
+                        }]
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Claude API request failed');
+            }
+
+            const data = await response.json();
+            return data.content[0].text;
+        }
+
+        function renderStepppsToCanvas() {
+            if (!stepppsData) {
+                showStatus('No STEPPPS data to render', 'error');
+                return;
+            }
+
+            const canvas = document.getElementById('stepppsCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Scale factor to fit canvas
+            const scaleX = canvas.width / stepppsData.metadata.resolution.split('x')[0];
+            const scaleY = canvas.height / stepppsData.metadata.resolution.split('x')[1];
+
+            // Render pixels
+            for (const [coord, pixelData] of Object.entries(stepppsData.pixels)) {
+                const [x, y] = coord.split(',').map(Number);
+                const scaledX = Math.floor(x * scaleX);
+                const scaledY = Math.floor(y * scaleY);
+
+                // Color pixels based on intelligence
+                if (pixelData.intelligence.ai_analyzed) {
+                    // AI analyzed pixels glow
+                    ctx.fillStyle = pixelData.pixel.color;
+                    ctx.fillRect(scaledX, scaledY, Math.ceil(scaleX), Math.ceil(scaleY));
+
+                    // Add glow effect for AI pixels
+                    ctx.shadowColor = '#00ff41';
+                    ctx.shadowBlur = 2;
+                    ctx.fillRect(scaledX, scaledY, Math.ceil(scaleX), Math.ceil(scaleY));
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = pixelData.pixel.color;
+                    ctx.fillRect(scaledX, scaledY, Math.ceil(scaleX), Math.ceil(scaleY));
+                }
+            }
+
+            showStatus('🎨 STEPPPS canvas rendered successfully', 'success');
+        }
+
+        function handleStepppsPixelClick(event) {
+            if (!stepppsData) return;
+
+            const canvas = document.getElementById('stepppsCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor(event.clientX - rect.left);
+            const y = Math.floor(event.clientY - rect.top);
+
+            // Find closest STEPPPS pixel
+            let closestPixel = null;
+            let minDistance = Infinity;
+
+            const scaleX = canvas.width / stepppsData.metadata.resolution.split('x')[0];
+            const scaleY = canvas.height / stepppsData.metadata.resolution.split('x')[1];
+
+            for (const [coord, pixelData] of Object.entries(stepppsData.pixels)) {
+                const [px, py] = coord.split(',').map(Number);
+                const scaledPx = Math.floor(px * scaleX);
+                const scaledPy = Math.floor(py * scaleY);
+
+                const distance = Math.sqrt((x - scaledPx) ** 2 + (y - scaledPy) ** 2);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPixel = {coord, data: pixelData};
+                }
+            }
+
+            if (closestPixel) {
+                displayPixelInfo(closestPixel);
+            }
+        }
+
+        function displayPixelInfo(pixelInfo) {
+            const infoDiv = document.getElementById('pixelInfo');
+            const {coord, data} = pixelInfo;
+
+            infoDiv.innerHTML = `
+                <strong>STEPPPS Pixel Intelligence:</strong><br>
+                <strong>Position:</strong> (${coord}) - ${data.space.region}<br>
+                <strong>Color:</strong> ${data.pixel.color}<br>
+                <strong>Luminance:</strong> ${(data.pixel.luminance * 100).toFixed(1)}%<br>
+                <strong>AI Analyzed:</strong> ${data.intelligence.ai_analyzed ? '✅ Yes' : '❌ No'}<br>
+                ${data.intelligence.ai_response ? `<strong>AI Response:</strong> "${data.intelligence.ai_response}"` : ''}
+            `;
+        }
+
+        function exportStepppsData() {
+            if (!stepppsData) {
+                showStatus('No STEPPPS data to export', 'error');
+                return;
+            }
+
+            const dataStr = JSON.stringify(stepppsData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `steppps_${stepppsData.metadata.source_url.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.json`;
+            link.click();
+
+            showStatus('📥 STEPPPS data exported successfully', 'success');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('conversionStatus');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+    </script>
+</body>
+</html>

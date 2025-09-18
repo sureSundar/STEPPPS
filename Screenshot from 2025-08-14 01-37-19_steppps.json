@@ -1,0 +1,2820 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "source_type": "static_image",
+    "source_path": "Screenshot from 2025-08-14 01-37-19.png",
+    "resolution": "1920x892",
+    "analysis_mode": "sample",
+    "created_at": "2025-09-13T17:42:09.862Z",
+    "total_pixels": 1712640,
+    "analyzed_pixels": 100,
+    "format": "STEPPPS-JSON-v1.0"
+  },
+  "canvas": {
+    "width": 1920,
+    "height": 892,
+    "color_space": "RGBA"
+  },
+  "pixels": {
+    "217,134": {
+      "space": {
+        "coordinates": [
+          217,
+          134
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          20,
+          20,
+          21,
+          255
+        ],
+        "hex": "#141415",
+        "luminance": 0.078878431372549,
+        "saturation": 0.024390243902439025
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1669,509": {
+      "space": {
+        "coordinates": [
+          1669,
+          509
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "276,519": {
+      "space": {
+        "coordinates": [
+          276,
+          519
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "740,350": {
+      "space": {
+        "coordinates": [
+          740,
+          350
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "627,254": {
+      "space": {
+        "coordinates": [
+          627,
+          254
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "446,467": {
+      "space": {
+        "coordinates": [
+          446,
+          467
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "143,180": {
+      "space": {
+        "coordinates": [
+          143,
+          180
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "292,657": {
+      "space": {
+        "coordinates": [
+          292,
+          657
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "300,273": {
+      "space": {
+        "coordinates": [
+          300,
+          273
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          34,
+          34,
+          34,
+          255
+        ],
+        "hex": "#222222",
+        "luminance": 0.13333333333333333,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "826,627": {
+      "space": {
+        "coordinates": [
+          826,
+          627
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          34,
+          35,
+          255
+        ],
+        "hex": "#212223",
+        "luminance": 0.1326078431372549,
+        "saturation": 0.029411764705882346
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "40,574": {
+      "space": {
+        "coordinates": [
+          40,
+          574
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          43,
+          22,
+          44,
+          255
+        ],
+        "hex": "#2b162c",
+        "luminance": 0.12073333333333333,
+        "saturation": 0.33333333333333337
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "379,62": {
+      "space": {
+        "coordinates": [
+          379,
+          62
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.861Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1602,851": {
+      "space": {
+        "coordinates": [
+          1602,
+          851
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1289,597": {
+      "space": {
+        "coordinates": [
+          1289,
+          597
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1486,311": {
+      "space": {
+        "coordinates": [
+          1486,
+          311
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1638,836": {
+      "space": {
+        "coordinates": [
+          1638,
+          836
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          252,
+          235,
+          235,
+          255
+        ],
+        "hex": "#fcebeb",
+        "luminance": 0.9415019607843137,
+        "saturation": 0.7391304347826096
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1070,234": {
+      "space": {
+        "coordinates": [
+          1070,
+          234
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "0,429": {
+      "space": {
+        "coordinates": [
+          0,
+          429
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          47,
+          22,
+          45,
+          255
+        ],
+        "hex": "#2f162d",
+        "luminance": 0.12587058823529412,
+        "saturation": 0.36231884057971014
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1159,420": {
+      "space": {
+        "coordinates": [
+          1159,
+          420
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "730,287": {
+      "space": {
+        "coordinates": [
+          730,
+          287
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1467,156": {
+      "space": {
+        "coordinates": [
+          1467,
+          156
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          91,
+          71,
+          76,
+          255
+        ],
+        "hex": "#5b474c",
+        "luminance": 0.3041176470588235,
+        "saturation": 0.1234567901234568
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "458,741": {
+      "space": {
+        "coordinates": [
+          458,
+          741
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "970,298": {
+      "space": {
+        "coordinates": [
+          970,
+          298
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1066,173": {
+      "space": {
+        "coordinates": [
+          1066,
+          173
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "180,852": {
+      "space": {
+        "coordinates": [
+          180,
+          852
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          77,
+          77,
+          77,
+          255
+        ],
+        "hex": "#4d4d4d",
+        "luminance": 0.30196078431372547,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1651,244": {
+      "space": {
+        "coordinates": [
+          1651,
+          244
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          237,
+          242,
+          250,
+          255
+        ],
+        "hex": "#edf2fa",
+        "luminance": 0.9467333333333333,
+        "saturation": 0.5652173913043477
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1919,90": {
+      "space": {
+        "coordinates": [
+          1919,
+          90
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          247,
+          247,
+          247,
+          255
+        ],
+        "hex": "#f7f7f7",
+        "luminance": 0.9686274509803922,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1777,380": {
+      "space": {
+        "coordinates": [
+          1777,
+          380
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "195,827": {
+      "space": {
+        "coordinates": [
+          195,
+          827
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "34,633": {
+      "space": {
+        "coordinates": [
+          34,
+          633
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          80,
+          64,
+          80,
+          255
+        ],
+        "hex": "#504050",
+        "luminance": 0.27689411764705885,
+        "saturation": 0.1111111111111111
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1742,621": {
+      "space": {
+        "coordinates": [
+          1742,
+          621
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "250,198": {
+      "space": {
+        "coordinates": [
+          250,
+          198
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "177,188": {
+      "space": {
+        "coordinates": [
+          177,
+          188
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          88,
+          88,
+          88,
+          255
+        ],
+        "hex": "#585858",
+        "luminance": 0.3450980392156862,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1428,28": {
+      "space": {
+        "coordinates": [
+          1428,
+          28
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1574,385": {
+      "space": {
+        "coordinates": [
+          1574,
+          385
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          227,
+          227,
+          241,
+          255
+        ],
+        "hex": "#e3e3f1",
+        "luminance": 0.8964549019607843,
+        "saturation": 0.3333333333333333
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "240,267": {
+      "space": {
+        "coordinates": [
+          240,
+          267
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "555,30": {
+      "space": {
+        "coordinates": [
+          555,
+          30
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "994,305": {
+      "space": {
+        "coordinates": [
+          994,
+          305
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "870,49": {
+      "space": {
+        "coordinates": [
+          870,
+          49
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1164,773": {
+      "space": {
+        "coordinates": [
+          1164,
+          773
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "588,460": {
+      "space": {
+        "coordinates": [
+          588,
+          460
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1089,726": {
+      "space": {
+        "coordinates": [
+          1089,
+          726
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "172,162": {
+      "space": {
+        "coordinates": [
+          172,
+          162
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "764,639": {
+      "space": {
+        "coordinates": [
+          764,
+          639
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          34,
+          255
+        ],
+        "hex": "#212122",
+        "luminance": 0.12985882352941175,
+        "saturation": 0.014925373134328304
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "163,856": {
+      "space": {
+        "coordinates": [
+          163,
+          856
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          10,
+          10,
+          10,
+          255
+        ],
+        "hex": "#0a0a0a",
+        "luminance": 0.0392156862745098,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1263,791": {
+      "space": {
+        "coordinates": [
+          1263,
+          791
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "518,612": {
+      "space": {
+        "coordinates": [
+          518,
+          612
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "714,238": {
+      "space": {
+        "coordinates": [
+          714,
+          238
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "713,276": {
+      "space": {
+        "coordinates": [
+          713,
+          276
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "718,45": {
+      "space": {
+        "coordinates": [
+          718,
+          45
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1634,582": {
+      "space": {
+        "coordinates": [
+          1634,
+          582
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1254,764": {
+      "space": {
+        "coordinates": [
+          1254,
+          764
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1115,848": {
+      "space": {
+        "coordinates": [
+          1115,
+          848
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          32,
+          32,
+          32,
+          255
+        ],
+        "hex": "#202020",
+        "luminance": 0.12549019607843137,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "578,513": {
+      "space": {
+        "coordinates": [
+          578,
+          513
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1496,555": {
+      "space": {
+        "coordinates": [
+          1496,
+          555
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          80,
+          101,
+          171,
+          255
+        ],
+        "hex": "#5065ab",
+        "luminance": 0.4027490196078431,
+        "saturation": 0.3625498007968127
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "588,495": {
+      "space": {
+        "coordinates": [
+          588,
+          495
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1560,570": {
+      "space": {
+        "coordinates": [
+          1560,
+          570
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          157,
+          87,
+          45,
+          255
+        ],
+        "hex": "#9d572d",
+        "luminance": 0.404478431372549,
+        "saturation": 0.5544554455445544
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1452,722": {
+      "space": {
+        "coordinates": [
+          1452,
+          722
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "354,242": {
+      "space": {
+        "coordinates": [
+          354,
+          242
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "339,203": {
+      "space": {
+        "coordinates": [
+          339,
+          203
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "911,732": {
+      "space": {
+        "coordinates": [
+          911,
+          732
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "719,154": {
+      "space": {
+        "coordinates": [
+          719,
+          154
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          27,
+          27,
+          27,
+          255
+        ],
+        "hex": "#1b1b1b",
+        "luminance": 0.10588235294117646,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1034,647": {
+      "space": {
+        "coordinates": [
+          1034,
+          647
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "7,212": {
+      "space": {
+        "coordinates": [
+          7,
+          212
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          55,
+          26,
+          45,
+          255
+        ],
+        "hex": "#371a2d",
+        "luminance": 0.14445882352941178,
+        "saturation": 0.3580246913580247
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "513,449": {
+      "space": {
+        "coordinates": [
+          513,
+          449
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "294,586": {
+      "space": {
+        "coordinates": [
+          294,
+          586
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          150,
+          243,
+          255
+        ],
+        "hex": "#2196f3",
+        "luminance": 0.4926235294117647,
+        "saturation": 0.8974358974358974
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1220,860": {
+      "space": {
+        "coordinates": [
+          1220,
+          860
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          10,
+          10,
+          10,
+          255
+        ],
+        "hex": "#0a0a0a",
+        "luminance": 0.0392156862745098,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1299,291": {
+      "space": {
+        "coordinates": [
+          1299,
+          291
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          32,
+          32,
+          32,
+          255
+        ],
+        "hex": "#202020",
+        "luminance": 0.12549019607843137,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "414,294": {
+      "space": {
+        "coordinates": [
+          414,
+          294
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1811,33": {
+      "space": {
+        "coordinates": [
+          1811,
+          33
+        ],
+        "region": "top-right"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "470,61": {
+      "space": {
+        "coordinates": [
+          470,
+          61
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1092,702": {
+      "space": {
+        "coordinates": [
+          1092,
+          702
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1273,602": {
+      "space": {
+        "coordinates": [
+          1273,
+          602
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          32,
+          32,
+          32,
+          255
+        ],
+        "hex": "#202020",
+        "luminance": 0.12549019607843137,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1177,711": {
+      "space": {
+        "coordinates": [
+          1177,
+          711
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          47,
+          47,
+          48,
+          255
+        ],
+        "hex": "#2f2f30",
+        "luminance": 0.18476078431372547,
+        "saturation": 0.010526315789473646
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "619,155": {
+      "space": {
+        "coordinates": [
+          619,
+          155
+        ],
+        "region": "top-left"
+      },
+      "pixel": {
+        "rgba": [
+          27,
+          27,
+          27,
+          255
+        ],
+        "hex": "#1b1b1b",
+        "luminance": 0.10588235294117646,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1104,526": {
+      "space": {
+        "coordinates": [
+          1104,
+          526
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "0,812": {
+      "space": {
+        "coordinates": [
+          0,
+          812
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          35,
+          20,
+          36,
+          255
+        ],
+        "hex": "#231424",
+        "luminance": 0.10317254901960783,
+        "saturation": 0.2857142857142857
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1017,85": {
+      "space": {
+        "coordinates": [
+          1017,
+          85
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1106,202": {
+      "space": {
+        "coordinates": [
+          1106,
+          202
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "113,458": {
+      "space": {
+        "coordinates": [
+          113,
+          458
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          80,
+          80,
+          80,
+          255
+        ],
+        "hex": "#505050",
+        "luminance": 0.3137254901960784,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "850,38": {
+      "space": {
+        "coordinates": [
+          850,
+          38
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          50,
+          48,
+          48,
+          255
+        ],
+        "hex": "#323030",
+        "luminance": 0.19058039215686273,
+        "saturation": 0.020408163265306124
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "734,791": {
+      "space": {
+        "coordinates": [
+          734,
+          791
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "405,377": {
+      "space": {
+        "coordinates": [
+          405,
+          377
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "426,858": {
+      "space": {
+        "coordinates": [
+          426,
+          858
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          10,
+          10,
+          10,
+          255
+        ],
+        "hex": "#0a0a0a",
+        "luminance": 0.0392156862745098,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "678,355": {
+      "space": {
+        "coordinates": [
+          678,
+          355
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "596,875": {
+      "space": {
+        "coordinates": [
+          596,
+          875
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          11,
+          11,
+          11,
+          255
+        ],
+        "hex": "#0b0b0b",
+        "luminance": 0.04313725490196078,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1879,617": {
+      "space": {
+        "coordinates": [
+          1879,
+          617
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "244,890": {
+      "space": {
+        "coordinates": [
+          244,
+          890
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          13,
+          13,
+          13,
+          255
+        ],
+        "hex": "#0d0d0d",
+        "luminance": 0.05098039215686274,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "216,300": {
+      "space": {
+        "coordinates": [
+          216,
+          300
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          34,
+          34,
+          34,
+          255
+        ],
+        "hex": "#222222",
+        "luminance": 0.13333333333333333,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1409,369": {
+      "space": {
+        "coordinates": [
+          1409,
+          369
+        ],
+        "region": "right-center"
+      },
+      "pixel": {
+        "rgba": [
+          129,
+          157,
+          164,
+          255
+        ],
+        "hex": "#819da4",
+        "luminance": 0.5859843137254902,
+        "saturation": 0.1612903225806452
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1047,686": {
+      "space": {
+        "coordinates": [
+          1047,
+          686
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1742,637": {
+      "space": {
+        "coordinates": [
+          1742,
+          637
+        ],
+        "region": "bottom-right"
+      },
+      "pixel": {
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "hex": "#ffffff",
+        "luminance": 1,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "587,627": {
+      "space": {
+        "coordinates": [
+          587,
+          627
+        ],
+        "region": "bottom-left"
+      },
+      "pixel": {
+        "rgba": [
+          33,
+          33,
+          33,
+          255
+        ],
+        "hex": "#212121",
+        "luminance": 0.12941176470588237,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1202,209": {
+      "space": {
+        "coordinates": [
+          1202,
+          209
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          28,
+          28,
+          28,
+          255
+        ],
+        "hex": "#1c1c1c",
+        "luminance": 0.10980392156862745,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "169,335": {
+      "space": {
+        "coordinates": [
+          169,
+          335
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          238,
+          80,
+          78,
+          255
+        ],
+        "hex": "#ee504e",
+        "luminance": 0.49809411764705874,
+        "saturation": 0.8247422680412372
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "332,399": {
+      "space": {
+        "coordinates": [
+          332,
+          399
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "192,499": {
+      "space": {
+        "coordinates": [
+          192,
+          499
+        ],
+        "region": "left-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1255,304": {
+      "space": {
+        "coordinates": [
+          1255,
+          304
+        ],
+        "region": "center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "865,68": {
+      "space": {
+        "coordinates": [
+          865,
+          68
+        ],
+        "region": "top-center"
+      },
+      "pixel": {
+        "rgba": [
+          247,
+          247,
+          247,
+          255
+        ],
+        "hex": "#f7f7f7",
+        "luminance": 0.9686274509803922,
+        "saturation": 0
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    },
+    "1115,834": {
+      "space": {
+        "coordinates": [
+          1115,
+          834
+        ],
+        "region": "bottom-center"
+      },
+      "pixel": {
+        "rgba": [
+          48,
+          48,
+          49,
+          255
+        ],
+        "hex": "#303031",
+        "luminance": 0.18868235294117647,
+        "saturation": 0.0103092783505155
+      },
+      "time": {
+        "extracted": "2025-09-13T17:42:09.862Z"
+      },
+      "intelligence": {
+        "ai_analyzed": false,
+        "description": null,
+        "context": null
+      }
+    }
+  }
+}

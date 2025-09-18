@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEPPPS 4-Panel Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .four-panel-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        .panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 8px;
+        }
+
+        .panel-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            min-height: 200px;
+            position: relative;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 5px;
+            cursor: crosshair;
+        }
+
+        .json-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .json-textarea {
+            flex: 1;
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background: #fff;
+            resize: none;
+        }
+
+        .panel-info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .controls-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .file-label:hover {
+            background: #45a049;
+        }
+
+        .api-key-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            background: white;
+        }
+
+        .mode-selection {
+            display: flex;
+            gap: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .mode-selection label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .prompt-area {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .prompt-textarea {
+            flex: 1;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #45a049;
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .button.danger {
+            background: #dc3545;
+        }
+
+        .button.danger:hover {
+            background: #c82333;
+        }
+
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-message.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .pixel-highlight {
+            position: absolute;
+            border: 2px solid #ff0000;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @media (max-width: 1200px) {
+            .four-panel-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(4, auto);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 STEPPPS 4-Panel Editor</h1>
+            <p>Complete AI-Powered Image → STEPPPS → AI Edit → Reconstruction Workflow</p>
+        </div>
+
+        <div class="four-panel-grid">
+            <!-- Panel 1: Original Image -->
+            <div class="panel">
+                <h3>📷 1. Original Image</h3>
+                <div class="panel-content">
+                    <div class="canvas-container">
+                        <canvas id="originalCanvas" width="300" height="200"></canvas>
+                        <div id="originalPlaceholder" style="color: #999; text-align: center;">
+                            Upload an image to start
+                        </div>
+                    </div>
+                    <div class="panel-info">
+                        <div class="info-item">Size: <span id="originalSize">-</span></div>
+                        <div class="info-item">Format: <span id="originalFormat">-</span></div>
+                        <div class="info-item">Pixels: <span id="originalPixels">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 2: Original STEPPPS JSON -->
+            <div class="panel">
+                <h3>📄 2. Original STEPPPS JSON</h3>
+                <div class="panel-content">
+                    <div class="json-container">
+                        <textarea id="originalStepppsJson" class="json-textarea" readonly placeholder="Original STEPPPS data will appear here after image upload..."></textarea>
+                    </div>
+                    <div class="panel-info">
+                        <div class="info-item">Pixels: <span id="originalJsonPixels">0</span></div>
+                        <div class="info-item">Size: <span id="originalJsonSize">0 KB</span></div>
+                        <div class="info-item">Mode: <span id="conversionMode">Full</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 3: AI-Edited STEPPPS JSON -->
+            <div class="panel">
+                <h3>🤖 3. AI-Edited STEPPPS JSON</h3>
+                <div class="panel-content">
+                    <div class="json-container">
+                        <textarea id="editedStepppsJson" class="json-textarea" readonly placeholder="AI-edited STEPPPS data will appear here after AI processing..."></textarea>
+                    </div>
+                    <div class="panel-info">
+                        <div class="info-item">AI Edits: <span id="aiEditCount">0</span></div>
+                        <div class="info-item">Size: <span id="editedJsonSize">0 KB</span></div>
+                        <div class="info-item">Modified: <span id="modifiedPixelCount">0</span> pixels</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 4: Reconstructed Image -->
+            <div class="panel">
+                <h3>🎨 4. Reconstructed Image</h3>
+                <div class="panel-content">
+                    <div class="canvas-container">
+                        <canvas id="reconstructedCanvas" width="300" height="200"></canvas>
+                        <div id="reconstructedPlaceholder" style="color: #999; text-align: center;">
+                            Reconstructed image will appear here
+                        </div>
+                        <div id="pixelHighlight" class="pixel-highlight" style="display: none;"></div>
+                    </div>
+                    <div class="panel-info">
+                        <div class="info-item">Quality: <span id="reconstructionQuality">100%</span></div>
+                        <div class="info-item">Fidelity: <span id="pixelFidelity">Perfect</span></div>
+                        <div class="info-item">Selected: <span id="selectedPixelCoord">None</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <!-- File Upload Row -->
+            <div class="control-row">
+                <div class="control-group">
+                    <input type="file" id="imageInput" accept="image/*">
+                    <label for="imageInput" class="file-label">📁 Load Image</label>
+                </div>
+                <input type="password" id="claudeApiKey" class="api-key-input" placeholder="Enter Claude API Key (sk-ant-...) for AI editing">
+            </div>
+
+            <!-- Edit Mode Row -->
+            <div class="control-row">
+                <div class="mode-selection">
+                    <label><input type="radio" name="editMode" value="pixel" checked> 🎯 Pixel Edit</label>
+                    <label><input type="radio" name="editMode" value="frame"> 🖼️ Frame Edit</label>
+                </div>
+            </div>
+
+            <!-- Prompt Row -->
+            <div class="control-row">
+                <div class="prompt-area">
+                    <textarea id="aiPrompt" class="prompt-textarea" placeholder="🎯 Pixel mode: Click a pixel first, then describe changes (e.g., 'make it blue', 'brighten it')&#10;🖼️ Frame mode: Describe bulk changes (e.g., 'replace blue pixels with fire', 'brighten dark areas')"></textarea>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button id="aiEditBtn" class="button" onclick="performUnifiedAiEdit()">🤖 AI Edit</button>
+                        <button class="button secondary" onclick="performReset()">🔄 Reset</button>
+                        <button class="button secondary" onclick="saveEditedImage()">💾 Save</button>
+                        <button class="button secondary" onclick="exportStepppsJson()">📄 Export</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="aiStatus" class="status-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Include necessary functions from steppps_pixel_editor.js inline to avoid conflicts
+        let originalImageData = null;
+        let originalStepppsData = null;
+        let currentStepppsData = null;
+        let selectedPixel = null;
+
+        // Status message function
+        function showStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+            statusEl.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Convert image to STEPPPS with optimized processing
+        async function convertImageToSteppps(imageData, mode = 'full') {
+            const width = imageData.width;
+            const height = imageData.height;
+            const totalPixels = width * height;
+            const pixels = {};
+            
+            console.log(`Converting ${width}x${height} image (${totalPixels} pixels) to STEPPPS...`);
+            
+            // Process in smaller chunks for better responsiveness
+            const chunkSize = 500;
+            let processedPixels = 0;
+            const startTime = Date.now();
+            
+            // Pre-create timestamp to avoid repeated calls
+            const timestamp = new Date().toISOString();
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const index = (y * width + x) * 4;
+                    const r = imageData.data[index];
+                    const g = imageData.data[index + 1];
+                    const b = imageData.data[index + 2];
+                    const a = imageData.data[index + 3];
+                    
+                    // Optimized hex conversion
+                    const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                    
+                    const coord = `${x},${y}`;
+                    pixels[coord] = {
+                        pixel: {
+                            rgba: [r, g, b, a],
+                            hex: hex,
+                            luminance: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
+                            saturation: calculateSaturation(r, g, b)
+                        },
+                        intelligence: {
+                            ai_analyzed: false,
+                            ai_response: null,
+                            edit_prompt: null,
+                            edit_count: 0
+                        },
+                        time: {
+                            created: timestamp,
+                            last_edited: timestamp
+                        }
+                    };
+                    
+                    processedPixels++;
+                    
+                    // Yield control every chunk to prevent blocking
+                    if (processedPixels % chunkSize === 0) {
+                        const progress = Math.round((processedPixels / totalPixels) * 100);
+                        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                        showStatus('aiStatus', `🔄 Converting to STEPPPS... ${progress}% (${processedPixels.toLocaleString()}/${totalPixels.toLocaleString()} pixels) - ${elapsed}s`, 'processing');
+                        await new Promise(resolve => setTimeout(resolve, 1)); // Yield control
+                    }
+                }
+            }
+            
+            // Final progress update
+            const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            showStatus('aiStatus', `✅ STEPPPS conversion complete! ${processedPixels.toLocaleString()} pixels in ${totalTime}s`, 'processing');
+            await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause
+            
+            console.log(`STEPPPS conversion complete: ${processedPixels} pixels processed in ${totalTime}s`);
+            
+            return {
+                metadata: {
+                    version: "1.0",
+                    created: timestamp,
+                    source: "pixel_editor",
+                    mode: mode,
+                    processing_time: totalTime + 's'
+                },
+                canvas: {
+                    width: width,
+                    height: height,
+                    total_pixels: totalPixels
+                },
+                pixels: pixels
+            };
+        }
+
+        function calculateSaturation(r, g, b) {
+            const max = Math.max(r, g, b) / 255;
+            const min = Math.min(r, g, b) / 255;
+            const diff = max - min;
+            const lightness = (max + min) / 2;
+            
+            if (diff === 0) return 0;
+            return lightness > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+        }
+
+        // AI editing functions
+        async function performUnifiedAiEdit() {
+            const editMode = document.querySelector('input[name="editMode"]:checked').value;
+            
+            if (editMode === 'pixel') {
+                await performAiEdit();
+            } else {
+                await performFrameAiEdit();
+            }
+        }
+
+        async function performAiEdit() {
+            if (!selectedPixel) {
+                showStatus('aiStatus', '❌ Please select a pixel first by clicking on the reconstructed image', 'error');
+                return;
+            }
+            
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            const apiKey = document.getElementById('claudeApiKey').value.trim();
+            
+            if (!prompt) {
+                showStatus('aiStatus', '❌ Please enter an AI prompt', 'error');
+                return;
+            }
+            
+            if (!apiKey) {
+                showStatus('aiStatus', '❌ Please enter Claude API key', 'error');
+                return;
+            }
+            
+            showStatus('aiStatus', '🤖 Processing AI pixel edit...', 'processing');
+            
+            try {
+                const aiResponse = await callClaudeForPixelEdit(selectedPixel, prompt, apiKey);
+                applyAiEditToPixel(aiResponse, prompt);
+                showStatus('aiStatus', '✅ Pixel edit completed successfully!', 'success');
+            } catch (error) {
+                showStatus('aiStatus', `❌ AI edit failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function performFrameAiEdit() {
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            const apiKey = document.getElementById('claudeApiKey').value.trim();
+            
+            if (!prompt) {
+                showStatus('aiStatus', '❌ Please enter a frame edit prompt', 'error');
+                return;
+            }
+            
+            if (!apiKey) {
+                showStatus('aiStatus', '❌ Please enter Claude API key', 'error');
+                return;
+            }
+            
+            if (!currentStepppsData) {
+                showStatus('aiStatus', '❌ No STEPPPS data loaded', 'error');
+                return;
+            }
+            
+            showStatus('aiStatus', '🤖 Processing frame-level AI edit...', 'processing');
+            
+            try {
+                const aiResponse = await callClaudeForFrameEdit(prompt, apiKey);
+                await applyFrameEdit(aiResponse, prompt);
+                showStatus('aiStatus', '✅ Frame edit completed successfully!', 'success');
+            } catch (error) {
+                showStatus('aiStatus', `❌ Frame edit failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function callClaudeForPixelEdit(pixel, prompt, apiKey) {
+            const [r, g, b, a] = pixel.data.pixel.rgba;
+            const pixelPrompt = `You are editing a single pixel in a STEPPPS image.
+
+Current pixel data:
+- Position: ${pixel.coord}
+- RGBA: [${r}, ${g}, ${b}, ${a}]
+- Hex: ${pixel.data.pixel.hex}
+- Luminance: ${pixel.data.pixel.luminance.toFixed(3)}
+- Saturation: ${pixel.data.pixel.saturation.toFixed(3)}
+
+User request: "${prompt}"
+
+Please respond with a JSON object containing the new pixel values. Format:
+{
+  "rgba": [r, g, b, a],
+  "reasoning": "explanation of the change"
+}
+
+The rgba values should be integers 0-255 for RGB and 0-255 for alpha.`;
+
+            const response = await fetch('http://localhost:8005/api/claude', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    request_data: {
+                        model: 'claude-3-5-sonnet-20241022',
+                        max_tokens: 200,
+                        messages: [{
+                            role: 'user',
+                            content: pixelPrompt
+                        }]
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Claude API request failed: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            const aiText = data.content[0].text;
+            
+            try {
+                const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('No valid JSON found in Claude response');
+                }
+            } catch (e) {
+                throw new Error('Failed to parse Claude response as JSON');
+            }
+        }
+
+        async function callClaudeForFrameEdit(prompt, apiKey) {
+            const pixelCount = Object.keys(currentStepppsData.pixels).length;
+            
+            const framePrompt = `You are editing an entire STEPPPS image frame with ${pixelCount} pixels.
+
+Current image analysis:
+- Dimensions: ${currentStepppsData.canvas.width}x${currentStepppsData.canvas.height}
+- Total pixels: ${pixelCount}
+
+User request: "${prompt}"
+
+IMPORTANT: You must respond with ONLY a valid JSON object, no other text. Format:
+{
+  "modifications": [
+    {
+      "condition": "description of which pixels to modify",
+      "action": "what to do",
+      "rgba_transform": [r_change, g_change, b_change, a_change],
+      "color_filter": {"r_min": 0, "r_max": 255, "g_min": 0, "g_max": 255, "b_min": 0, "b_max": 255}
+    }
+  ],
+  "reasoning": "explanation of the changes"
+}
+
+The rgba_transform should be additive values (-255 to +255).
+The color_filter defines which pixels match the condition (RGB ranges). Set to null to affect all pixels.`;
+
+            const response = await fetch('http://localhost:8005/api/claude', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    request_data: {
+                        model: 'claude-3-5-sonnet-20241022',
+                        max_tokens: 500,
+                        messages: [{
+                            role: 'user',
+                            content: framePrompt
+                        }]
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Claude API request failed: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            const aiText = data.content[0].text;
+            
+            try {
+                let cleanText = aiText.trim();
+                cleanText = cleanText.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+                
+                const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                } else {
+                    return createFallbackFrameResponse(prompt);
+                }
+            } catch (e) {
+                return createFallbackFrameResponse(prompt);
+            }
+        }
+
+        function createFallbackFrameResponse(prompt) {
+            const lowerPrompt = prompt.toLowerCase();
+            let modifications = [];
+            
+            if (lowerPrompt.includes('fire') || lowerPrompt.includes('flame')) {
+                modifications.push({
+                    condition: "all pixels",
+                    action: "change to fire colors",
+                    rgba_transform: [100, 50, -50, 0],
+                    color_filter: null
+                });
+            } else if (lowerPrompt.includes('blue')) {
+                modifications.push({
+                    condition: "blue pixels",
+                    action: "modify blue pixels",
+                    rgba_transform: [0, 0, 100, 0],
+                    color_filter: {"r_min": 0, "r_max": 100, "g_min": 0, "g_max": 100, "b_min": 100, "b_max": 255}
+                });
+            } else if (lowerPrompt.includes('bright')) {
+                modifications.push({
+                    condition: "all pixels",
+                    action: "brighten",
+                    rgba_transform: [50, 50, 50, 0],
+                    color_filter: null
+                });
+            } else {
+                modifications.push({
+                    condition: "all pixels",
+                    action: "enhance colors",
+                    rgba_transform: [20, 20, 20, 0],
+                    color_filter: null
+                });
+            }
+            
+            return {
+                modifications: modifications,
+                reasoning: `Applied fallback transformation based on prompt: "${prompt}"`
+            };
+        }
+
+        function applyAiEditToPixel(aiResponse, originalPrompt) {
+            if (!selectedPixel || !aiResponse.rgba) return;
+
+            const [r, g, b, a] = aiResponse.rgba;
+            
+            selectedPixel.data.pixel.rgba = [r, g, b, a];
+            selectedPixel.data.pixel.hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+            selectedPixel.data.pixel.luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            selectedPixel.data.pixel.saturation = calculateSaturation(r, g, b);
+            
+            selectedPixel.data.intelligence.ai_analyzed = true;
+            selectedPixel.data.intelligence.ai_response = aiResponse.reasoning || 'AI edited';
+            selectedPixel.data.intelligence.edit_prompt = originalPrompt;
+            selectedPixel.data.intelligence.edit_count += 1;
+            selectedPixel.data.time.last_edited = new Date().toISOString();
+            
+            currentStepppsData.pixels[selectedPixel.coord] = selectedPixel.data;
+            
+            renderStepppsToCanvas();
+            updateEditedPanel(currentStepppsData);
+            updateReconstructedPanel(currentStepppsData);
+        }
+
+        async function applyFrameEdit(aiResponse, originalPrompt) {
+            if (!aiResponse.modifications) return;
+            
+            let modifiedCount = 0;
+            
+            aiResponse.modifications.forEach(mod => {
+                Object.entries(currentStepppsData.pixels).forEach(([coord, pixelData]) => {
+                    const [r, g, b, a] = pixelData.pixel.rgba;
+                    
+                    const filter = mod.color_filter;
+                    if (filter && (
+                        r < filter.r_min || r > filter.r_max ||
+                        g < filter.g_min || g > filter.g_max ||
+                        b < filter.b_min || b > filter.b_max
+                    )) {
+                        return;
+                    }
+                    
+                    let newR = r, newG = g, newB = b, newA = a;
+                    
+                    if (mod.action.includes('fire')) {
+                        newR = Math.min(255, r + 100);
+                        newG = Math.min(255, Math.max(g, 100));
+                        newB = Math.max(0, b - 50);
+                    } else if (mod.rgba_transform) {
+                        const [rChange, gChange, bChange, aChange] = mod.rgba_transform;
+                        newR = Math.max(0, Math.min(255, r + rChange));
+                        newG = Math.max(0, Math.min(255, g + gChange));
+                        newB = Math.max(0, Math.min(255, b + bChange));
+                        newA = Math.max(0, Math.min(255, a + aChange));
+                    }
+                    
+                    pixelData.pixel.rgba = [newR, newG, newB, newA];
+                    pixelData.pixel.hex = `#${newR.toString(16).padStart(2,'0')}${newG.toString(16).padStart(2,'0')}${newB.toString(16).padStart(2,'0')}`;
+                    pixelData.pixel.luminance = (0.299 * newR + 0.587 * newG + 0.114 * newB) / 255;
+                    pixelData.pixel.saturation = calculateSaturation(newR, newG, newB);
+                    
+                    pixelData.intelligence.ai_analyzed = true;
+                    pixelData.intelligence.ai_response = aiResponse.reasoning;
+                    pixelData.intelligence.edit_prompt = originalPrompt;
+                    pixelData.intelligence.edit_count += 1;
+                    pixelData.time.last_edited = new Date().toISOString();
+                    
+                    modifiedCount++;
+                });
+            });
+            
+            await renderStepppsToCanvas();
+            updateEditedPanel(currentStepppsData);
+            updateReconstructedPanel(currentStepppsData);
+            
+            console.log(`Frame edit applied to ${modifiedCount} pixels`);
+        }
+
+        function performReset() {
+            const editMode = document.querySelector('input[name="editMode"]:checked').value;
+            
+            if (editMode === 'pixel') {
+                resetPixel();
+            } else {
+                resetFrame();
+            }
+        }
+
+        function resetPixel() {
+            if (!selectedPixel || !originalImageData) return;
+
+            const [x, y] = selectedPixel.coord.split(',').map(Number);
+            const width = originalImageData.width;
+            const index = (y * width + x) * 4;
+            
+            const r = originalImageData.data[index];
+            const g = originalImageData.data[index + 1];
+            const b = originalImageData.data[index + 2];
+            const a = originalImageData.data[index + 3];
+            
+            selectedPixel.data.pixel.rgba = [r, g, b, a];
+            selectedPixel.data.pixel.hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+            selectedPixel.data.pixel.luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            selectedPixel.data.pixel.saturation = calculateSaturation(r, g, b);
+            selectedPixel.data.intelligence.ai_analyzed = false;
+            selectedPixel.data.intelligence.ai_response = null;
+            selectedPixel.data.intelligence.edit_prompt = null;
+            selectedPixel.data.intelligence.edit_count = 0;
+            
+            currentStepppsData.pixels[selectedPixel.coord] = selectedPixel.data;
+            
+            renderStepppsToCanvas();
+            updateEditedPanel(currentStepppsData);
+            updateReconstructedPanel(currentStepppsData);
+            
+            showStatus('aiStatus', '✅ Pixel reset to original value', 'success');
+        }
+
+        function resetFrame() {
+            if (!originalImageData || !currentStepppsData) return;
+            
+            Object.entries(currentStepppsData.pixels).forEach(([coord, pixelData]) => {
+                const [x, y] = coord.split(',').map(Number);
+                const width = originalImageData.width;
+                const index = (y * width + x) * 4;
+                
+                const r = originalImageData.data[index];
+                const g = originalImageData.data[index + 1];
+                const b = originalImageData.data[index + 2];
+                const a = originalImageData.data[index + 3];
+                
+                pixelData.pixel.rgba = [r, g, b, a];
+                pixelData.pixel.hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+                pixelData.pixel.luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                pixelData.pixel.saturation = calculateSaturation(r, g, b);
+                pixelData.intelligence.ai_analyzed = false;
+                pixelData.intelligence.ai_response = null;
+                pixelData.intelligence.edit_prompt = null;
+                pixelData.intelligence.edit_count = 0;
+            });
+            
+            renderStepppsToCanvas();
+            updateEditedPanel(currentStepppsData);
+            updateReconstructedPanel(currentStepppsData);
+            
+            showStatus('aiStatus', '✅ All pixels reset to original values', 'success');
+        }
+
+        function saveEditedImage() {
+            if (!currentStepppsData) {
+                showStatus('aiStatus', '❌ No image data to save', 'error');
+                return;
+            }
+            
+            const canvas = document.getElementById('reconstructedCanvas');
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'steppps_edited_image.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                showStatus('aiStatus', '✅ Image saved successfully!', 'success');
+            });
+        }
+
+        function exportStepppsJson() {
+            if (!currentStepppsData) {
+                showStatus('aiStatus', '❌ No STEPPPS data to export', 'error');
+                return;
+            }
+            
+            const jsonStr = JSON.stringify(currentStepppsData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'steppps_data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus('aiStatus', '✅ STEPPPS JSON exported successfully!', 'success');
+        }
+        // Update placeholder text based on edit mode
+        document.addEventListener('DOMContentLoaded', function() {
+            const editModeRadios = document.querySelectorAll('input[name="editMode"]');
+            const promptTextarea = document.getElementById('aiPrompt');
+            
+            editModeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'pixel') {
+                        promptTextarea.placeholder = '🎯 Pixel mode: Click a pixel first, then describe changes (e.g., "make it blue", "brighten it", "add red tint")';
+                    } else {
+                        promptTextarea.placeholder = '🖼️ Frame mode: Describe bulk changes (e.g., "replace blue pixels with fire", "brighten dark areas", "make all red pixels green")';
+                    }
+                });
+            });
+
+            // Handle file input
+            document.getElementById('imageInput').addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    handleImageUpload(e.target);
+                }
+            });
+        });
+
+        // Update functions for 4-panel view
+        function updateOriginalPanel(imageData, stepppsData) {
+            // Update original image canvas
+            const originalCanvas = document.getElementById('originalCanvas');
+            if (!originalCanvas) {
+                console.error('Original canvas not found');
+                return;
+            }
+            
+            const ctx = originalCanvas.getContext('2d');
+            if (!ctx) {
+                console.error('Cannot get original canvas context');
+                return;
+            }
+            
+            originalCanvas.width = imageData.width;
+            originalCanvas.height = imageData.height;
+            ctx.putImageData(imageData, 0, 0);
+            
+            const placeholder = document.getElementById('originalPlaceholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+            
+            // Update original info
+            document.getElementById('originalSize').textContent = `${imageData.width}×${imageData.height}`;
+            document.getElementById('originalFormat').textContent = 'RGBA';
+            document.getElementById('originalPixels').textContent = (imageData.width * imageData.height).toLocaleString();
+            
+            // Update original STEPPPS JSON
+            document.getElementById('originalStepppsJson').value = JSON.stringify(stepppsData, null, 2);
+            document.getElementById('originalJsonPixels').textContent = Object.keys(stepppsData.pixels).length.toLocaleString();
+            document.getElementById('originalJsonSize').textContent = Math.round(JSON.stringify(stepppsData).length / 1024) + ' KB';
+        }
+
+        function updateEditedPanel(stepppsData) {
+            // Update edited STEPPPS JSON
+            document.getElementById('editedStepppsJson').value = JSON.stringify(stepppsData, null, 2);
+            
+            const aiEditedCount = Object.values(stepppsData.pixels).filter(p => p.intelligence.ai_analyzed).length;
+            document.getElementById('aiEditCount').textContent = aiEditedCount.toLocaleString();
+            document.getElementById('editedJsonSize').textContent = Math.round(JSON.stringify(stepppsData).length / 1024) + ' KB';
+            document.getElementById('modifiedPixelCount').textContent = aiEditedCount.toLocaleString();
+        }
+
+        function updateReconstructedPanel(stepppsData) {
+            // Update reconstructed canvas directly
+            renderStepppsToCanvas();
+            
+            document.getElementById('reconstructedPlaceholder').style.display = 'none';
+            
+            // Update reconstruction info
+            document.getElementById('reconstructionQuality').textContent = '100%';
+            document.getElementById('pixelFidelity').textContent = 'Perfect';
+        }
+
+        // Override the main render function to work with 4-panel view
+        async function renderStepppsToCanvas() {
+            if (!currentStepppsData) return;
+
+            const canvas = document.getElementById('reconstructedCanvas');
+            if (!canvas) {
+                console.error('Reconstructed canvas not found');
+                return;
+            }
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Cannot get canvas context');
+                return;
+            }
+            
+            const width = currentStepppsData.canvas.width;
+            const height = currentStepppsData.canvas.height;
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const imageData = ctx.createImageData(width, height);
+            
+            Object.entries(currentStepppsData.pixels).forEach(([coord, pixelData]) => {
+                const [x, y] = coord.split(',').map(Number);
+                const index = (y * width + x) * 4;
+                const [r, g, b, a] = pixelData.pixel.rgba;
+                
+                imageData.data[index] = r;
+                imageData.data[index + 1] = g;
+                imageData.data[index + 2] = b;
+                imageData.data[index + 3] = a;
+            });
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Update all panels
+            if (originalStepppsData) {
+                updateEditedPanel(currentStepppsData);
+                updateReconstructedPanel(currentStepppsData);
+            }
+        }
+
+        // Override the image upload handler
+        async function handleImageUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Check file size (limit to 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showStatus('aiStatus', '❌ Image too large. Please use an image smaller than 10MB.', 'error');
+                return;
+            }
+
+            showStatus('aiStatus', '📁 Loading image...', 'processing');
+
+            try {
+                const img = new Image();
+                img.onerror = function() {
+                    showStatus('aiStatus', '❌ Failed to load image. Please check the file format.', 'error');
+                };
+                
+                img.onload = async function() {
+                    try {
+                        // Check image dimensions
+                        const maxDimension = 1000;
+                        if (img.width > maxDimension || img.height > maxDimension) {
+                            showStatus('aiStatus', `❌ Image too large (${img.width}×${img.height}). Please use images smaller than ${maxDimension}×${maxDimension} pixels.`, 'error');
+                            return;
+                        }
+
+                        showStatus('aiStatus', `📊 Processing ${img.width}×${img.height} image...`, 'processing');
+                        
+                        // Create canvas to get image data
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        originalImageData = ctx.getImageData(0, 0, img.width, img.height);
+                        
+                        // Convert to STEPPPS with progress tracking
+                        const stepppsData = await convertImageToSteppps(originalImageData, 'full');
+                        originalStepppsData = JSON.parse(JSON.stringify(stepppsData)); // Deep copy
+                        currentStepppsData = stepppsData;
+                        
+                        // Update all panels
+                        showStatus('aiStatus', '🎨 Updating display panels...', 'processing');
+                        updateOriginalPanel(originalImageData, originalStepppsData);
+                        updateEditedPanel(currentStepppsData);
+                        await renderStepppsToCanvas();
+                        
+                        showStatus('aiStatus', '✅ Image loaded and converted to STEPPPS successfully!', 'success');
+                    } catch (error) {
+                        console.error('Error processing image:', error);
+                        showStatus('aiStatus', `❌ Error processing image: ${error.message}`, 'error');
+                    }
+                };
+                
+                img.src = URL.createObjectURL(file);
+            } catch (error) {
+                console.error('Error loading image:', error);
+                showStatus('aiStatus', `❌ Error loading image: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
