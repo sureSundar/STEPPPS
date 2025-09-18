@@ -1,0 +1,5 @@
+{
+  "anthropic_api_key": "YOUR_API_KEY_HERE",
+  "model": "claude-3-sonnet-20240229",
+  "max_tokens": 4000
+}
