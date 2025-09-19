@@ -110,11 +110,70 @@ void terminal_writestring(const char* data) {
     terminal_write(data, strlen(data));
 }
 
-// Simple printf implementation (simplified version)
+// Simple printf implementation with basic format specifiers
 void kernel_printf(const char* format, ...) {
-    // For now, just print the format string as-is
-    // In a full implementation, you'd handle format specifiers
-    terminal_writestring(format);
+    char* args = (char*)&format + sizeof(const char*);
+    int arg_index = 0;
+
+    for (int i = 0; format[i]; i++) {
+        if (format[i] == '%' && format[i + 1]) {
+            i++; // Skip the '%'
+            switch (format[i]) {
+                case 'd': {
+                    int value = *((int*)(args + arg_index));
+                    arg_index += sizeof(int);
+                    char buf[16];
+                    int_to_string(value, buf);
+                    terminal_writestring(buf);
+                    break;
+                }
+                case 's': {
+                    const char* str = *((const char**)(args + arg_index));
+                    arg_index += sizeof(const char*);
+                    if (str) {
+                        terminal_writestring(str);
+                    } else {
+                        terminal_writestring("(null)");
+                    }
+                    break;
+                }
+                case 'x': {
+                    u32 value = *((u32*)(args + arg_index));
+                    arg_index += sizeof(u32);
+                    char buf[16];
+                    hex32_to_string(value, buf);
+                    terminal_writestring(buf);
+                    break;
+                }
+                case 'f': {
+                    // Float support (simplified - just show as int for now)
+                    float value = *((float*)(args + arg_index));
+                    arg_index += sizeof(float);
+                    int int_val = (int)(value * 10); // One decimal place
+                    char buf[16];
+                    int_to_string(int_val / 10, buf);
+                    terminal_writestring(buf);
+                    terminal_putchar('.');
+                    char decimal_buf[4];
+                    int_to_string(int_val % 10, decimal_buf);
+                    terminal_writestring(decimal_buf);
+                    break;
+                }
+                case '%': {
+                    terminal_putchar('%');
+                    break;
+                }
+                default: {
+                    // Unknown format specifier, just print it
+                    terminal_putchar('%');
+                    terminal_putchar(format[i]);
+                    break;
+                }
+            }
+        } else {
+            terminal_putchar(format[i]);
+        }
+    }
 }
 
 // String functions
@@ -188,6 +247,28 @@ void int_to_string(int value, char* str) {
     }
 }
 
+void hex32_to_string(u32 value, char* str) {
+    static const char digits[] = "0123456789ABCDEF";
+    str[0] = '0';
+    str[1] = 'x';
+    for (int i = 0; i < 8; ++i) {
+        int shift = (7 - i) * 4;
+        str[2 + i] = digits[(value >> shift) & 0xF];
+    }
+    str[10] = '\0';
+}
+
+void hex64_to_string(u64 value, char* str) {
+    static const char digits[] = "0123456789ABCDEF";
+    str[0] = '0';
+    str[1] = 'x';
+    for (int i = 0; i < 16; ++i) {
+        int shift = (15 - i) * 4;
+        str[2 + i] = digits[(value >> shift) & 0xF];
+    }
+    str[18] = '\0';
+}
+
 // Hardware detection functions
 int detect_cpu_count(void) {
     // Simplified CPU detection
@@ -195,9 +276,10 @@ int detect_cpu_count(void) {
 }
 
 u32 detect_memory_size(void) {
-    // Simplified memory detection
-    // In real implementation, would use BIOS calls or ACPI
-    return 128 * 1024;  // 128 MB
+    if (g_boot_descriptor.valid && g_boot_descriptor.total_memory_kb > 0) {
+        return g_boot_descriptor.total_memory_kb;
+    }
+    return 128 * 1024;  // Fallback
 }
 
 int detect_hardware_devices(void) {
@@ -215,6 +297,7 @@ void read_command(char* buffer) {
     static const char* demo_commands[] = {
         "help",
         "steppps",
+        "bootinfo",
         "stats",
         "ai",
         "hello world",

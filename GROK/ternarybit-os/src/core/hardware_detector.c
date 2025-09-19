@@ -349,12 +349,46 @@ void print_hardware_info(const hardware_info_t* info) {
 // These should be overridden by platform-specific implementations
 
 __attribute__((weak)) bool platform_detect_cpu(hardware_info_t* info) {
-    // Default implementation - detect generic 32-bit CPU
-    info->cpu_bits = 32;
-    info->instruction_set = ISA_RISC;
-    info->cpu_speed_mhz = 100;  // Default 100MHz
-    info->cpu_cores = 1;
-    info->cpu_cache_kb = 0;
+    // Enhanced implementation - detect actual CPU architecture
+    
+    // Check for 64-bit capability first
+    #if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || defined(_M_ARM64)
+        info->cpu_bits = 64;
+    #elif defined(__i386__) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
+        info->cpu_bits = 32;
+    #elif defined(__AVR__) || defined(__PIC__)
+        info->cpu_bits = 8;
+    #else
+        // Runtime detection for hosted environments
+        if (sizeof(void*) == 8) {
+            info->cpu_bits = 64;
+        } else if (sizeof(void*) == 4) {
+            info->cpu_bits = 32;
+        } else {
+            info->cpu_bits = 16;  // Fallback
+        }
+    #endif
+    
+    // Set instruction set based on architecture
+    #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+        info->instruction_set = ISA_CISC;  // x86/x64 is CISC
+    #else
+        info->instruction_set = ISA_RISC;  // ARM, RISC-V, etc.
+    #endif
+    
+    // Estimate CPU speed (can be overridden by platform-specific code)
+    info->cpu_speed_mhz = (info->cpu_bits >= 64) ? 2000 : 
+                         (info->cpu_bits >= 32) ? 1000 : 100;
+    
+    // Estimate cores (can be overridden)
+    info->cpu_cores = (info->cpu_bits >= 64) ? 4 : 
+                     (info->cpu_bits >= 32) ? 2 : 1;
+    
+    // Estimate cache (can be overridden)
+    info->cpu_cache_kb = (info->cpu_bits >= 64) ? 8192 :  // 8MB L3
+                        (info->cpu_bits >= 32) ? 1024 :   // 1MB L2
+                        0;  // No cache for embedded
+    
     return true;
 }
 

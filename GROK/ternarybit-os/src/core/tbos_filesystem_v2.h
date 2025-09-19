@@ -18,8 +18,10 @@
 #define TBOS_FILESYSTEM_V2_H
 
 #include "tbos_interfaces.h"
-#include "tbos_base.h"
-#include <sys/stat.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <pthread.h>
 
 /**
  * @brief Block Device Interface (ISP)

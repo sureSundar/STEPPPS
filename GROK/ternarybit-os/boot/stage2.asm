@@ -153,20 +153,36 @@ wait_8042_data:
     ret
 
 enter_protected_mode:
+    ; Debug: Starting protected mode transition
+    mov al, 'P'
+    call debug_char
+    
+    ; Disable interrupts
+    cli
+    
     ; Load GDT
-    cli                 ; Disable interrupts
+    mov al, 'G'
+    call debug_char
     lgdt [gdt_descriptor]
-
-    ; Enter protected mode
+    
+    ; Enable protected mode
+    mov al, 'E'
+    call debug_char
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-
-    ; Far jump to clear pipeline
+    
+    ; Far jump to clear pipeline and set CS
+    mov al, 'J'
+    call debug_char
     jmp 0x08:protected_mode_start
 
 [BITS 32]
 protected_mode_start:
+    ; Debug: In protected mode
+    mov al, 'M'
+    call debug_char_32
+    
     ; Set up protected mode segments
     mov ax, 0x10        ; Data segment selector
     mov ds, ax
@@ -174,9 +190,13 @@ protected_mode_start:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-
+    
     ; Set up stack
-    mov esp, 0x7C00     ; Stack below boot sector
+    mov esp, 0x90000    ; Stack at 0x90000 (grows down)
+    
+    ; Debug: Segments set up
+    mov al, 'S'
+    call debug_char_32
 
     ; Display protected mode message
     mov esi, protected_msg
@@ -276,7 +296,7 @@ gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size
-    dd gdt_start                ; GDT address
+    dd gdt_start + 0x8000       ; GDT address (physical address)
 
 ; Messages
 stage2_banner   db 'TernaryBit Stage 2 - Advanced STEPPPS Init', 0x0D, 0x0A

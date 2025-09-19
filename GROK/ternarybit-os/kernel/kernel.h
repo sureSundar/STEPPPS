@@ -15,6 +15,38 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+typedef struct {
+    uint16_t arch_id;
+    uint16_t arch_word_bits;
+    uint16_t arch_features;
+    uint16_t firmware_type;
+    uint32_t firmware_revision;
+    uint16_t boot_stage_id;
+    uint16_t boot_drive;
+    uint32_t boot_lba_start;
+    uint32_t boot_sector_count;
+    uint16_t memory_map_entries;
+    uint32_t total_memory_kb;
+    uint16_t console_type;
+    uint16_t console_columns;
+    uint16_t console_rows;
+    int descriptors_seen;
+    int telemetry_descriptors;
+    int valid;
+} boot_descriptor_context_t;
+
+typedef struct {
+    u64 base;
+    u64 length;
+    u32 type;
+    u32 attributes;
+} boot_memory_map_entry_t;
+
+#define BOOT_MEMORY_MAP_MAX_ENTRIES 32
+
+extern boot_memory_map_entry_t g_boot_memory_map[BOOT_MEMORY_MAP_MAX_ENTRIES];
+extern int g_boot_memory_map_entries;
+
 // STEPPPS Dimension Structures
 typedef struct {
     int active;
@@ -96,6 +128,8 @@ size_t strlen(const char* str);
 int strcmp(const char* str1, const char* str2);
 char* strstr(const char* haystack, const char* needle);
 void int_to_string(int value, char* str);
+void hex32_to_string(u32 value, char* str);
+void hex64_to_string(u64 value, char* str);
 
 // Input functions
 void read_command(char* buffer);
@@ -109,6 +143,14 @@ int detect_hardware_devices(void);
 void init_memory_management(void);
 void init_interrupt_handling(void);
 void init_timer(void);
+
+// Boot descriptor handling
+extern uint32_t g_tbds_pointer;
+extern uint32_t g_tbds_length;
+extern boot_descriptor_context_t g_boot_descriptor;
+
+void parse_boot_descriptors(void);
+void show_boot_descriptor_summary(void);
 
 // STEPPPS Framework functions
 void init_steppps_framework(void);

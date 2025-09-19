@@ -31,6 +31,7 @@
 #include "tbos_base.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <pthread.h>
 
 /**
  * @brief Service Lifetime Management

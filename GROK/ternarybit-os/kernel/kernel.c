@@ -4,6 +4,252 @@
  */
 
 #include "kernel.h"
+#include "tbos_boot_descriptor.h"
+
+uint32_t g_tbds_pointer = 0;
+uint32_t g_tbds_length = 0;
+boot_descriptor_context_t g_boot_descriptor;
+boot_memory_map_entry_t g_boot_memory_map[BOOT_MEMORY_MAP_MAX_ENTRIES];
+int g_boot_memory_map_entries = 0;
+
+static void boot_descriptor_reset(void)
+{
+    g_boot_descriptor.arch_id = 0;
+    g_boot_descriptor.arch_word_bits = 0;
+    g_boot_descriptor.arch_features = 0;
+    g_boot_descriptor.firmware_type = 0;
+    g_boot_descriptor.firmware_revision = 0;
+    g_boot_descriptor.boot_stage_id = 0;
+    g_boot_descriptor.boot_drive = 0;
+    g_boot_descriptor.boot_lba_start = 0;
+    g_boot_descriptor.boot_sector_count = 0;
+    g_boot_descriptor.memory_map_entries = 0;
+    g_boot_descriptor.total_memory_kb = 0;
+    g_boot_descriptor.console_type = 0;
+    g_boot_descriptor.console_columns = 0;
+    g_boot_descriptor.console_rows = 0;
+    g_boot_descriptor.descriptors_seen = 0;
+    g_boot_descriptor.telemetry_descriptors = 0;
+    g_boot_descriptor.valid = 0;
+    g_boot_memory_map_entries = 0;
+    for (int i = 0; i < BOOT_MEMORY_MAP_MAX_ENTRIES; ++i) {
+        g_boot_memory_map[i].base = 0;
+        g_boot_memory_map[i].length = 0;
+        g_boot_memory_map[i].type = 0;
+        g_boot_memory_map[i].attributes = 0;
+    }
+}
+
+static void print_label_value(const char* label, const char* value)
+{
+    kernel_printf(label);
+    kernel_printf(value);
+    kernel_printf("\n");
+}
+
+static void print_label_int(const char* label, int value)
+{
+    char buf[16];
+    int_to_string(value, buf);
+    print_label_value(label, buf);
+}
+
+static void print_label_hex(const char* label, u32 value)
+{
+    char buf[16];
+    hex32_to_string(value, buf);
+    print_label_value(label, buf);
+}
+
+void parse_boot_descriptors(void)
+{
+    boot_descriptor_reset();
+
+    if (g_tbds_pointer == 0) {
+        kernel_printf("No TBDS stream provided by bootloader.\n\n");
+        return;
+    }
+
+    tbds_header_t* header = (tbds_header_t*)(uintptr_t)g_tbds_pointer;
+    if (!header || header->signature != TBDS_SIGNATURE) {
+        kernel_printf("Invalid TBDS signature.\n\n");
+        return;
+    }
+
+    uint32_t total_length = header->total_length;
+    if (g_tbds_length != 0 && g_tbds_length < total_length) {
+        total_length = g_tbds_length;
+    }
+    if (total_length < sizeof(tbds_header_t)) {
+        kernel_printf("TBDS header truncated.\n\n");
+        return;
+    }
+
+    uint8_t* base = (uint8_t*)header;
+    uint8_t* cursor = base + sizeof(tbds_header_t);
+    uint8_t* end = base + total_length;
+
+    uint16_t processed = 0;
+    while (cursor + sizeof(tbds_tlv_t) <= end && processed < header->descriptor_count) {
+        tbds_tlv_t* tlv = (tbds_tlv_t*)cursor;
+        cursor += sizeof(tbds_tlv_t);
+
+        if (cursor + tlv->length > end) {
+            break;
+        }
+
+        g_boot_descriptor.descriptors_seen++;
+
+        switch (tlv->type) {
+        case TBDS_TYPE_ARCH_INFO:
+            if (tlv->length >= 8) {
+                const uint16_t* fields = (const uint16_t*)cursor;
+                g_boot_descriptor.arch_id = fields[0];
+                g_boot_descriptor.arch_word_bits = fields[1];
+                g_boot_descriptor.arch_features = fields[2];
+            }
+            break;
+        case TBDS_TYPE_FIRMWARE_INFO:
+            if (tlv->length >= 8) {
+                const uint16_t* fw = (const uint16_t*)cursor;
+                g_boot_descriptor.firmware_type = fw[0];
+                g_boot_descriptor.firmware_revision = *((const uint32_t*)(cursor + 4));
+            }
+            break;
+        case TBDS_TYPE_MEMORY_MAP:
+        {
+            if (tlv->length >= 20) {
+                const uint16_t entry_size = 20;
+                uint16_t available_entries = (uint16_t)(tlv->length / entry_size);
+                if (available_entries > BOOT_MEMORY_MAP_MAX_ENTRIES) {
+                    available_entries = BOOT_MEMORY_MAP_MAX_ENTRIES;
+                }
+                uint64_t total_ram = 0;
+                for (uint16_t i = 0; i < available_entries; ++i) {
+                    const uint8_t* src = cursor + (i * entry_size);
+                    boot_memory_map_entry_t* dst = &g_boot_memory_map[i];
+                    dst->base = *((const uint64_t*)(src + 0));
+                    dst->length = *((const uint64_t*)(src + 8));
+                    dst->type = *((const uint32_t*)(src + 16));
+                    dst->attributes = 0;
+                    if (dst->type == 1) {
+                        total_ram += dst->length;
+                    }
+                }
+                g_boot_memory_map_entries = available_entries;
+                g_boot_descriptor.memory_map_entries = available_entries;
+                if (total_ram > 0) {
+                    uint64_t kb = total_ram >> 10;
+                    if (kb > 0xFFFFFFFFULL) {
+                        kb = 0xFFFFFFFFULL;
+                    }
+                    g_boot_descriptor.total_memory_kb = (uint32_t)kb;
+                }
+            }
+        }
+            break;
+        case TBDS_TYPE_BOOT_DEVICE:
+            if (tlv->length >= 12) {
+                g_boot_descriptor.boot_drive = cursor[0];
+                g_boot_descriptor.boot_stage_id = *((const uint16_t*)(cursor + 2));
+                g_boot_descriptor.boot_lba_start = *((const uint32_t*)(cursor + 4));
+                g_boot_descriptor.boot_sector_count = *((const uint32_t*)(cursor + 8));
+            }
+            break;
+        case TBDS_TYPE_CONSOLE_INFO:
+            if (tlv->length >= 6) {
+                const uint16_t* console = (const uint16_t*)cursor;
+                g_boot_descriptor.console_type = console[0];
+                g_boot_descriptor.console_columns = console[1];
+                g_boot_descriptor.console_rows = console[2];
+            }
+            break;
+        case TBDS_TYPE_STEPPPS_TELEMETRY:
+            g_boot_descriptor.telemetry_descriptors += 1;
+            break;
+        default:
+            /* ignore unknown descriptors */
+            break;
+        }
+
+        cursor += tlv->length;
+        processed++;
+    }
+
+    g_boot_descriptor.valid = 1;
+}
+
+void show_boot_descriptor_summary(void)
+{
+    kernel_printf("Boot Descriptor Summary:\n");
+
+    if (!g_boot_descriptor.valid) {
+        kernel_printf("  (no descriptor data)\n\n");
+        return;
+    }
+
+    print_label_int("  descriptors seen: ", g_boot_descriptor.descriptors_seen);
+    print_label_int("  telemetry entries: ", g_boot_descriptor.telemetry_descriptors);
+
+    if (g_boot_descriptor.arch_id != 0) {
+        print_label_int("  arch id: ", g_boot_descriptor.arch_id);
+        print_label_int("  arch bits: ", g_boot_descriptor.arch_word_bits);
+    }
+
+    if (g_boot_descriptor.firmware_type != 0) {
+        print_label_int("  firmware type: ", g_boot_descriptor.firmware_type);
+        print_label_hex("  firmware rev: ", g_boot_descriptor.firmware_revision);
+    }
+
+    if (g_boot_descriptor.boot_drive != 0 || g_boot_descriptor.boot_lba_start != 0) {
+        print_label_int("  boot drive: ", g_boot_descriptor.boot_drive);
+        print_label_int("  boot stage id: ", g_boot_descriptor.boot_stage_id);
+        print_label_hex("  boot LBA start: ", g_boot_descriptor.boot_lba_start);
+        print_label_int("  boot sector count: ", g_boot_descriptor.boot_sector_count);
+    }
+
+    if (g_boot_descriptor.memory_map_entries > 0) {
+        print_label_int("  memory map entries: ", g_boot_descriptor.memory_map_entries);
+        print_label_int("  RAM (KB): ", (int)g_boot_descriptor.total_memory_kb);
+        kernel_printf("  memory regions:\n");
+        int entries = g_boot_memory_map_entries;
+        if (entries > g_boot_descriptor.memory_map_entries) {
+            entries = g_boot_descriptor.memory_map_entries;
+        }
+        if (entries > BOOT_MEMORY_MAP_MAX_ENTRIES) {
+            entries = BOOT_MEMORY_MAP_MAX_ENTRIES;
+        }
+        if (entries > 5) {
+            entries = 5;
+        }
+        for (int i = 0; i < entries; ++i) {
+            char index_buf[8];
+            char base_buf[24];
+            char length_buf[24];
+            char type_buf[12];
+            int_to_string(i, index_buf);
+            hex64_to_string(g_boot_memory_map[i].base, base_buf);
+            hex64_to_string(g_boot_memory_map[i].length, length_buf);
+            int_to_string(g_boot_memory_map[i].type, type_buf);
+            kernel_printf("    [");
+            kernel_printf(index_buf);
+            kernel_printf("] base=");
+            kernel_printf(base_buf);
+            kernel_printf(" len=");
+            kernel_printf(length_buf);
+            kernel_printf(" type=");
+            kernel_printf(type_buf);
+            kernel_printf("\n");
+        }
+    }
+
+    if (g_boot_descriptor.console_columns != 0) {
+        print_label_int("  console columns: ", g_boot_descriptor.console_columns);
+        print_label_int("  console rows: ", g_boot_descriptor.console_rows);
+    }
+
+    kernel_printf("\n");
+}
 
 // STEPPPS Dimension State
 static steppps_state_t steppps_state;
@@ -17,6 +263,9 @@ void kernel_main(void) {
     kernel_printf("TernaryBit OS Kernel v1.0\n");
     kernel_printf("========================\n");
     kernel_printf("STEPPPS Framework Active\n\n");
+
+    parse_boot_descriptors();
+    show_boot_descriptor_summary();
 
     // Initialize STEPPPS dimensions
     init_steppps_framework();
@@ -52,9 +301,12 @@ void init_steppps_framework(void) {
 void init_space_dimension(void) {
     kernel_printf("[SPACE] Hardware resource management...\n");
 
-    // Hardware detection
+    // Hardware detection using descriptors where possible
     steppps_state.space.cpu_count = detect_cpu_count();
     steppps_state.space.memory_size = detect_memory_size();
+    if (g_boot_descriptor.valid && g_boot_descriptor.total_memory_kb > 0) {
+        steppps_state.space.memory_size = g_boot_descriptor.total_memory_kb;
+    }
     steppps_state.space.devices_found = detect_hardware_devices();
 
     // Resource allocation setup
@@ -120,8 +372,13 @@ void init_pixel_dimension(void) {
 
     // Initialize graphics mode
     steppps_state.pixel.graphics_mode_active = 0;  // Text mode for now
-    steppps_state.pixel.resolution_x = 80;
-    steppps_state.pixel.resolution_y = 25;
+    if (g_boot_descriptor.console_columns != 0) {
+        steppps_state.pixel.resolution_x = g_boot_descriptor.console_columns;
+        steppps_state.pixel.resolution_y = g_boot_descriptor.console_rows;
+    } else {
+        steppps_state.pixel.resolution_x = 80;
+        steppps_state.pixel.resolution_y = 25;
+    }
     steppps_state.pixel.color_depth = 4;  // 16 colors
 
     steppps_state.pixel.active = 1;
@@ -198,6 +455,8 @@ void process_steppps_command(const char* command) {
         show_help();
     } else if (strcmp(command, "steppps") == 0) {
         show_steppps_status();
+    } else if (strcmp(command, "bootinfo") == 0) {
+        show_boot_descriptor_summary();
     } else if (strcmp(command, "stats") == 0) {
         show_system_stats();
     } else if (strcmp(command, "ai") == 0) {
@@ -217,6 +476,7 @@ void show_help(void) {
     kernel_printf("TernaryBit OS Commands:\n");
     kernel_printf("  help     - Show this help\n");
     kernel_printf("  steppps  - Show STEPPPS dimension status\n");
+    kernel_printf("  bootinfo - Show boot descriptor telemetry\n");
     kernel_printf("  stats    - Show system statistics\n");
     kernel_printf("  ai       - Show AI subsystem status\n");
     kernel_printf("  reboot   - Restart system\n");

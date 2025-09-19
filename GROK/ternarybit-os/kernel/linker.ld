@@ -1,6 +1,6 @@
 /* TernaryBit OS Kernel Linker Script */
 
-ENTRY(kernel_main)
+ENTRY(_start)
 
 SECTIONS
 {

@@ -155,6 +155,10 @@ tbos_result_t tbos_config_save_to_file(const char* config_file);
 tbos_result_t tbos_base_safe_operation(tbos_base_t* base,
                                        tbos_result_t (*operation)(tbos_base_t*));
 
+// Result creation utilities
+tbos_result_t tbos_create_success_result(void* data, size_t data_size);
+tbos_result_t tbos_create_error_result(int error_code, const char* error_message);
+
 // Thread-safe logging (Decorator Pattern)
 typedef struct tbos_logger {
     pthread_mutex_t mutex;
@@ -175,13 +179,13 @@ void tbos_logger_destroy(tbos_logger_t* logger);
 
 // Logging macros for convenience (DRY)
 #define TBOS_LOG_ERROR(fmt, ...) \
-    if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "ERROR", fmt, ##__VA_ARGS__)
+    do { if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "ERROR", fmt, ##__VA_ARGS__); } while(0)
 #define TBOS_LOG_WARN(fmt, ...) \
-    if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "WARN", fmt, ##__VA_ARGS__)
+    do { if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "WARN", fmt, ##__VA_ARGS__); } while(0)
 #define TBOS_LOG_INFO(fmt, ...) \
-    if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "INFO", fmt, ##__VA_ARGS__)
+    do { if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "INFO", fmt, ##__VA_ARGS__); } while(0)
 #define TBOS_LOG_DEBUG(fmt, ...) \
-    if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "DEBUG", fmt, ##__VA_ARGS__)
+    do { if (g_tbos_logger) g_tbos_logger->log(g_tbos_logger, "DEBUG", fmt, ##__VA_ARGS__); } while(0)
 
 // Error handling utilities (Command Pattern)
 typedef struct tbos_error_handler {

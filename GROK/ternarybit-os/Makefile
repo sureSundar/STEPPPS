@@ -2,7 +2,7 @@
 # Traceability: Implementation of all requirements through complete toolchain
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -O2 -g
+CFLAGS = -Wall -Wextra -std=gnu99 -O2 -g -D_GNU_SOURCE
 INCLUDES = -Isrc -Isrc/core -Isrc/boot -Isrc/shell
 TEST_DIR = tests
 SRC_DIR = src
@@ -21,8 +21,11 @@ DI_BOOTSTRAP_SRCS = $(SRC_DIR)/core/tbos_di_bootstrap.c
 FILESYSTEM_V2_SRCS = $(SRC_DIR)/core/tbos_filesystem.c
 PROCESS_V2_SRCS = $(SRC_DIR)/core/tbos_process.c
 
+# Base implementation
+BASE_SRCS = $(SRC_DIR)/core/tbos_base.c
+
 # All core sources for shell (including DI components)
-ALL_CORE_SRCS = $(HW_DETECTOR_SRCS) $(BOOT_SRCS) $(STEPPPS_SRCS) $(MEMORY_SRCS) $(SHELL_SRCS)
+ALL_CORE_SRCS = $(HW_DETECTOR_SRCS) $(BOOT_SRCS) $(STEPPPS_SRCS) $(MEMORY_SRCS) $(SHELL_SRCS) $(BASE_SRCS)
 ALL_DI_SRCS = $(IOC_SRCS) $(DI_BOOTSTRAP_SRCS) $(FILESYSTEM_V2_SRCS) $(PROCESS_V2_SRCS)
 ALL_SRCS = $(ALL_CORE_SRCS) $(ALL_DI_SRCS)
 

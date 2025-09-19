@@ -19,10 +19,6 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-// Forward declarations for clean interfaces
-typedef struct tbos_result tbos_result_t;
-typedef struct tbos_context tbos_context_t;
-
 /**
  * @brief Common result type following DRY principle
  * Used across all TBOS operations for consistent error handling

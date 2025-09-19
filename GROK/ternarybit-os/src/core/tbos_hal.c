@@ -87,25 +87,23 @@ static tbos_hardware_t g_hardware = {0};
 void tbos_hal_detect_hardware(void) {
     printf("🔍 Detecting hardware capabilities...\n");
 
-    // Start with compile-time detection
-    #ifdef __x86_64__
+    // Enhanced compile-time and runtime detection
+    #if defined(__x86_64__) || defined(_M_X64)
         g_hardware.architecture = ARCH_64BIT;
         g_hardware.bit_width = 64;
         strcpy(g_hardware.platform_name, "x86_64");
-    #elif defined(__i386__)
+    #elif defined(__i386__) || defined(_M_IX86)
         g_hardware.architecture = ARCH_32BIT;
         g_hardware.bit_width = 32;
         strcpy(g_hardware.platform_name, "x86");
-    #elif defined(__arm__)
-        #ifdef __aarch64__
-            g_hardware.architecture = ARCH_64BIT;
-            g_hardware.bit_width = 64;
-            strcpy(g_hardware.platform_name, "ARM64");
-        #else
-            g_hardware.architecture = ARCH_32BIT;
-            g_hardware.bit_width = 32;
-            strcpy(g_hardware.platform_name, "ARM32");
-        #endif
+    #elif defined(__aarch64__) || defined(_M_ARM64)
+        g_hardware.architecture = ARCH_64BIT;
+        g_hardware.bit_width = 64;
+        strcpy(g_hardware.platform_name, "ARM64");
+    #elif defined(__arm__) || defined(_M_ARM)
+        g_hardware.architecture = ARCH_32BIT;
+        g_hardware.bit_width = 32;
+        strcpy(g_hardware.platform_name, "ARM32");
     #elif defined(__AVR__)
         g_hardware.architecture = ARCH_8BIT;
         g_hardware.bit_width = 8;
@@ -115,11 +113,22 @@ void tbos_hal_detect_hardware(void) {
         g_hardware.bit_width = 16;
         strcpy(g_hardware.platform_name, "MSP430");
     #else
-        g_hardware.architecture = ARCH_UNKNOWN;
-        strcpy(g_hardware.platform_name, "Unknown");
+        // Runtime detection for hosted environments
+        if (sizeof(void*) == 8) {
+            g_hardware.architecture = ARCH_64BIT;
+            g_hardware.bit_width = 64;
+            strcpy(g_hardware.platform_name, "64-bit Host");
+        } else if (sizeof(void*) == 4) {
+            g_hardware.architecture = ARCH_32BIT;
+            g_hardware.bit_width = 32;
+            strcpy(g_hardware.platform_name, "32-bit Host");
+        } else {
+            g_hardware.architecture = ARCH_UNKNOWN;
+            strcpy(g_hardware.platform_name, "Unknown");
+        }
     #endif
 
-    // Runtime detection for current platform
+    // Platform-specific runtime detection
     #ifdef __linux__
         // Read from /proc/cpuinfo
         FILE* fp = fopen("/proc/cpuinfo", "r");
@@ -151,6 +160,56 @@ void tbos_hal_detect_hardware(void) {
                 }
             }
             fclose(fp);
+        }
+    #elif defined(_WIN32) || defined(_WIN64)
+        // Windows-specific detection
+        #include <windows.h>
+        
+        // Get system info
+        SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);
+        g_hardware.num_cores = sysInfo.dwNumberOfProcessors;
+        
+        // Get memory info
+        MEMORYSTATUSEX memInfo;
+        memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+        GlobalMemoryStatusEx(&memInfo);
+        g_hardware.memory_bytes = memInfo.ullTotalPhys;
+        
+        // Detect if running on 64-bit Windows
+        #ifdef _WIN64
+            if (g_hardware.architecture == ARCH_UNKNOWN) {
+                g_hardware.architecture = ARCH_64BIT;
+                g_hardware.bit_width = 64;
+                strcpy(g_hardware.platform_name, "Windows x64");
+            }
+        #else
+            // Check if 32-bit process on 64-bit Windows
+            BOOL isWow64 = FALSE;
+            if (IsWow64Process(GetCurrentProcess(), &isWow64) && isWow64) {
+                g_hardware.architecture = ARCH_64BIT;
+                g_hardware.bit_width = 64;
+                strcpy(g_hardware.platform_name, "Windows x64 (WoW64)");
+            } else if (g_hardware.architecture == ARCH_UNKNOWN) {
+                g_hardware.architecture = ARCH_32BIT;
+                g_hardware.bit_width = 32;
+                strcpy(g_hardware.platform_name, "Windows x86");
+            }
+        #endif
+    #elif defined(__APPLE__)
+        // macOS detection
+        #include <sys/sysctl.h>
+        
+        size_t size = sizeof(g_hardware.num_cores);
+        sysctlbyname("hw.ncpu", &g_hardware.num_cores, &size, NULL, 0);
+        
+        size = sizeof(g_hardware.memory_bytes);
+        sysctlbyname("hw.memsize", &g_hardware.memory_bytes, &size, NULL, 0);
+        
+        uint64_t freq;
+        size = sizeof(freq);
+        if (sysctlbyname("hw.cpufrequency", &freq, &size, NULL, 0) == 0) {
+            g_hardware.clock_speed_hz = freq;
         }
     #endif
 

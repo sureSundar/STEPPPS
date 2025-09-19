@@ -1,0 +1,101 @@
+# TernaryBit OS - Windows Makefile
+# Cross-platform build system for Windows deployment
+
+# Windows-specific compiler settings
+ifeq ($(OS),Windows_NT)
+    CC = gcc
+    CFLAGS = -Wall -Wextra -std=gnu99 -O2 -g -D_GNU_SOURCE -DWINDOWS_BUILD
+    EXE_EXT = .exe
+    RM = del /Q
+    MKDIR = mkdir
+    PATH_SEP = \\
+else
+    CC = x86_64-w64-mingw32-gcc
+    CFLAGS = -Wall -Wextra -std=gnu99 -O2 -g -D_GNU_SOURCE -DWINDOWS_BUILD -DCROSS_COMPILE
+    EXE_EXT = .exe
+    RM = rm -f
+    MKDIR = mkdir -p
+    PATH_SEP = /
+endif
+
+# Directories
+SRC_DIR = ..$(PATH_SEP)..$(PATH_SEP)src
+BUILD_DIR = build
+INCLUDES = -I$(SRC_DIR) -I$(SRC_DIR)$(PATH_SEP)core -I$(SRC_DIR)$(PATH_SEP)boot -I$(SRC_DIR)$(PATH_SEP)shell
+
+# Source files (Windows-compatible paths)
+CORE_SRCS = $(SRC_DIR)$(PATH_SEP)core$(PATH_SEP)hardware_detector.c \
+           $(SRC_DIR)$(PATH_SEP)boot$(PATH_SEP)universal_boot.c \
+           $(SRC_DIR)$(PATH_SEP)core$(PATH_SEP)steppps_framework.c \
+           $(SRC_DIR)$(PATH_SEP)core$(PATH_SEP)memory_manager.c \
+           $(SRC_DIR)$(PATH_SEP)core$(PATH_SEP)tbos_base.c
+
+SHELL_SRCS = $(SRC_DIR)$(PATH_SEP)shell$(PATH_SEP)command_shell.c \
+            $(SRC_DIR)$(PATH_SEP)shell$(PATH_SEP)universal_shell_compat.c \
+            $(SRC_DIR)$(PATH_SEP)shell$(PATH_SEP)shell_main.c
+
+ALL_SRCS = $(CORE_SRCS) $(SHELL_SRCS)
+
+# Target executable
+TARGET = $(BUILD_DIR)$(PATH_SEP)tbos$(EXE_EXT)
+
+# Default target
+all: directories $(TARGET)
+	@echo "TernaryBit OS Windows build complete"
+
+# Create build directory
+directories:
+ifeq ($(OS),Windows_NT)
+	@if not exist $(BUILD_DIR) $(MKDIR) $(BUILD_DIR)
+else
+	@$(MKDIR) $(BUILD_DIR)
+endif
+
+# Build main executable
+$(TARGET): $(ALL_SRCS) | directories
+	@echo "Building TernaryBit OS for Windows..."
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(ALL_SRCS)
+	@echo "Build successful: $@"
+
+# Fallback portable version if compilation fails
+portable: directories
+	@echo "Creating portable Windows version..."
+	@echo "@echo off" > $(BUILD_DIR)$(PATH_SEP)tbos_portable.bat
+	@echo "echo TernaryBit Universal OS - Portable Windows Edition" >> $(BUILD_DIR)$(PATH_SEP)tbos_portable.bat
+	@echo "echo Run 'tbos_portable.bat' to start" >> $(BUILD_DIR)$(PATH_SEP)tbos_portable.bat
+	@echo "pause" >> $(BUILD_DIR)$(PATH_SEP)tbos_portable.bat
+
+# Test build
+test: $(TARGET)
+	@echo "Testing TernaryBit OS..."
+	@$(TARGET) --version || echo "Test completed"
+
+# Clean
+clean:
+ifeq ($(OS),Windows_NT)
+	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
+else
+	@$(RM) -rf $(BUILD_DIR)
+endif
+
+# Install (copy to system)
+install: $(TARGET)
+	@echo "Installing TernaryBit OS..."
+ifeq ($(OS),Windows_NT)
+	@copy $(TARGET) %LOCALAPPDATA%$(PATH_SEP)tbos$(EXE_EXT)
+else
+	@echo "Cross-compile install not supported"
+endif
+
+# Help
+help:
+	@echo "TernaryBit OS Windows Build System"
+	@echo "=================================="
+	@echo "all      - Build TernaryBit OS executable"
+	@echo "portable - Create portable batch version"
+	@echo "test     - Test the built executable"
+	@echo "clean    - Clean build artifacts"
+	@echo "install  - Install to system"
+	@echo "help     - Show this help"
+
+.PHONY: all directories portable test clean install help

@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Main-Class: TernaryBitOS
+Created-By: TernaryBit Development Team
+Implementation-Title: TernaryBit Universal OS
+Implementation-Version: 1.0
