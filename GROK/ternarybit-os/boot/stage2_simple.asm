@@ -1,13 +1,109 @@
 ; TernaryBit OS - Simple Stage 2 for Kernel Boot
 ; COLLABORATION LOG:
-; - Windsurf: Fixed GDT physical address ✅, A20 gate ✅
-; - Claude: Protected mode transition ✅, sector count fixes ✅
-; - Codex: GDT structure cleanup ✅, added PM debug marker ✅
-; - Codex: updated 2025: Runtime GDT base via CS, serial PM banner ✅
+; CC-Claude Code: could you suggest a concise commit summary, please.
+; - Windsurf: Fixed GDT physical address , A20 gate 
+; - Claude: Protected mode transition , sector count fixes 
+; - Codex: GDT structure cleanup , added PM debug marker 
+; - Codex: updated 2025: Runtime GDT base via CS, serial PM banner 
 ; - STATUS: !S2LKPA now reaches GDT load; protected-mode banner serializes
 [BITS 16]
 [ORG 0x8000]
 
+; Constants
+CODE_SEG equ 0x08
+DATA_SEG equ 0x10
+
+; Debug levels
+DEBUG_OFF     equ 0
+DEBUG_NORMAL  equ 1
+DEBUG_VERBOSE equ 2
+
+; Key codes
+KEY_CTRL  equ 0x1D
+KEY_ALT   equ 0x38
+KEY_D     equ 0x20
+
+; Debug state
+debug_level db DEBUG_NORMAL
+debug_keys_pressed db 0  ; Bit 0: Ctrl, Bit 1: Alt, Bit 2: D
+
+; Debug messages
+debug_msg_off    db 'Debug: Output disabled', 0x0D, 0x0A, 0
+debug_msg_normal db 'Debug: Normal output', 0x0D, 0x0A, 0
+debug_msg_verbose db 'Debug: Verbose output', 0x0D, 0x0A, 0
+
+; === DEBUG KEY HANDLER ===
+check_debug_combo:
+    pusha
+    
+    ; Read key without removing from buffer
+    mov ah, 0x01
+    int 0x16
+    jz .no_key
+    
+    ; Check for Ctrl+Alt+D
+    mov ah, 0x11
+    int 0x16
+    jz .no_key
+    
+    ; Check if Ctrl+Alt+D is pressed
+    test al, KEY_CTRL | KEY_ALT
+    jnz .check_d_key
+    
+.check_d_key:
+    cmp al, KEY_D
+    jne .no_key
+    
+    ; Toggle debug level
+    mov al, [debug_level]
+    inc al
+    cmp al, DEBUG_VERBOSE + 1
+    jbe .set_level
+    xor al, al  ; Wrap around to OFF
+    
+.set_level:
+    mov [debug_level], al
+    
+    ; Print debug level message
+    call print_debug_status
+    
+    ; Clear the key from buffer
+    mov ah, 0x00
+    int 0x16
+    
+.no_key:
+    popa
+    ret
+
+; Print current debug status
+print_debug_status:
+    pusha
+    mov si, debug_msg_normal
+    cmp byte [debug_level], DEBUG_OFF
+    je .print
+    cmp byte [debug_level], DEBUG_VERBOSE
+    jb .print
+    mov si, debug_msg_verbose
+    jmp .print
+.print_off:
+    mov si, debug_msg_off
+.print:
+    call print_string
+    popa
+    ret
+
+; Debug log function
+; AL = log level, SI = message
+debug_log:
+    pusha
+    cmp al, [debug_level]
+    ja .done
+    call print_string
+.done:
+    popa
+    ret
+
+; === MAIN BOOTLOADER CODE ===
 stage2_start:
     ; Debug: Stage2 started
     mov al, '!'  ; Entry marker
@@ -86,29 +182,29 @@ stage2_start:
     xor eax, eax
     mov ax, cs
     shl eax, 4
-    mov [.cs_base], eax
+    mov [cs_base], eax
     
     ; Print CS base
     mov si, msg_cs_base
     call print_string
-    mov eax, [.cs_base]
+    mov eax, [cs_base]
     call print_hex_dword
     call newline
     
     ; Calculate GDT offset
     xor ebx, ebx
     mov bx, gdt_start
-    mov [.gdt_offset], ebx
+    mov [gdt_offset], ebx
     
     ; Print GDT offset
     mov si, msg_gdt_offset
     call print_string
-    mov eax, [.gdt_offset]
+    mov eax, [gdt_offset]
     call print_hex_dword
     call newline
     
     ; Calculate final GDT address
-    add eax, [.cs_base]
+    add eax, [cs_base]
     mov [gdt_descriptor + 2], eax
     
     ; Print final GDT address
@@ -177,7 +273,7 @@ stage2_start:
 ; Protected mode entry point
 init_pmode:
     ; Set up segment registers
-    mov ax, 0x10           ; Data segment selector (0x10 = 2nd entry in GDT)
+    mov ax, DATA_SEG       ; Data segment selector
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -267,10 +363,6 @@ serial_init:
     pop eax
     ret
     
-    ; Local variables for GDT calculation
-    .cs_base dd 0
-    .gdt_offset dd 0
-
 serial_write_char:
     push edx
     push eax
@@ -567,6 +659,17 @@ print_hex_dword:
 enable_a20:
     cli
     
+    ; Check for keypresses
+    mov ah, 0x01
+    int 0x16
+    jz .no_keypress
+    
+    ; Check for debug key combo (Ctrl+Alt+D)
+    call check_debug_combo
+    
+    ; Process other keypresses if needed
+    ; ...nabled
+    
     ; Try BIOS method first
     mov ax, 0x2401
     int 0x15
@@ -642,8 +745,6 @@ gdt_end:
 
 ; Data section
 msg_loading db 'Loading TernaryBit OS...', 0
-msg_ok db 'OK', 0x0D, 0x0A, 0
-msg_error db 'ERROR', 0x0D, 0x0A, 0
 msg_a20 db 'Enabling A20... ', 0
     
 ; GDT-related messages
@@ -660,23 +761,33 @@ msg_gdtr_verification db 'GDTR Base (should match): 0x', 0
 msg_pm_transition db 'Preparing protected mode transition...', 0x0D, 0x0A, 0
     
 ; Register names for dump
-reg_names db 'EAX: ', 0, 'EBX: ', 0, 'ECX: ', 0, 'EDX: ', 0,
-              'ESI: ', 0, 'EDI: ', 0, 'ESP: ', 0, 'EBP: ', 0, 'EIP: ', 0
-              
+reg_names:
+    db 'EAX: ', 0
+    db 'EBX: ', 0
+    db 'ECX: ', 0
+    db 'EDX: ', 0
+    db 'ESI: ', 0
+    db 'EDI: ', 0
+    db 'ESP: ', 0
+    db 'EBP: ', 0
+    db 'EIP: ', 0
+
 ; Debug messages
 msg_flags db 'EFLAGS: 0x', 0
 msg_critical_hang db 'CRITICAL: System halted. Dumping state...', 0x0D, 0x0A, 0
-msg_pmode   db 'Entering protected mode...', 0x0D, 0x0A, 0
-msg_ok      db 'OK', 0x0D, 0x0A, 0
-msg_error   db 'ERROR', 0x0D, 0x0A, 0
+msg_pmode db 'Entering protected mode...', 0x0D, 0x0A, 0
+msg_ok db 'OK', 0x0D, 0x0A, 0
+msg_error db 'ERROR', 0x0D, 0x0A, 0
 
 ; Protected mode messages
-pm_msg       db '32-bit Protected Mode Active!', 0
+pm_msg db '32-bit Protected Mode Active!', 0
 gdt_info_msg db 'GDT loaded successfully', 0
-cs_msg      db 'CS: 0x0008', 0
+cs_msg db 'CS: 0x0008', 0
 
 ; Variables
 boot_drive db 0
+cs_base dd 0
+gdt_offset dd 0
 
 ; GDT Descriptor
 gdt_descriptor:
