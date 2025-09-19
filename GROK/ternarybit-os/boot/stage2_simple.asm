@@ -1,6 +1,6 @@
 ; TernaryBit OS - Simple Stage 2 for Kernel Boot
 ; COLLABORATION LOG:
-; CC-Claude Code: could you suggest a concise commit summary, please.
+; CC-Claude Code: could you suggest a concise commit summary when ready?
 ; - Windsurf: Fixed GDT physical address , A20 gate 
 ; - Claude: Protected mode transition , sector count fixes 
 ; - Codex: GDT structure cleanup , added PM debug marker 
@@ -670,6 +670,7 @@ enable_a20:
     ; Process other keypresses if needed
     ; ...nabled
     
+.no_keypress:
     ; Try BIOS method first
     mov ax, 0x2401
     int 0x15
@@ -752,7 +753,7 @@ msg_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
 msg_calc_gdt db 'Calculating GDT address...', 0x0D, 0x0A, 0
 msg_cs_base db 'CS Base: 0x', 0
 msg_gdt_offset db 'GDT Offset: 0x', 0
-msg_gdt_final db 'Final GDT Address: 0x', 0
+msg_gdt_final db 'Dharma-aligned GDT: 0x', 0
 msg_gdt_descriptor db 'GDT Descriptor: ', 0
 msg_loading_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
 msg_gdt_desc_at db 'GDT Descriptor at: 0x', 0
@@ -775,12 +776,12 @@ reg_names:
 ; Debug messages
 msg_flags db 'EFLAGS: 0x', 0
 msg_critical_hang db 'CRITICAL: System halted. Dumping state...', 0x0D, 0x0A, 0
-msg_pmode db 'Entering protected mode...', 0x0D, 0x0A, 0
+msg_pmode db 'Entering protected-mode darshan...', 0x0D, 0x0A, 0
 msg_ok db 'OK', 0x0D, 0x0A, 0
 msg_error db 'ERROR', 0x0D, 0x0A, 0
 
 ; Protected mode messages
-pm_msg db '32-bit Protected Mode Active!', 0
+pm_msg db '32-bit Protected-Mode Darshan Active!', 0
 gdt_info_msg db 'GDT loaded successfully', 0
 cs_msg db 'CS: 0x0008', 0
 
