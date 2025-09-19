@@ -17,7 +17,13 @@
       "Bash(./test_tbos_drivers)",
       "Bash(./test_tbos_ipc)",
       "Bash(./test_tbos_final)",
-      "Bash(./test_tbos_universal)"
+      "Bash(./test_tbos_universal)",
+      "Bash(jar:*)",
+      "Bash(./tbos_bootstrap)",
+      "Bash(./demo_tbos_interactive)",
+      "Bash(timeout:*)",
+      "Bash(java:*)",
+      "Bash(ld:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,16 @@
+[Unit]
+Description=TernaryBit OS Universal Operating System
+After=network.target
+
+[Service]
+Type=simple
+User=tbos
+WorkingDirectory=/home/tbos
+ExecStart=/usr/bin/java -jar /home/tbos/TernaryBitOS.jar
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

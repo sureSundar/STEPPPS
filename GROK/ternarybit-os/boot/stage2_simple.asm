@@ -80,20 +80,79 @@ stage2_start:
     call print_string
     
     ; Calculate GDT physical address using current code segment base
+    mov si, msg_calc_gdt
+    call print_string
+    
     xor eax, eax
     mov ax, cs
     shl eax, 4
-    xor ebx, ebx
-    mov bx, gdt_start
-    add eax, ebx
-    mov [gdt_descriptor + 2], eax
-
-    ; Print GDT address
+    mov [.cs_base], eax
+    
+    ; Print CS base
+    mov si, msg_cs_base
+    call print_string
+    mov eax, [.cs_base]
     call print_hex_dword
     call newline
     
-    ; Load GDT
+    ; Calculate GDT offset
+    xor ebx, ebx
+    mov bx, gdt_start
+    mov [.gdt_offset], ebx
+    
+    ; Print GDT offset
+    mov si, msg_gdt_offset
+    call print_string
+    mov eax, [.gdt_offset]
+    call print_hex_dword
+    call newline
+    
+    ; Calculate final GDT address
+    add eax, [.cs_base]
+    mov [gdt_descriptor + 2], eax
+    
+    ; Print final GDT address
+    mov si, msg_gdt_final
+    call print_string
+    call print_hex_dword
+    call newline
+    
+    ; Print GDT descriptor contents
+    mov si, msg_gdt_descriptor
+    call print_string
+    mov eax, gdt_descriptor
+    mov cx, 8  ; 8 bytes (2+4+2)
+    call dump_memory
+    call newline
+    
+    ; Load GDT with debug output
+    mov si, msg_loading_gdt
+    call print_string
+    
+    ; Debug: Print GDT descriptor location
+    mov si, msg_gdt_desc_at
+    call print_string
+    mov eax, gdt_descriptor
+    call print_hex_dword
+    call newline
+    
+    ; Actual GDT load
     lgdt [gdt_descriptor]
+    
+    ; Verify GDT was loaded
+    mov si, msg_gdt_loaded
+    call print_string
+    
+    ; Read back GDTR to verify
+    sub esp, 6
+    sgdt [esp]
+    pop ax      ; Limit
+    pop eax     ; Base
+    
+    mov si, msg_gdtr_verification
+    call print_string
+    call print_hex_dword
+    call newline
     
     ; Print success
     mov si, msg_ok
@@ -104,21 +163,19 @@ stage2_start:
     mov bx, 0x0007
     int 0x10
 
-    ; Enter protected mode
-    mov si, msg_pmode
+    ; Prepare for protected mode transition
+    mov si, msg_pm_transition
     call print_string
     
-    cli
-    mov eax, cr0
-    or eax, 0x00000001     ; Set PE bit
-    mov cr0, eax
+    ; Dump critical registers before jump
+    call dump_registers
     
-    ; Far jump to 32-bit code segment
-    jmp 0x08:pm_start
+    ; Jump to protected mode
+    jmp CODE_SEG:init_pmode
 
 [BITS 32]
 ; Protected mode entry point
-pm_start:
+init_pmode:
     ; Set up segment registers
     mov ax, 0x10           ; Data segment selector (0x10 = 2nd entry in GDT)
     mov ds, ax
@@ -172,9 +229,15 @@ pm_start:
     cli
     hlt
     
+    ; Dump critical state before hanging
+    mov si, msg_critical_hang
+    call print_string
+    call dump_registers
+    
     ; Should never reach here
+    cli
+    hlt
     jmp $
-
 
 serial_init:
     push eax
@@ -203,6 +266,10 @@ serial_init:
     pop edx
     pop eax
     ret
+    
+    ; Local variables for GDT calculation
+    .cs_base dd 0
+    .gdt_offset dd 0
 
 serial_write_char:
     push edx
@@ -232,7 +299,188 @@ serial_print:
     pop eax
     ret
 
-; PM print string function
+; Dump memory in hex format
+; EAX = memory address, CX = byte count
+dump_memory:
+    pusha
+    mov esi, eax
+    mov ebx, ecx
+    
+.dump_loop:
+    ; Print address
+    mov eax, esi
+    call print_hex_dword
+    mov al, ':'
+    call serial_write_char
+    mov al, ' '
+    call serial_write_char
+    
+    ; Print hex bytes
+    push ecx
+    mov ecx, 16
+    cmp ebx, ecx
+    jbe .last_line
+    mov ecx, 16
+    
+.print_hex:
+    lodsb
+    call print_hex_byte
+    mov al, ' '
+    call serial_write_char
+    loop .print_hex
+    
+    ; Print ASCII representation
+    sub esi, 16
+    mov ecx, 16
+    mov al, '|'
+    call serial_write_char
+    
+.print_ascii:
+    lodsb
+    cmp al, 32
+    jb .non_printable
+    cmp al, 126
+    ja .non_printable
+    jmp .print_char
+    
+.non_printable:
+    mov al, '.'
+    
+.print_char:
+    call serial_write_char
+    loop .print_ascii
+    
+    mov al, '|'
+    call serial_write_char
+    call serial_crlf
+    
+    pop ecx
+    sub ebx, 16
+    jnz .dump_loop
+    jmp .done
+    
+.last_line:
+    mov ecx, ebx
+    jmp .print_hex
+    
+.done:
+    popa
+    ret
+
+; Dump all general purpose registers
+dump_registers:
+    pusha
+    pushf
+    
+    ; Save ESP before pushing
+    mov ebp, esp
+    
+    ; Get EIP
+    push .return_address
+    mov eax, [esp]
+    
+    ; Print register values
+    mov esi, reg_names
+    mov ecx, 8  ; Number of registers to print
+    lea edi, [esp + 8]  ; Skip return address and flags
+    
+.reg_loop:
+    push ecx
+    
+    ; Print register name
+    mov esi, reg_names
+    mov ecx, 8
+    sub ecx, [esp]
+    shl ecx, 3  ; Each name is max 8 bytes
+    add esi, ecx
+    
+    ; Find end of register name
+    push esi
+    mov edi, esi
+    xor al, al
+    mov ecx, -1
+    repne scasb
+    not ecx
+    dec ecx
+    
+    ; Print register name
+    mov ah, 0x0E
+    mov ebx, 0x0007
+    
+.print_name:
+    lodsb
+    int 0x10
+    loop .print_name
+    
+    ; Print register value
+    pop esi
+    pop ecx
+    push ecx
+    
+    mov eax, [edi - 4]  ; Get register value from stack
+    call print_hex_dword
+    call serial_crlf
+    
+    add edi, 4
+    pop ecx
+    loop .reg_loop
+    
+    ; Print flags
+    mov esi, msg_flags
+    call print_string
+    pushfd
+    pop eax
+    call print_hex_dword
+    call serial_crlf
+    
+    popf
+    popa
+    ret
+
+.return_address:
+    add esp, 4  ; Clean up EIP
+    popf
+    popa
+    ret
+
+; Print newline (CRLF)
+serial_crlf:
+    push eax
+    mov al, 0x0D
+    call serial_write_char
+    mov al, 0x0A
+    call serial_write_char
+    pop eax
+    ret
+
+; Print AL as hex
+print_hex_byte:
+    push eax
+    push ecx
+    
+    mov cl, al
+    shr al, 4
+    call .nibble_to_hex
+    call serial_write_char
+    
+    mov al, cl
+    and al, 0x0F
+    call .nibble_to_hex
+    call serial_write_char
+    
+    pop ecx
+    pop eax
+    ret
+    
+.nibble_to_hex:
+    cmp al, 10
+    jb .is_digit
+    add al, 'A' - '0' - 10
+.is_digit:
+    add al, '0'
+    ret
+
+; Protected mode print string function
 ; ESI = string, EDI = video memory offset
 pm_print_string:
     pusha
@@ -393,9 +641,31 @@ gdt_start:
 gdt_end:
 
 ; Data section
-msg_loading db 'Booting TernaryBit OS...', 0x0D, 0x0A, 0
-msg_a20     db 'Enabling A20 gate... ', 0
-msg_gdt     db 'Loading GDT at 0x', 0
+msg_loading db 'Loading TernaryBit OS...', 0
+msg_ok db 'OK', 0x0D, 0x0A, 0
+msg_error db 'ERROR', 0x0D, 0x0A, 0
+msg_a20 db 'Enabling A20... ', 0
+    
+; GDT-related messages
+msg_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
+msg_calc_gdt db 'Calculating GDT address...', 0x0D, 0x0A, 0
+msg_cs_base db 'CS Base: 0x', 0
+msg_gdt_offset db 'GDT Offset: 0x', 0
+msg_gdt_final db 'Final GDT Address: 0x', 0
+msg_gdt_descriptor db 'GDT Descriptor: ', 0
+msg_loading_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
+msg_gdt_desc_at db 'GDT Descriptor at: 0x', 0
+msg_gdt_loaded db 'GDT Loaded. Verifying...', 0x0D, 0x0A, 0
+msg_gdtr_verification db 'GDTR Base (should match): 0x', 0
+msg_pm_transition db 'Preparing protected mode transition...', 0x0D, 0x0A, 0
+    
+; Register names for dump
+reg_names db 'EAX: ', 0, 'EBX: ', 0, 'ECX: ', 0, 'EDX: ', 0,
+              'ESI: ', 0, 'EDI: ', 0, 'ESP: ', 0, 'EBP: ', 0, 'EIP: ', 0
+              
+; Debug messages
+msg_flags db 'EFLAGS: 0x', 0
+msg_critical_hang db 'CRITICAL: System halted. Dumping state...', 0x0D, 0x0A, 0
 msg_pmode   db 'Entering protected mode...', 0x0D, 0x0A, 0
 msg_ok      db 'OK', 0x0D, 0x0A, 0
 msg_error   db 'ERROR', 0x0D, 0x0A, 0

@@ -1,0 +1,11 @@
+status
+hardware
+performance
+test
+memory
+processes
+network
+files
+files create
+demo
+exit
