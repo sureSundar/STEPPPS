@@ -1,13 +1,18 @@
 ; TernaryBit OS - Simple Stage 2 for Kernel Boot
 ; COLLABORATION LOG:
 ; CC-Claude Code: could you suggest a concise commit summary when ready?
-; - Windsurf: Fixed GDT physical address , A20 gate 
-; - Claude: Protected mode transition , sector count fixes 
-; - Codex: GDT structure cleanup , added PM debug marker 
-; - Codex: updated 2025: Runtime GDT base via CS, serial PM banner 
+; - Windsurf: Fixed GDT physical address , A20 gate
+; - Claude: Protected mode transition , sector count fixes
+; - Codex: GDT structure cleanup , added PM debug marker
+; - Codex: updated 2025: Runtime GDT base via CS, serial PM banner
 ; - STATUS: !S2LKPA now reaches GDT load; protected-mode banner serializes
+
 [BITS 16]
 [ORG 0x8000]
+
+; Missing constants needed for stage2
+%define BOOT_KERNEL_SECTOR_COUNT 8
+%define BOOT_KERNEL_LBA_START 6
 
 ; Constants
 CODE_SEG equ 0x08
@@ -182,79 +187,72 @@ stage2_start:
     ; Calculate GDT physical address using current code segment base
     mov si, msg_calc_gdt
     call print_string
-    
-    xor eax, eax
-    mov ax, cs
-    shl eax, 4
-    mov [cs_base], eax
-    
-    ; Print CS base
+
+    xor edx, edx
+    mov dx, cs
+    shl edx, 4              ; edx = current segment base
+    mov [stage2_base], edx
+
+    ; Compute and show stage2 physical base for debugging
+    mov eax, edx
+    add eax, stage2_start
+    mov [stage2_phys], eax
+
+    mov si, msg_stage2_base
+    call print_string
+    mov eax, [stage2_phys]
+    call print_hex_dword
+    call newline
+
+    ; Report CS base (segment << 4)
     mov si, msg_cs_base
     call print_string
-    mov eax, [cs_base]
+    mov eax, [stage2_base]
     call print_hex_dword
     call newline
-    
-    ; Calculate GDT offset
-    xor ebx, ebx
-    mov bx, gdt_start
-    mov [gdt_offset], ebx
-    
-    ; Print GDT offset
-    mov si, msg_gdt_offset
-    call print_string
-    mov eax, [gdt_offset]
-    call print_hex_dword
-    call newline
-    
-    ; Calculate final GDT address
-    mov eax, [cs_base]      ; Get CS base
-    add eax, ebx            ; Add GDT offset (still in ebx from line 196)
+
+    ; Compute physical GDT base and update descriptor
+    mov eax, gdt_start
+    sub eax, stage2_start
+    add eax, [stage2_phys]
     mov [gdt_descriptor + 2], eax
-    
-    ; Print final GDT address
+
     mov si, msg_gdt_final
     call print_string
+    mov eax, [gdt_descriptor + 2]
     call print_hex_dword
     call newline
-    
-    ; Print GDT descriptor contents
+
+    ; Show descriptor pointer (physical)
     mov si, msg_gdt_descriptor
     call print_string
     mov eax, gdt_descriptor
-    mov cx, 8  ; 8 bytes (2+4+2)
-    call dump_memory
+    sub eax, stage2_start
+    add eax, [stage2_phys]
+    call print_hex_dword
     call newline
-    
+
     ; Load GDT with debug output
     mov si, msg_loading_gdt
     call print_string
-    
-    ; Debug: Print GDT descriptor location
-    mov si, msg_gdt_desc_at
-    call print_string
-    mov eax, gdt_descriptor
-    call print_hex_dword
-    call newline
-    
+
     ; Actual GDT load
     lgdt [gdt_descriptor]
-    
+
     ; Verify GDT was loaded
     mov si, msg_gdt_loaded
     call print_string
-    
-    ; Read back GDTR to verify
-    sub esp, 6
-    sgdt [esp]
-    pop ax      ; Limit
-    pop eax     ; Base
-    
+
+    ; Read back GDTR contents safely
+    sgdt [gdtr_buffer]
+
+    ; Display GDTR base for confirmation
     mov si, msg_gdtr_verification
     call print_string
+    mov eax, dword [gdtr_buffer + 2]
     call print_hex_dword
     call newline
-    
+
     ; Print success
     mov si, msg_ok
     call print_string
@@ -268,10 +266,12 @@ stage2_start:
     mov si, msg_pm_transition
     call print_string
     
-    ; Dump critical registers before jump
-    call dump_registers
-    
-    ; Jump to protected mode
+    ; Enable protected mode (set PE bit in CR0)
+    mov eax, cr0
+    or eax, 0x1
+    mov cr0, eax
+
+    ; Far jump flushes pipeline and loads CS selector
     jmp CODE_SEG:init_pmode
 
 [BITS 32]
@@ -794,12 +794,11 @@ msg_a20 db 'Enabling A20... ', 0
 ; GDT-related messages
 msg_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
 msg_calc_gdt db 'Calculating GDT address...', 0x0D, 0x0A, 0
+msg_stage2_base db 'Stage2 physical base: 0x', 0
 msg_cs_base db 'CS Base: 0x', 0
-msg_gdt_offset db 'GDT Offset: 0x', 0
 msg_gdt_final db 'Dharma-aligned GDT: 0x', 0
-msg_gdt_descriptor db 'GDT Descriptor: ', 0
+msg_gdt_descriptor db 'GDT Descriptor pointer: 0x', 0
 msg_loading_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
-msg_gdt_desc_at db 'GDT Descriptor at: 0x', 0
 msg_gdt_loaded db 'GDT Loaded. Verifying...', 0x0D, 0x0A, 0
 msg_gdtr_verification db 'GDTR Base (should match): 0x', 0
 msg_pm_transition db 'Preparing protected mode transition...', 0x0D, 0x0A, 0
@@ -826,6 +825,12 @@ tbds_ready_msg db 'TBDS stream consecrated for kernel darshan', 0
 tbds_ptr_msg   db 'TBDS ptr: 0x', 0
 tbds_len_msg   db 'TBDS len: 0x', 0
 
+; Buffer for SGDT verification
+gdtr_buffer dw 0
+            dd 0
+stage2_base dd 0
+stage2_phys dd 0
+
 ; Protected mode messages
 pm_msg db '32-bit Protected-Mode Darshan Active!', 0
 gdt_info_msg db 'GDT loaded successfully', 0
@@ -833,8 +838,6 @@ cs_msg db 'CS: 0x0008', 0
 
 ; Variables
 boot_drive db 0
-cs_base dd 0
-gdt_offset dd 0
 
 ; TBDS constants
 TBDS_SIGNATURE    equ 0x53444454
@@ -906,7 +909,7 @@ tbds_length equ tbds_end - tbds_data
 ; GDT Descriptor
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size (16-bit)
-    dd 0                        ; Patched at runtime with physical address
+    dd gdt_start                ; Physical address of GDT
 
 
 ; Padding to 4KB
