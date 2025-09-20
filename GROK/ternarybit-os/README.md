@@ -1,6 +1,6 @@
 # TernaryBit OS - STEPPPS Universal Framework
 
-[![CI/CD Status](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml)
+[![CI/CD Status](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://dev.azure.com/ternarybit/ternarybit-os/_apis/build/status/ternarybit.ternarybit-os?branchName=main)](https://dev.azure.com/ternarybit/ternarybit-os/_build/latest?definitionId=1&branchName=main)
 
@@ -10,9 +10,9 @@ A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychol
 
 | Platform | Status |
 |----------|--------|
-| Linux | [![Linux Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
-| Windows | [![Windows Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
-| macOS | [![macOS Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
+| Linux | [![Linux Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
+| Windows | [![Windows Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
+| macOS | [![macOS Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
 
 ## 🚀 Quick Start
 
@@ -27,7 +27,7 @@ A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychol
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ternarybit-os.git
+git clone https://github.com/suresundar/ternarybit-os.git
 cd ternarybit-os
 
 # Build the OS
