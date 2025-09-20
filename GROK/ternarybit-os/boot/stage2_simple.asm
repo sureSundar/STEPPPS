@@ -12,16 +12,20 @@
 ; Constants
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
+KERNEL_ENTRY equ 0x0010000
 
-; Debug levels
-DEBUG_OFF     equ 0
-DEBUG_NORMAL  equ 1
-DEBUG_VERBOSE equ 2
+; Debug levels - The Threefold Path
+DEBUG_OFF     equ 0   ; Mouna (Silence)
+DEBUG_NORMAL  equ 1   ; Jnana (Knowledge)
+DEBUG_VERBOSE equ 2   ; Vipassana (Insight)
 
 ; Key codes
 KEY_CTRL  equ 0x1D
 KEY_ALT   equ 0x38
 KEY_D     equ 0x20
+
+; === STAGE2 ENTRY POINT - MUST BE FIRST ===
+jmp stage2_start
 
 ; Debug state
 debug_level db DEBUG_NORMAL
@@ -136,11 +140,11 @@ stage2_start:
     ; Get boot drive from boot sector (preserved at 0x0500)
     mov dl, [0x0500]
 
-    ; Load kernel sectors (28 sectors starting at sector 9)
+    ; Load kernel sectors (configured at build time)
     mov ah, 0x02        ; BIOS read sectors
-    mov al, 28          ; Load all 28 kernel sectors
+    mov al, BOOT_KERNEL_SECTOR_COUNT
     mov ch, 0           ; Cylinder 0
-    mov cl, 9           ; Start at sector 9 (kernel location)
+    mov cl, BOOT_KERNEL_LBA_START
     mov dh, 0           ; Head 0
     int 0x13
     jc kernel_error
@@ -204,7 +208,8 @@ stage2_start:
     call newline
     
     ; Calculate final GDT address
-    add eax, [cs_base]
+    mov eax, [cs_base]      ; Get CS base
+    add eax, ebx            ; Add GDT offset (still in ebx from line 196)
     mov [gdt_descriptor + 2], eax
     
     ; Print final GDT address
@@ -321,19 +326,35 @@ init_pmode:
     mov esi, cs_msg
     call pm_print_string
     
-    ; Halt the CPU
-    cli
-    hlt
+    ; Announce TBDS readiness on serial when debug enabled
+    mov al, [debug_level]
+    cmp al, DEBUG_OFF
+    je .skip_tbds_serial
+
+    mov esi, tbds_ready_msg
+    call serial_print
+    call serial_crlf
+
+    mov esi, tbds_ptr_msg
+    call serial_print
+    mov eax, tbds_data
+    call serial_print_hex_dword
+    call serial_crlf
+
+    mov esi, tbds_len_msg
+    call serial_print
+    mov eax, tbds_length
+    call serial_print_hex_dword
+    call serial_crlf
+
+.skip_tbds_serial:
+
+    ; Deliver TBDS pointer (EAX) and length (EBX) to kernel
+    mov eax, tbds_data
+    mov ebx, tbds_length
     
-    ; Dump critical state before hanging
-    mov si, msg_critical_hang
-    call print_string
-    call dump_registers
-    
-    ; Should never reach here
-    cli
-    hlt
-    jmp $
+    ; Transfer control to 32-bit kernel entry
+    jmp KERNEL_ENTRY
 
 serial_init:
     push eax
@@ -388,6 +409,28 @@ serial_print:
     jmp .serial_loop
 .serial_done:
     pop esi
+    pop eax
+    ret
+
+serial_print_hex_dword:
+    push eax
+    push edx
+    push ecx
+    mov edx, eax
+    mov ecx, 8
+.serial_hex_loop:
+    rol edx, 4
+    mov al, dl
+    and al, 0x0F
+    add al, '0'
+    cmp al, '9'
+    jbe .serial_digit
+    add al, 7
+.serial_digit:
+    call serial_write_char
+    loop .serial_hex_loop
+    pop ecx
+    pop edx
     pop eax
     ret
 
@@ -774,11 +817,14 @@ reg_names:
     db 'EIP: ', 0
 
 ; Debug messages
-msg_flags db 'EFLAGS: 0x', 0
-msg_critical_hang db 'CRITICAL: System halted. Dumping state...', 0x0D, 0x0A, 0
-msg_pmode db 'Entering protected-mode darshan...', 0x0D, 0x0A, 0
-msg_ok db 'OK', 0x0D, 0x0A, 0
-msg_error db 'ERROR', 0x0D, 0x0A, 0
+msg_flags db 'Karma State (EFLAGS): 0x', 0
+msg_critical_hang db 'DHARMA BREACH: System seeking balance. Dumping state...', 0x0D, 0x0A, 0
+msg_pmode db 'Entering protected-mode darshan (heightened perception)...', 0x0D, 0x0A, 0
+msg_ok db 'Dharma Aligned', 0x0D, 0x0A, 0
+msg_error db 'Karma Imbalance', 0x0D, 0x0A, 0
+tbds_ready_msg db 'TBDS stream consecrated for kernel darshan', 0
+tbds_ptr_msg   db 'TBDS ptr: 0x', 0
+tbds_len_msg   db 'TBDS len: 0x', 0
 
 ; Protected mode messages
 pm_msg db '32-bit Protected-Mode Darshan Active!', 0
@@ -790,10 +836,78 @@ boot_drive db 0
 cs_base dd 0
 gdt_offset dd 0
 
+; TBDS constants
+TBDS_SIGNATURE    equ 0x53444454
+TBDS_VERSION_1_0  equ 0x0100
+TBDS_DESCRIPTOR_COUNT equ 5
+TBDS_TYPE_ARCH_INFO         equ 0x0001
+TBDS_TYPE_FIRMWARE_INFO     equ 0x0002
+TBDS_TYPE_MEMORY_MAP        equ 0x0003
+TBDS_TYPE_BOOT_DEVICE       equ 0x0004
+TBDS_TYPE_CONSOLE_INFO      equ 0x0006
+
+align 8
+tbds_data:
+    dd TBDS_SIGNATURE
+    dd tbds_end - tbds_data
+    dw TBDS_VERSION_1_0
+    dw TBDS_DESCRIPTOR_COUNT
+    times 8 db 0
+
+    ; ARCH_INFO descriptor
+    dw TBDS_TYPE_ARCH_INFO
+    dw 0
+    dd 8
+    dw 0x0001
+    dw 0x0020
+    dw 0x0001
+    dw 0x0000
+
+    ; FIRMWARE_INFO descriptor
+    dw TBDS_TYPE_FIRMWARE_INFO
+    dw 0
+    dd 8
+    dw 0x0001
+    dw 0x0000
+    dd 0x00010000
+
+    ; MEMORY_MAP descriptor (two entries)
+    dw TBDS_TYPE_MEMORY_MAP
+    dw 0
+    dd 40
+    dq 0x0000000000000000
+    dq 0x000000000009FC00
+    dd 0x00000001
+    dq 0x0000000000100000
+    dq 0x000000003FF00000
+    dd 0x00000001
+
+    ; BOOT_DEVICE descriptor
+    dw TBDS_TYPE_BOOT_DEVICE
+    dw 0
+    dd 12
+    db 0x00
+    db 0x00
+    dw 0x0002
+    dd BOOT_KERNEL_LBA_START
+    dd BOOT_KERNEL_SECTOR_COUNT
+
+    ; CONSOLE_INFO descriptor
+    dw TBDS_TYPE_CONSOLE_INFO
+    dw 0
+    dd 6
+    dw 0x0001
+    dw 80
+    dw 25
+
+tbds_end:
+tbds_length equ tbds_end - tbds_data
+
 ; GDT Descriptor
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size (16-bit)
     dd 0                        ; Patched at runtime with physical address
+
 
 ; Padding to 4KB
 times 4096-($-$$) db 0

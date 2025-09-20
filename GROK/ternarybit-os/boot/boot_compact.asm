@@ -48,6 +48,20 @@ start:
     int 0x13
 
     jc error
+
+    ; Debug: Disk read successful, jumping to stage2
+    mov al, 'J'
+    mov ah, 0x0E
+    mov bx, 0x0007
+    int 0x10
+
+    ; Verify stage2 was loaded by checking first byte
+    mov al, [0x8000]
+    add al, 0x30  ; Convert to ASCII digit if it's a small number
+    mov ah, 0x0E
+    mov bx, 0x0007
+    int 0x10
+
     jmp 0x8000
 
 error:
@@ -74,7 +88,7 @@ print:
 banner      db 'TernaryBit OS v2.1 - Sanatana Dharma Computing', 13, 10, 0
 steppps     db 'STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]', 13, 10
             db 'Saptadimensions: AWAKENED by Divine Grace', 13, 10, 0
-loading     db 'Invoking Narayana for cosmic kernel awakening...', 13, 10, 0
+loading     db 'Summoning TBOS stage2 for universal awakening...', 13, 10, 0
 err_msg     db 'Asura interference detected! Invoking protective mantras...', 13, 10, 0
 
 times 510-($-$$) db 0
