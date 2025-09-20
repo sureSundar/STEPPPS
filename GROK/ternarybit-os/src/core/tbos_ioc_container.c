@@ -17,6 +17,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
+#include <stdint.h>  // For uint32_t
+#include <stdio.h>   // For debugging
 
 // Global IoC container instance (Singleton)
 tbos_ioc_container_t* g_tbos_ioc_container = NULL;
@@ -28,7 +30,7 @@ static pthread_mutex_t g_container_init_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char* tbos_strdup(const char* str) {
     if (!str) return NULL;
     size_t len = strlen(str) + 1;
-    char* copy = malloc(len);
+    char* copy = (char*)malloc(len);
     if (copy) {
         memcpy(copy, str, len);
     }
@@ -50,8 +52,25 @@ static uint32_t tbos_hash_service_name(const char* name) {
 }
 
 /**
- * @brief Service Builder Implementation (Builder Pattern)
+ * @brief Service Builder implementation
  */
+typedef struct tbos_service_builder {
+    tbos_service_descriptor_t* descriptor;
+    tbos_ioc_container_t* container;
+    
+    // Builder methods
+    tbos_service_builder_t* (*as_singleton)(struct tbos_service_builder* self);
+    tbos_service_builder_t* (*as_transient)(struct tbos_service_builder* self);
+    tbos_service_builder_t* (*as_scoped)(struct tbos_service_builder* self);
+    tbos_service_builder_t* (*with_factory)(struct tbos_service_builder* self, 
+                                          void* (*factory)(tbos_ioc_container_t*));
+    tbos_service_builder_t* (*with_dependencies)(struct tbos_service_builder* self, 
+                                               const char** deps, size_t count);
+    tbos_service_builder_t* (*with_configuration)(struct tbos_service_builder* self, 
+                                                void* config, size_t config_size);
+    tbos_result_t (*build)(struct tbos_service_builder* self);
+} tbos_service_builder_t;
+
 static tbos_service_builder_t* builder_as_singleton(tbos_service_builder_t* self) {
     if (self && self->descriptor) {
         self->descriptor->lifetime = TBOS_LIFETIME_SINGLETON;
@@ -74,7 +93,7 @@ static tbos_service_builder_t* builder_as_scoped(tbos_service_builder_t* self) {
 }
 
 static tbos_service_builder_t* builder_with_factory(tbos_service_builder_t* self,
-                                                     void* (*factory)(tbos_ioc_container_t*)) {
+                                                   void* (*factory)(tbos_ioc_container_t*)) {
     if (self && self->descriptor) {
         self->descriptor->factory_method = factory;
     }
@@ -82,22 +101,49 @@ static tbos_service_builder_t* builder_with_factory(tbos_service_builder_t* self
 }
 
 static tbos_service_builder_t* builder_with_dependencies(tbos_service_builder_t* self,
-                                                          const char** deps, size_t count) {
+                                                       const char** deps, size_t count) {
     if (self && self->descriptor && deps && count > 0) {
-        self->descriptor->dependencies = malloc(count * sizeof(char*));
+        // Free existing dependencies if any
         if (self->descriptor->dependencies) {
-            for (size_t i = 0; i < count; i++) {
-                ((char**)self->descriptor->dependencies)[i] = tbos_strdup(deps[i]);
+            for (size_t i = 0; i < self->descriptor->dependency_count; i++) {
+                free((void*)self->descriptor->dependencies[i]);
             }
-            self->descriptor->dependency_count = count;
+            free(self->descriptor->dependencies);
         }
+        
+        // Allocate new dependency array
+        self->descriptor->dependencies = (const char**)calloc(count, sizeof(char*));
+        if (!self->descriptor->dependencies) {
+            return self;
+        }
+        
+        // Copy dependencies
+        for (size_t i = 0; i < count; i++) {
+            self->descriptor->dependencies[i] = strdup(deps[i]);
+            if (!self->descriptor->dependencies[i]) {
+                // Cleanup on allocation failure
+                for (size_t j = 0; j < i; j++) {
+                    free((void*)self->descriptor->dependencies[j]);
+                }
+                free(self->descriptor->dependencies);
+                self->descriptor->dependencies = NULL;
+                return self;
+            }
+        }
+        
+        self->descriptor->dependency_count = count;
     }
     return self;
-}
 
 static tbos_service_builder_t* builder_with_configuration(tbos_service_builder_t* self,
-                                                           void* config, size_t config_size) {
+                                                        void* config, size_t config_size) {
     if (self && self->descriptor && config && config_size > 0) {
+        // Free existing config if any
+        if (self->descriptor->configuration_data) {
+            free(self->descriptor->configuration_data);
+        }
+        
+        // Allocate and copy new config
         self->descriptor->configuration_data = malloc(config_size);
         if (self->descriptor->configuration_data) {
             memcpy(self->descriptor->configuration_data, config, config_size);
@@ -108,215 +154,50 @@ static tbos_service_builder_t* builder_with_configuration(tbos_service_builder_t
 }
 
 static tbos_result_t builder_build(tbos_service_builder_t* self) {
-    if (!self || !self->descriptor || !self->container) {
-        return tbos_create_error_result(EINVAL, "Invalid builder state");
+    tbos_result_t result = {0};
+    
+    if (!self || !self->container || !self->descriptor) {
+        result.error_code = TBOS_ERROR_INVALID_ARGUMENT;
+        result.error_message = "Invalid builder state";
+        return result;
     }
-
-    tbos_ioc_container_t* container = self->container;
-
-    // Add descriptor to container
-    pthread_rwlock_wrlock(&container->container_lock);
-
-    if (container->descriptor_count >= container->descriptor_capacity) {
-        // Resize descriptor array
-        size_t new_capacity = container->descriptor_capacity * 2;
-        tbos_service_descriptor_t** new_descriptors =
-            realloc(container->descriptors, new_capacity * sizeof(tbos_service_descriptor_t*));
-
-        if (!new_descriptors) {
-            pthread_rwlock_unlock(&container->container_lock);
-            return tbos_create_error_result(ENOMEM, "Cannot resize descriptor array");
-        }
-
-        container->descriptors = new_descriptors;
-        container->descriptor_capacity = new_capacity;
-    }
-
-    container->descriptors[container->descriptor_count++] = self->descriptor;
-    container->stats.services_registered++;
-
-    pthread_rwlock_unlock(&container->container_lock);
-
-    TBOS_LOG_INFO("Registered service: %s -> %s (%s)",
-                  self->descriptor->service_name,
-                  self->descriptor->interface_name,
-                  self->descriptor->lifetime == TBOS_LIFETIME_SINGLETON ? "Singleton" :
-                  self->descriptor->lifetime == TBOS_LIFETIME_TRANSIENT ? "Transient" :
-                  self->descriptor->lifetime == TBOS_LIFETIME_SCOPED ? "Scoped" : "Thread");
-
-    // Cleanup builder
+    
+    // Add the service to the container
+    result = tbos_ioc_register_service(self->container, self->descriptor);
+    
+    // Clean up the builder
     free(self);
-    return tbos_create_success_result(NULL, 0);
+    
+    return result;
 }
 
-/**
- * @brief IoC Container Implementation
- */
-tbos_ioc_container_t* tbos_ioc_container_create(void) {
-    tbos_ioc_container_t* container = malloc(sizeof(tbos_ioc_container_t));
-    if (!container) {
-        TBOS_LOG_ERROR("Failed to allocate IoC container");
+tbos_service_builder_t* tbos_ioc_builder(tbos_ioc_container_t* container,
+                                      const char* service_name,
+                                      const char* interface_name) {
+    if (!container || !service_name) {
         return NULL;
     }
-
-    memset(container, 0, sizeof(tbos_ioc_container_t));
-
-    // Initialize base
-    container->base.component_name = "IoC Container";
-    container->base.component_id = tbos_hash_service_name("ioc_container");
-    container->base.created_at = time(NULL);
-
-    // Initialize descriptor storage
-    container->descriptor_capacity = 64;
-    container->descriptors = malloc(container->descriptor_capacity * sizeof(tbos_service_descriptor_t*));
-    if (!container->descriptors) {
-        free(container);
-        return NULL;
-    }
-
-    // Initialize instance storage
-    container->instance_capacity = 64;
-    container->instances = malloc(container->instance_capacity * sizeof(tbos_service_instance_t*));
-    if (!container->instances) {
-        free(container->descriptors);
-        free(container);
-        return NULL;
-    }
-
-    // Initialize scope stack
-    container->max_scope_depth = 32;
-    container->scope_stack = malloc(container->max_scope_depth * sizeof(void*));
-    if (!container->scope_stack) {
-        free(container->instances);
-        free(container->descriptors);
-        free(container);
-        return NULL;
-    }
-
-    // Initialize configuration
-    container->config.auto_resolve_dependencies = true;
-    container->config.allow_circular_dependencies = false;
-    container->config.lazy_initialization = true;
-    container->config.max_resolution_depth = 10;
-    container->config.enable_debugging = false;
-
-    // Initialize threading
-    if (pthread_rwlock_init(&container->container_lock, NULL) != 0) {
-        free(container->scope_stack);
-        free(container->instances);
-        free(container->descriptors);
-        free(container);
-        return NULL;
-    }
-
-    container->base.initialized = true;
-    TBOS_LOG_INFO("Created IoC container with capacity for %zu services", container->descriptor_capacity);
-
-    return container;
-}
-
-void tbos_ioc_container_destroy(tbos_ioc_container_t* container) {
-    if (!container) return;
-
-    TBOS_LOG_INFO("Destroying IoC container...");
-
-    pthread_rwlock_wrlock(&container->container_lock);
-
-    // Cleanup instances
-    for (size_t i = 0; i < container->instance_count; i++) {
-        tbos_service_instance_t* instance = container->instances[i];
-        if (instance) {
-            if (instance->descriptor && instance->descriptor->destructor_method) {
-                instance->descriptor->destructor_method(instance->instance);
-            }
-            pthread_mutex_destroy(&instance->instance_mutex);
-            free(instance);
-        }
-    }
-
-    // Cleanup descriptors
-    for (size_t i = 0; i < container->descriptor_count; i++) {
-        tbos_service_descriptor_t* desc = container->descriptors[i];
-        if (desc) {
-            free((void*)desc->service_name);
-            free((void*)desc->interface_name);
-
-            if (desc->dependencies) {
-                for (size_t j = 0; j < desc->dependency_count; j++) {
-                    free((void*)desc->dependencies[j]);
-                }
-                free((void*)desc->dependencies);
-            }
-
-            if (desc->configuration_data) {
-                free(desc->configuration_data);
-            }
-
-            free(desc);
-        }
-    }
-
-    // Cleanup dependency graph
-    if (container->dependency_graph) {
-        for (size_t i = 0; i < container->graph_node_count; i++) {
-            tbos_dependency_node_t* node = container->dependency_graph[i];
-            if (node) {
-                free((void*)node->service_name);
-                free(node->dependencies);
-                free(node);
-            }
-        }
-        free(container->dependency_graph);
-    }
-
-    pthread_rwlock_unlock(&container->container_lock);
-    pthread_rwlock_destroy(&container->container_lock);
-
-    free(container->descriptors);
-    free(container->instances);
-    free(container->scope_stack);
-    free(container);
-}
-
-tbos_service_builder_t* tbos_ioc_register_service(tbos_ioc_container_t* container,
-                                                   const char* service_name,
-                                                   const char* interface_name,
-                                                   size_t service_size) {
-    if (!container || !service_name || !interface_name || service_size == 0) {
-        TBOS_LOG_ERROR("Invalid parameters for service registration");
-        return NULL;
-    }
-
-    tbos_service_builder_t* builder = malloc(sizeof(tbos_service_builder_t));
+    
+    tbos_service_builder_t* builder = (tbos_service_builder_t*)calloc(1, sizeof(tbos_service_builder_t));
     if (!builder) {
-        TBOS_LOG_ERROR("Failed to allocate service builder");
         return NULL;
     }
-
-    tbos_service_descriptor_t* descriptor = malloc(sizeof(tbos_service_descriptor_t));
-    if (!descriptor) {
+    
+    // Initialize the descriptor
+    builder->descriptor = (tbos_service_descriptor_t*)calloc(1, sizeof(tbos_service_descriptor_t));
+    if (!builder->descriptor) {
         free(builder);
-        TBOS_LOG_ERROR("Failed to allocate service descriptor");
         return NULL;
     }
-
-    memset(descriptor, 0, sizeof(tbos_service_descriptor_t));
-
-    // Initialize descriptor
-    descriptor->service_name = tbos_strdup(service_name);
-    descriptor->interface_name = tbos_strdup(interface_name);
-    descriptor->service_size = service_size;
-    descriptor->lifetime = TBOS_LIFETIME_TRANSIENT; // Default
-    descriptor->injection_type = TBOS_DI_CONSTRUCTOR;
-    descriptor->version = 1;
-    descriptor->author = "TBOS";
-    descriptor->description = "Auto-registered service";
-
-    // Initialize builder
-    builder->descriptor = descriptor;
-    builder->container = container;
-
-    // Set builder methods
+    
+    // Set up the descriptor
+    builder->descriptor->service_name = strdup(service_name);
+    if (interface_name) {
+        builder->descriptor->interface_name = strdup(interface_name);
+    }
+    builder->descriptor->lifetime = TBOS_LIFETIME_TRANSIENT; // Default
+    
+    // Set up the builder methods
     builder->as_singleton = builder_as_singleton;
     builder->as_transient = builder_as_transient;
     builder->as_scoped = builder_as_scoped;
@@ -324,7 +205,9 @@ tbos_service_builder_t* tbos_ioc_register_service(tbos_ioc_container_t* containe
     builder->with_dependencies = builder_with_dependencies;
     builder->with_configuration = builder_with_configuration;
     builder->build = builder_build;
-
+    
+    builder->container = container;
+    
     return builder;
 }
 

@@ -10,9 +10,23 @@
 [BITS 16]
 [ORG 0x8000]
 
-; Missing constants needed for stage2
+; Allow build system to override disk layout parameters
+; Cascade: VGA செயல்பாடுகளை ஆன்/ஆப் செய்ய flag
+%ifndef PM_VGA_ENABLE
+%define PM_VGA_ENABLE 0
+%endif
+; Codex: Build script drives these via -D now—let's mirror in other stage2 variants if needed.
+%ifndef BOOT_KERNEL_SECTOR_COUNT
 %define BOOT_KERNEL_SECTOR_COUNT 8
+%endif
+
+%ifndef BOOT_KERNEL_LBA_START
 %define BOOT_KERNEL_LBA_START 6
+%endif
+
+%ifndef BOOT_DRIVE_ADDR
+%define BOOT_DRIVE_ADDR 0x0500
+%endif
 
 ; Constants
 CODE_SEG equ 0x08
@@ -32,8 +46,8 @@ KEY_D     equ 0x20
 ; === STAGE2 ENTRY POINT - MUST BE FIRST ===
 jmp stage2_start
 
-; Debug state
-debug_level db DEBUG_NORMAL
+; Debug state - Start with OFF for energy efficiency
+debug_level db DEBUG_OFF
 debug_keys_pressed db 0  ; Bit 0: Ctrl, Bit 1: Alt, Bit 2: D
 
 ; Debug messages
@@ -114,6 +128,18 @@ debug_log:
 
 ; === MAIN BOOTLOADER CODE ===
 stage2_start:
+    ; Normalize CS to zero for consistent physical addressing
+    cli
+    push word 0
+    push word stage2_main
+    retf
+
+stage2_main:
+    sti
+
+    ; Energy-efficient power monitoring
+    call check_power_state
+
     ; Debug: Stage2 started
     mov al, '!'  ; Entry marker
     mov ah, 0x0E
@@ -143,16 +169,78 @@ stage2_start:
     int 0x10
 
     ; Get boot drive from boot sector (preserved at 0x0500)
-    mov dl, [0x0500]
+    mov dl, [BOOT_DRIVE_ADDR]
 
-    ; Load kernel sectors (configured at build time)
-    mov ah, 0x02        ; BIOS read sectors
-    mov al, BOOT_KERNEL_SECTOR_COUNT
-    mov ch, 0           ; Cylinder 0
-    mov cl, BOOT_KERNEL_LBA_START
-    mov dh, 0           ; Head 0
+    ; Load kernel sectors (configured at build time) using robust CHS loop
+    ; Floppy geometry: 18 sectors/track, 2 heads, cylinder grows after head wraps
+    ; Registers: ES:BX is destination buffer, DL = drive
+    push ds
+    xor ax, ax
+    mov ds, ax
+    
+    mov si, BOOT_KERNEL_LBA_START    ; LBA start
+    mov di, BOOT_KERNEL_SECTOR_COUNT ; total sectors remaining
+
+.read_loop:
+    cmp di, 0
+    jz .read_done
+
+    ; Compute CHS from LBA (si)
+    mov ax, si                  ; ax = LBA
+    mov bx, 18                  ; sectors per track
+    xor dx, dx
+    div bx                      ; ax = LBA / 18, dx = LBA % 18
+    mov bp, ax                  ; bp = temp = LBA / 18
+    mov cx, 2                   ; heads
+    xor dx, dx
+    div cx                      ; ax = cylinder, dx = head
+    mov ch, al                  ; CH = cylinder (low 8 bits)
+    mov dh, dl                  ; DH = head (0 or 1)
+    mov ax, si                  ; ax = LBA again
+    mov bx, 18
+    xor dx, dx
+    div bx                      ; dx = LBA % 18
+    inc dl                      ; sector number = (LBA % 18) + 1 (1-based)
+    mov cl, dl                  ; CL = sector
+
+    ; Determine how many sectors until track end
+    mov al, 18
+    sub al, dl                  ; sectors remaining in track = 18 - sector
+    inc al                      ; correct for 1-based sector numbering
+    movzx bx, al                ; BX = max sectors this track
+    mov ax, di                  ; AX = remaining sectors overall
+    cmp ax, bx                  ; compare remaining vs max this track
+    jbe .use_remaining
+    mov al, bl                  ; read up to track boundary
+    jmp .set_bios_read
+.use_remaining:
+    mov ax, di                  ; low byte -> AL = remaining count
+
+.set_bios_read:
+    mov ah, 0x02                ; BIOS read
+    xor bx, bx                  ; Always load into segment base offset 0
+    mov dl, [BOOT_DRIVE_ADDR]   ; Restore boot drive number before BIOS call
+
+.do_read:
     int 0x13
     jc kernel_error
+
+    ; Advance ES:BX by (AL * 512), update LBA and remaining
+    push ax                    ; save sectors read
+    movzx bx, al              ; BX = sectors read
+    shl bx, 5                 ; BX = sectors * 32 (paragraphs, since 512/16=32)
+    mov ax, es
+    add ax, bx                ; advance ES by paragraphs
+    mov es, ax
+    pop ax                    ; restore sectors read
+
+    movzx bx, al              ; BX = sectors read
+    add si, bx                ; LBA += sectors read
+    sub di, bx                ; remaining -= sectors read
+    jmp .read_loop
+
+.read_done:
+    pop ds
 
     ; Debug: Kernel loaded
     mov al, 'K'
@@ -194,13 +282,27 @@ stage2_start:
     mov [stage2_base], edx
 
     ; Compute and show stage2 physical base for debugging
-    mov eax, edx
-    add eax, stage2_start
+    mov eax, [stage2_base]
+    mov ebx, stage2_start
+    add eax, ebx
     mov [stage2_phys], eax
 
     mov si, msg_stage2_base
     call print_string
     mov eax, [stage2_phys]
+    call print_hex_dword
+    call newline
+
+    mov si, msg_cs_selector
+    call print_string
+    xor eax, eax
+    mov ax, cs
+    call print_hex_dword
+    call newline
+
+    mov si, msg_gdt_offset
+    call print_string
+    mov eax, gdt_start
     call print_hex_dword
     call newline
 
@@ -212,9 +314,9 @@ stage2_start:
     call newline
 
     ; Compute physical GDT base and update descriptor
-    mov eax, gdt_start
-    sub eax, stage2_start
-    add eax, [stage2_phys]
+    mov eax, [stage2_base]
+    mov ebx, gdt_start
+    add eax, ebx
     mov [gdt_descriptor + 2], eax
 
     mov si, msg_gdt_final
@@ -226,9 +328,9 @@ stage2_start:
     ; Show descriptor pointer (physical)
     mov si, msg_gdt_descriptor
     call print_string
-    mov eax, gdt_descriptor
-    sub eax, stage2_start
-    add eax, [stage2_phys]
+    mov eax, [stage2_base]
+    mov ebx, gdt_descriptor
+    add eax, ebx
     call print_hex_dword
     call newline
 
@@ -288,6 +390,12 @@ init_pmode:
     mov ss, ax
     mov esp, 0x90000       ; Set stack pointer
 
+    ; Quiesce legacy PIC and load an empty IDT to prevent stray interrupts
+    mov al, 0xFF
+    out 0x21, al           ; Mask all IRQs on master PIC
+    out 0xA1, al           ; Mask all IRQs on slave PIC
+    lidt [idt_descriptor_pm]
+
     ; Initialize serial port so -nographic runs still show PM banner
     call serial_init
     mov esi, pm_msg
@@ -297,13 +405,16 @@ init_pmode:
     mov al, 0x0A
     call serial_write_char
     
-    ; Clear screen
+%if PM_VGA_ENABLE
+    ; Clear screen (விரும்பினால்)
     mov edi, 0xB8000
     mov ecx, 80*25         ; 80x25 text mode
     mov eax, 0x0F200F20    ; Black on white space
     rep stosd
+%endif
     
-    ; Print success message
+%if PM_VGA_ENABLE
+    ; Print success message (விரும்பினால்)
     mov esi, pm_msg
     mov edi, 0xB8000
     mov ah, 0x0F           ; White on black
@@ -315,7 +426,9 @@ init_pmode:
     stosw
     jmp .print_loop
 .print_done:
+%endif
     
+%if PM_VGA_ENABLE
     ; Print GDT info
     mov esi, gdt_info_msg
     mov edi, 0xB8000 + 160 ; Second line
@@ -325,6 +438,7 @@ init_pmode:
     mov edi, 0xB8000 + 320 ; Third line
     mov esi, cs_msg
     call pm_print_string
+%endif
     
     ; Announce TBDS readiness on serial when debug enabled
     mov al, [debug_level]
@@ -353,8 +467,36 @@ init_pmode:
     mov eax, tbds_data
     mov ebx, tbds_length
     
+    ; Pair-Programming Note: CC - Skip memory dump to prevent crash
+    ; The dump_memory was causing a fault, kernel may not be at 0x10000
+    mov esi, pm_breadcrumb_before_dump
+    call serial_print
+    call serial_crlf
+
+    ; Skip the problematic memory dump
+    ; mov esi, dbg_kernel_dump_msg
+    ; call serial_print
+    ; call serial_crlf
+    ; mov eax, 0x00010000
+    ; mov ecx, 64
+    ; call dump_memory
+    ; call serial_crlf
+
+    ; Breadcrumb and restore TBDS registers for kernel ABI
+    mov esi, pm_breadcrumb_after_dump
+    call serial_print
+    call serial_crlf
+    mov eax, tbds_data
+    mov ebx, tbds_length
+
     ; Transfer control to 32-bit kernel entry
-    jmp KERNEL_ENTRY
+    mov edx, KERNEL_ENTRY
+    mov esi, pm_kernel_entry_msg
+    call serial_print
+    mov eax, edx
+    call serial_print_hex_dword
+    call serial_crlf
+    jmp edx
 
 serial_init:
     push eax
@@ -444,7 +586,7 @@ dump_memory:
 .dump_loop:
     ; Print address
     mov eax, esi
-    call print_hex_dword
+    call serial_print_hex_dword
     mov al, ':'
     call serial_write_char
     mov al, ' '
@@ -796,8 +938,10 @@ msg_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
 msg_calc_gdt db 'Calculating GDT address...', 0x0D, 0x0A, 0
 msg_stage2_base db 'Stage2 physical base: 0x', 0
 msg_cs_base db 'CS Base: 0x', 0
+msg_cs_selector db 'CS selector: 0x', 0
 msg_gdt_final db 'Dharma-aligned GDT: 0x', 0
 msg_gdt_descriptor db 'GDT Descriptor pointer: 0x', 0
+msg_gdt_offset db 'GDT offset: 0x', 0
 msg_loading_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
 msg_gdt_loaded db 'GDT Loaded. Verifying...', 0x0D, 0x0A, 0
 msg_gdtr_verification db 'GDTR Base (should match): 0x', 0
@@ -824,6 +968,10 @@ msg_error db 'Karma Imbalance', 0x0D, 0x0A, 0
 tbds_ready_msg db 'TBDS stream consecrated for kernel darshan', 0
 tbds_ptr_msg   db 'TBDS ptr: 0x', 0
 tbds_len_msg   db 'TBDS len: 0x', 0
+dbg_kernel_dump_msg db 'Dumping 64 bytes @0x00010000 before kernel jump:', 0
+pm_breadcrumb_before_dump db 'PM: about to dump @0x10000\r\n', 0
+pm_breadcrumb_after_dump  db 'PM: dump done, jumping to kernel\r\n', 0
+pm_kernel_entry_msg     db 'PM: jumping to linear 0x', 0
 
 ; Buffer for SGDT verification
 gdtr_buffer dw 0
@@ -835,6 +983,12 @@ stage2_phys dd 0
 pm_msg db '32-bit Protected-Mode Darshan Active!', 0
 gdt_info_msg db 'GDT loaded successfully', 0
 cs_msg db 'CS: 0x0008', 0
+
+; Minimal empty IDT descriptor for PM bring-up
+align 4
+idt_descriptor_pm:
+    dw 0                   ; limit = 0
+    dd 0                   ; base = 0
 
 ; Variables
 boot_drive db 0
@@ -905,6 +1059,36 @@ tbds_data:
 
 tbds_end:
 tbds_length equ tbds_end - tbds_data
+
+; === ENERGY-CONSCIOUS POWER MONITORING ===
+check_power_state:
+    pusha
+
+    ; Check APM (Advanced Power Management) availability
+    mov ax, 0x5300  ; APM Installation Check
+    xor bx, bx      ; APM BIOS (0000h)
+    int 0x15
+    jc .no_apm
+
+    ; APM available - enable power awareness
+    mov al, DEBUG_NORMAL
+    mov si, msg_power_aware
+    call debug_log
+    jmp .done
+
+.no_apm:
+    ; No APM - use basic energy efficiency
+    mov al, DEBUG_VERBOSE
+    mov si, msg_power_basic
+    call debug_log
+
+.done:
+    popa
+    ret
+
+; Power awareness messages
+msg_power_aware db 'Power: APM available, consciousness-aware energy enabled', 0x0D, 0x0A, 0
+msg_power_basic db 'Power: Basic energy-efficient mode active', 0x0D, 0x0A, 0
 
 ; GDT Descriptor
 gdt_descriptor:

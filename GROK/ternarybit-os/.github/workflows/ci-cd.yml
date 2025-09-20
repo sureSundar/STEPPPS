@@ -1,0 +1,140 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [created]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - os: windows-latest
+            cc: x86_64-w64-mingw32-gcc
+            cxx: x86_64-w64-mingw32-g++
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Set up QEMU
+      if: matrix.os == 'ubuntu-latest'
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up build environment
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ make qemu-system-x86
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          choco install -y make
+        else
+          brew install make qemu
+        fi
+
+    - name: Build
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: |
+        make -j$(nproc)
+        if [ -f "build/tbos_kernel" ] || [ -f "build/tbos_kernel.exe" ]; then
+          echo "Build successful"
+        else
+          echo "Build failed - no output binary found"
+          exit 1
+        fi
+
+    - name: Run tests
+      if: matrix.os == 'ubuntu-latest'  # Run tests only on Linux
+      run: |
+        make test
+
+  create-release:
+    name: Create Release
+    needs: build-and-test
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+    
+    - name: Set up environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential qemu-system-x86
+    
+    - name: Build release
+      run: |
+        make clean
+        make -j$(nproc) RELEASE=1
+    
+    - name: Create release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: TernaryBit OS ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        body: |
+          # TernaryBit OS ${{ github.ref_name }}
+          
+          ## Changes
+          
+          - Built on: ${{ github.sha }}
+          - Date: ${{ github.event.repository.pushed_at }}
+          
+          ## Assets
+          
+          - `tbos_kernel` - Main kernel binary
+          - `tbos_installer.exe` - Windows installer
+          - `tbos_checksums.sha256` - File integrity checksums
+        draft: false
+        prerelease: false
+        files: |
+          build/tbos_kernel
+          build/windows/TernaryBitOS-Installer.exe
+          build/checksums.sha256
+
+  deploy-docs:
+    name: Deploy Documentation
+    needs: [build-and-test, create-release]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    
+    - name: Setup mdBook
+      uses: peaceiris/actions-mdbook@v1
+      with:
+        mdbook-version: '0.4.21'
+    
+    - name: Build and Deploy
+      run: |
+        cd docs
+        mdbook build
+        # Add deployment steps here (e.g., to GitHub Pages)

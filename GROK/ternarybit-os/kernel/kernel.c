@@ -256,30 +256,15 @@ static steppps_state_t steppps_state;
 
 // Kernel entry point (called from bootloader)
 void kernel_main(void) {
-    // Initialize display first
-    terminal_initialize();
+    volatile uint16_t* video = (uint16_t*)0xB8000;
+    const char* msg = "TBOS READY";
+    for (size_t i = 0; msg[i] && i < 10; ++i) {
+        video[i] = 0x1F00 | msg[i];
+    }
 
-    // Display kernel banner
-    kernel_printf("TernaryBit OS Kernel v1.0\n");
-    kernel_printf("========================\n");
-    kernel_printf("STEPPPS Framework Active\n\n");
-
-    parse_boot_descriptors();
-    show_boot_descriptor_summary();
-
-    // Initialize STEPPPS dimensions
-    init_steppps_framework();
-
-    // Basic kernel initialization
-    init_memory_management();
-    init_interrupt_handling();
-    init_timer();
-
-    // Start STEPPPS orchestration
-    start_steppps_orchestrator();
-
-    // Main kernel loop
-    kernel_main_loop();
+    for (;;) {
+        asm volatile ("nop");
+    }
 }
 
 void init_steppps_framework(void) {

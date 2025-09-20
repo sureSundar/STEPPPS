@@ -1,33 +1,117 @@
 @echo off
-REM TernaryBit OS - Windows Build Script
-REM Builds TBOS components for Windows deployment
+REM ============================================
+REM TernaryBit OS - Windows Build System
+REM Version: 2.1.0
+REM Traceability: PRD-051 (Enhanced Windows Build)
+REM ============================================
 
-echo TernaryBit OS Windows Build System
-echo ===================================
+setlocal EnableDelayedExpansion
 
-REM Check for required tools
-where gcc >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] GCC not found. Checking for MinGW...
-    where mingw32-gcc >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo [ERROR] MinGW not found. Checking for MSYS2...
-        where x86_64-w64-mingw32-gcc >nul 2>&1
-        if %errorlevel% neq 0 (
-            echo [WARNING] No C compiler found. Creating portable batch version...
-            goto create_portable
-        ) else (
-            set CC=x86_64-w64-mingw32-gcc
-            echo [OK] Using MSYS2 GCC
-        )
-    ) else (
-        set CC=mingw32-gcc
-        echo [OK] Using MinGW GCC
-    )
-) else (
-    set CC=gcc
-    echo [OK] Using system GCC
+:: ============================================
+:: Configuration
+:: ============================================
+set "ROOT_DIR=%~dp0\..\.."
+set "BUILD_DIR=%ROOT_DIR%\build\windows"
+set "BIN_DIR=%BUILD_DIR%\bin"
+set "OBJ_DIR=%BUILD_DIR%\obj"
+set "SRC_DIR=%ROOT_DIR%\src"
+set "INCLUDE_DIRS=/I"%SRC_DIR%" /I"%SRC_DIR%\core" /I"%SRC_DIR%\boot" /I"%SRC_DIR%\shell""
+
+:: Compiler flags
+set "CFLAGS=-Wall -Wextra -std=gnu99 -O2 -D_WIN32 -DWIN32_LEAN_AND_MEAN"
+set "LDFLAGS=-lws2_32 -ladvapi32 -static"
+set "EXE_EXT=.exe"
+
+:: ============================================
+:: Detect Compiler
+:: ===========================================
+call :detect_compiler
+if "%COMPILER_FOUND%"=="0" (
+    echo [ERROR] No suitable C compiler found.
+    echo         Please install MinGW-w64 or MSYS2 from: https://www.msys2.org/
+    exit /b 1
 )
+
+echo [INFO] Using compiler: %CC%
+
+:: ============================================
+:: Setup Build Environment
+:: ============================================
+if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
+if not exist "%OBJ_DIR%" mkdir "%OBJ_DIR%"
+
+:: ============================================
+:: Build Core Components
+:: ============================================
+echo [INFO] Building core components...
+for /r "%SRC_DIR%\core" %%f in (*.c) do (
+    set "obj_file=%OBJ_DIR%\%%~nf.o"
+    echo [CC] %%~nxf
+    "%CC%" %CFLAGS% %INCLUDE_DIRS% -c "%%f" -o "!obj_file!"
+    if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!
+)
+
+:: ============================================
+:: Build Bootloader
+:: ============================================
+echo [INFO] Building bootloader...
+for /r "%SRC_DIR%\boot" %%f in (*.c) do (
+    set "obj_file=%OBJ_DIR%\boot_%%~nf.o"
+    echo [CC] boot\%%~nxf
+    "%CC%" %CFLAGS% %INCLUDE_DIRS% -c "%%f" -o "!obj_file!"
+    if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!
+)
+
+:: ============================================
+:: Build Shell
+:: ============================================
+echo [INFO] Building shell components...
+for /r "%SRC_DIR%\shell" %%f in (*.c) do (
+    set "obj_file=%OBJ_DIR%\shell_%%~nf.o"
+    echo [CC] shell\%%~nxf
+    "%CC%" %CFLAGS% %INCLUDE_DIRS% -c "%%f" -o "!obj_file!"
+    if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!
+)
+
+:: ============================================
+:: Link Executables
+:: ============================================
+echo [INFO] Linking executables...
+
+:: Link kernel
+"%CC%" -o "%BIN_DIR%\tbos_kernel%EXE_EXT%" "%OBJ_DIR%\*.o" %LDFLAGS%
+if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!
+
+echo [SUCCESS] Build completed successfully!
+echo [INFO] Output files are in: %BIN_DIR%
+
+goto :eof
+
+:: ============================================
+:: Subroutines
+:: ============================================
+:detect_compiler
+set "COMPILER_FOUND=0"
+set "CC=gcc"
+
+:: Check for common compiler variants
+for %%c in (
+    "x86_64-w64-mingw32-gcc"
+    "i686-w64-mingw32-gcc"
+    "mingw32-gcc"
+    "gcc"
+) do (
+    if "%COMPILER_FOUND%"=="0" (
+        where %%~c >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            set "CC=%%~c"
+            set "COMPILER_FOUND=1"
+            echo [INFO] Found compiler: %%~c
+        )
+    )
+)
+
+goto :eof
 
 REM Set build variables
 set BUILD_DIR=build

@@ -6,7 +6,7 @@ echo "Testing TernaryBit OS in QEMU"
 echo "==============================="
 
 BUILD_DIR="build"
-IMAGE="$BUILD_DIR/ternarybit.img"
+IMAGE="$BUILD_DIR/om.img"
 
 if [ ! -f "$IMAGE" ]; then
     echo "Error: Disk image not found. Run ./scripts/build.sh first"

@@ -123,6 +123,12 @@ void terminal_write(const char* data, size_t size);
 void terminal_writestring(const char* data);
 void kernel_printf(const char* format, ...);
 
+// Serial console
+void serial_init(void);
+void serial_write_char(char c);
+void serial_write_string(const char* data);
+void serial_write_hex32(u32 value);
+
 // String functions
 size_t strlen(const char* str);
 int strcmp(const char* str1, const char* str2);
@@ -171,6 +177,9 @@ void show_help(void);
 void show_steppps_status(void);
 void show_system_stats(void);
 void show_ai_status(void);
+
+// TODO: Re-enable consciousness commands
+// void show_consciousness_status(void);
 
 // Kernel functions
 void kernel_main(void);

@@ -48,21 +48,7 @@ start:
     int 0x13
 
     jc error
-
-    ; Debug: Disk read successful, jumping to stage2
-    mov al, 'J'
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-
-    ; Verify stage2 was loaded by checking first byte
-    mov al, [0x8000]
-    add al, 0x30  ; Convert to ASCII digit if it's a small number
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-
-    jmp 0x8000
+    jmp 0x0000:0x8000
 
 error:
     mov si, err_msg

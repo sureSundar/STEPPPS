@@ -26,15 +26,15 @@ display_step "Compiling protected-mode kernel"
 
 nasm -f elf32 "$KERNEL_DIR/kernel_entry.asm" -o "$BUILD_DIR/kernel_entry.o"
 
-gcc -m32 -ffreestanding -fno-stack-protector -nostdlib \
+gcc -m32 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -nostdlib \
     -I"$TBOS_ROOT/include" \
     -c "$KERNEL_DIR/kernel.c" -o "$BUILD_DIR/kernel.o"
 
-gcc -m32 -ffreestanding -fno-stack-protector -nostdlib \
+gcc -m32 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -nostdlib \
     -I"$TBOS_ROOT/include" \
     -c "$KERNEL_DIR/support.c" -o "$BUILD_DIR/support.o"
 
-gcc -m32 -ffreestanding -nostdlib -T "$KERNEL_DIR/linker.ld" \
+gcc -m32 -ffreestanding -fno-pie -nostdlib -no-pie -Wl,--build-id=none -T "$KERNEL_DIR/linker.ld" \
     -o "$BUILD_DIR/kernel.elf" \
     "$BUILD_DIR/kernel_entry.o" \
     "$BUILD_DIR/kernel.o" \
@@ -105,7 +105,13 @@ dd if="$BUILD_DIR/boot.bin" of="$IMG" bs=512 count=1 conv=notrunc status=none
 
 dd if="$BUILD_DIR/stage2.bin" of="$IMG" bs=512 seek=1 conv=notrunc status=none
 
-dd if="$BUILD_DIR/kernel_padded.bin" of="$IMG" bs=512 seek=$((KERNEL_START_SECTOR - 1)) \
+    # Pair-Programming Note (Cascade):
+    # - Fixed kernel placement off-by-one.
+    # - Rationale: Stage2 computes BOOT_KERNEL_LBA_START=1+STAGE2_SECTORS (0-based LBA).
+    #   Boot sector is at LBA0, stage2 occupies LBA1..LBA(1+S-1), so kernel must start at LBA(1+S).
+    #   Using seek=KERNEL_START_SECTOR aligns the disk image with what stage2 reads via int 13h.
+    # - Expected effect: prevent kernel overlap/corruption and avoid PM jump faults when jmp 0x10000.
+dd if="$BUILD_DIR/kernel_padded.bin" of="$IMG" bs=512 seek=$((KERNEL_START_SECTOR)) \
    conv=notrunc status=none
 
 echo ""

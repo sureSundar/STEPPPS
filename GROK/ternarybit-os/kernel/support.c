@@ -4,6 +4,7 @@
  */
 
 #include "kernel.h"
+#include <stdarg.h>
 
 // VGA text mode constants
 #define VGA_WIDTH 80
@@ -112,68 +113,65 @@ void terminal_writestring(const char* data) {
 
 // Simple printf implementation with basic format specifiers
 void kernel_printf(const char* format, ...) {
-    char* args = (char*)&format + sizeof(const char*);
-    int arg_index = 0;
+    va_list args;
+    va_start(args, format);
 
-    for (int i = 0; format[i]; i++) {
-        if (format[i] == '%' && format[i + 1]) {
-            i++; // Skip the '%'
-            switch (format[i]) {
-                case 'd': {
-                    int value = *((int*)(args + arg_index));
-                    arg_index += sizeof(int);
-                    char buf[16];
-                    int_to_string(value, buf);
-                    terminal_writestring(buf);
-                    break;
-                }
-                case 's': {
-                    const char* str = *((const char**)(args + arg_index));
-                    arg_index += sizeof(const char*);
-                    if (str) {
-                        terminal_writestring(str);
-                    } else {
-                        terminal_writestring("(null)");
-                    }
-                    break;
-                }
-                case 'x': {
-                    u32 value = *((u32*)(args + arg_index));
-                    arg_index += sizeof(u32);
-                    char buf[16];
-                    hex32_to_string(value, buf);
-                    terminal_writestring(buf);
-                    break;
-                }
-                case 'f': {
-                    // Float support (simplified - just show as int for now)
-                    float value = *((float*)(args + arg_index));
-                    arg_index += sizeof(float);
-                    int int_val = (int)(value * 10); // One decimal place
-                    char buf[16];
-                    int_to_string(int_val / 10, buf);
-                    terminal_writestring(buf);
-                    terminal_putchar('.');
-                    char decimal_buf[4];
-                    int_to_string(int_val % 10, decimal_buf);
-                    terminal_writestring(decimal_buf);
-                    break;
-                }
-                case '%': {
-                    terminal_putchar('%');
-                    break;
-                }
-                default: {
-                    // Unknown format specifier, just print it
-                    terminal_putchar('%');
-                    terminal_putchar(format[i]);
-                    break;
-                }
-            }
-        } else {
+    for (size_t i = 0; format[i]; ++i) {
+        if (format[i] != '%') {
             terminal_putchar(format[i]);
+            continue;
+        }
+
+        ++i; // Skip '%'
+        char spec = format[i];
+        switch (spec) {
+            case 'd':
+            case 'i': {
+                int value = va_arg(args, int);
+                char buf[16];
+                int_to_string(value, buf);
+                terminal_writestring(buf);
+                break;
+            }
+            case 'x': {
+                u32 value = va_arg(args, u32);
+                char buf[16];
+                hex32_to_string(value, buf);
+                terminal_writestring(buf);
+                break;
+            }
+            case 's': {
+                const char* str = va_arg(args, const char*);
+                terminal_writestring(str ? str : "(null)");
+                break;
+            }
+            case 'f': {
+                double value = va_arg(args, double); // default promotion
+                int whole = (int)value;
+                int frac = (int)((value - whole) * 10.0);
+                char buf[16];
+                int_to_string(whole, buf);
+                terminal_writestring(buf);
+                terminal_putchar('.');
+                if (frac < 0) frac = -frac;
+                char frac_buf[4];
+                int_to_string(frac, frac_buf);
+                terminal_writestring(frac_buf);
+                break;
+            }
+            case '%': {
+                terminal_putchar('%');
+                break;
+            }
+            default: {
+                terminal_putchar('%');
+                terminal_putchar(spec);
+                break;
+            }
         }
     }
+
+    va_end(args);
 }
 
 // String functions

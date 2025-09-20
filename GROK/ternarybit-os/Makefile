@@ -1,50 +1,72 @@
-# TernaryBit Universal OS - Development Makefile
-# Traceability: Implementation of all requirements through complete toolchain
+# TernaryBit Universal OS - Modular Build System
+# Traceability: PRD-044 (Build System Enhancement)
+# Supports cross-compilation for x86_64, ARM, and RISC-V architectures
 
-CC = gcc
-CFLAGS = -Wall -Wextra -std=gnu99 -O2 -g -D_GNU_SOURCE
-INCLUDES = -Isrc -Isrc/core -Isrc/boot -Isrc/shell
-TEST_DIR = tests
+# Default architecture (can be overridden: make ARCH=arm64)
+ARCH ?= x86_64
+BUILD_DIR = build/$(ARCH)
+
+# Include configuration
+include config/flags.mk
+include config/targets.mk
+include config/tools.mk
+
+# Source directories
 SRC_DIR = src
-BUILD_DIR = build
+TEST_DIR = tests
+ARCH_DIR = arch/$(ARCH)
 
 # Source files
-HW_DETECTOR_SRCS = $(SRC_DIR)/core/hardware_detector.c
-BOOT_SRCS = $(SRC_DIR)/boot/universal_boot.c
-STEPPPS_SRCS = $(SRC_DIR)/core/steppps_framework.c
-MEMORY_SRCS = $(SRC_DIR)/core/memory_manager.c
-SHELL_SRCS = $(SRC_DIR)/shell/command_shell.c $(SRC_DIR)/shell/universal_shell_compat.c
+CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c) \
+            $(wildcard $(ARCH_DIR)/*.c)
+BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.c)
+SHELL_SRCS = $(wildcard $(SRC_DIR)/shell/*.c)
 
-# New DI and Standards-Compliant Components
-IOC_SRCS = $(SRC_DIR)/core/tbos_ioc_container.c $(SRC_DIR)/core/tbos_core_impl.c
-DI_BOOTSTRAP_SRCS = $(SRC_DIR)/core/tbos_di_bootstrap.c
-FILESYSTEM_V2_SRCS = $(SRC_DIR)/core/tbos_filesystem.c
-PROCESS_V2_SRCS = $(SRC_DIR)/core/tbos_process.c
+# Object files
+CORE_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CORE_SRCS))
+BOOT_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(BOOT_SRCS))
+SHELL_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SHELL_SRCS))
 
-# Base implementation
-BASE_SRCS = $(SRC_DIR)/core/tbos_base.c
-
-# All core sources for shell (including DI components)
-ALL_CORE_SRCS = $(HW_DETECTOR_SRCS) $(BOOT_SRCS) $(STEPPPS_SRCS) $(MEMORY_SRCS) $(SHELL_SRCS) $(BASE_SRCS)
-ALL_DI_SRCS = $(IOC_SRCS) $(DI_BOOTSTRAP_SRCS) $(FILESYSTEM_V2_SRCS) $(PROCESS_V2_SRCS)
-ALL_SRCS = $(ALL_CORE_SRCS) $(ALL_DI_SRCS)
-
-# Test executables
-TESTS = test_hardware_detector test_universal_boot test_steppps_framework test_memory_manager test_ioc_container test_di_bootstrap
-
-# Interactive shell executables
-SHELL_MAIN = ternarybit_shell
-DI_SHELL_MAIN = ternarybit_shell_di
+# Test files
+TEST_SRCS = $(wildcard $(TEST_DIR)/unit/test_*.c)
+TEST_BINS = $(patsubst $(TEST_DIR)/unit/%.c,$(BUILD_DIR)/%,$(TEST_SRCS))
 
 # Default target
-all: directories $(TESTS) $(SHELL_MAIN)
-	@echo "🏗️  TernaryBit OS Components Built Successfully"
-	@echo "Run 'make test' to execute all tests"
-	@echo "Run 'make shell' to start interactive shell"
+all: $(BUILD_TARGETS) $(SHELL_TARGETS)
+	@echo "🏗️  TernaryBit OS for $(ARCH) built successfully"
+	@echo "  Kernel: $(KERNEL_BIN)"
+	@echo "  Bootloader: $(BOOTLOADER_BIN)"
+	@echo "  Shell: $(SHELL_TARGETS)"
+	@echo "\nRun 'make test' to execute tests or 'make run' to start in QEMU"
 
-# Create build directory
-directories:
-	@mkdir -p $(BUILD_DIR)
+# Kernel target
+$(KERNEL_BIN): $(CORE_OBJS) $(SHELL_OBJS) | $(BUILD_DIR)
+	@echo "🔗 Linking $@ for $(ARCH)..."
+	@$(CC) $(LDFLAGS) -T $(ARCH_DIR)/linker.ld -o $@ $^ $(LIBS)
+
+# Bootloader target
+$(BOOTLOADER_BIN): $(BOOT_OBJS) | $(BUILD_DIR)
+	@echo "🔗 Linking $@ for $(ARCH)..."
+	@$(CC) $(LDFLAGS) -T $(ARCH_DIR)/bootloader.ld -o $@ $^ $(LIBS)
+
+# Shell target
+$(SHELL_TARGETS): %: $(BUILD_DIR)/shell/%
+	@ln -sf $< $@
+
+# Test targets
+$(BUILD_DIR)/%: $(TEST_DIR)/unit/%.c $(filter-out %main.o,$(CORE_OBJS)) | $(BUILD_DIR)
+	@mkdir -p $(@D)
+	@echo "🧪 Building test $@ for $(ARCH)..."
+	@$(CC) $(TEST_CFLAGS) -o $@ $^ $(TEST_LDFLAGS)
+
+# Compile .c to .o
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# Include dependency files
+-include $(CORE_OBJS:.o=.d) $(BOOT_OBJS:.o=.d) $(SHELL_OBJS:.o=.d)
 
 # Hardware Detector Test
 test_hardware_detector: $(BUILD_DIR)/test_hardware_detector
@@ -117,9 +139,73 @@ test-boot: $(BUILD_DIR)/test_universal_boot
 	@echo "🧪 Testing Universal Boot System..."
 	@./$(BUILD_DIR)/test_universal_boot
 
-test-steppps: $(BUILD_DIR)/test_steppps_framework
-	@echo "🧪 Testing STEPPPS Framework..."
-	@./$(BUILD_DIR)/test_steppps_framework
+# Test targets
+.PHONY: test test-unit test-integration test-coverage
+
+test: ## Run all tests (unit and integration)
+	@echo "🚀 Running all tests..."
+	@./scripts/run-tests.sh --type all
+
+test-unit: ## Run unit tests only
+	@echo "🔍 Running unit tests..."
+	@./scripts/run-tests.sh --type unit
+
+test-integration: ## Run integration tests only
+	@echo "🔗 Running integration tests..."
+	@./scripts/run-tests.sh --type integration
+
+test-coverage: ## Run tests with coverage report
+	@echo "📊 Running tests with coverage..."
+	@./scripts/run-tests.sh --coverage
+
+# Legacy test targets for backward compatibility
+test-steppps: test-unit
+	@# Alias for running STEPPPS framework tests
+
+# Helper target to list all available test targets
+test-help:
+	@echo "Available test targets:"
+	@echo "  test           - Run all tests (unit and integration)"
+	@echo "  test-unit      - Run unit tests only"
+	@echo "  test-integration - Run integration tests only"
+	@echo "  test-coverage  - Run tests with coverage report"
+	@echo "  test-steppps   - Run STEPPPS framework tests"
+
+# Include test files in the build
+$(BUILD_DIR)/tests/test_%: $(TEST_DIR)/unit/test_%.c
+	@mkdir -p $(@D)
+	@echo "🔨 Building test: $@"
+	@$(CC) $(CFLAGS) -Iinclude -Itests/unit/mocks -o $@ $< $(LDFLAGS)
+
+# Uninstallation targets
+.PHONY: uninstall uninstall-windows uninstall-linux uninstall-help
+
+uninstall: uninstall-help
+	@echo "Please specify a target: make uninstall-windows or make uninstall-linux"
+
+uninstall-windows:
+	@echo "🚀 Uninstalling TernaryBit OS from Windows..."
+	@if [ -f "deploy/windows/uninstall-tbos-windows.ps1" ]; then \
+		powershell -ExecutionPolicy Bypass -File "deploy/windows/uninstall-tbos-windows.ps1"; \
+	else \
+		echo "Error: Windows uninstall script not found."; \
+		exit 1; \
+	fi
+
+uninstall-linux:
+	@echo "🚀 Uninstalling TernaryBit OS from Linux/Unix..."
+	@if [ -f "scripts/uninstall-tbos.sh" ]; then \
+		sh "scripts/uninstall-tbos.sh"; \
+	else \
+		echo "Error: Linux uninstall script not found."; \
+		exit 1; \
+	fi
+
+uninstall-help:
+	@echo "Uninstall targets:"
+	@echo "  uninstall-windows  - Remove TernaryBit OS from Windows"
+	@echo "  uninstall-linux    - Remove TernaryBit OS from Linux/Unix"
+	@echo "  uninstall-help     - Show this help message"
 
 test-memory: $(BUILD_DIR)/test_memory_manager
 	@echo "🧪 Testing Memory Management System..."

@@ -93,7 +93,7 @@ cd ternarybit-os
 ```
 
 ### Output
-- `build/ternarybit.img` - Bootable 1.44MB floppy disk image
+- `build/om.img` - Bootable 1.44MB floppy disk image
 - `build/boot.bin` - Boot sector (512 bytes)
 - `build/stage2.bin` - Second stage bootloader (2KB)
 - `build/kernel.bin` - TernaryBit kernel (8KB)
@@ -107,11 +107,11 @@ cd ternarybit-os
 
 ### Manual QEMU
 ```bash
-qemu-system-x86_64 -fda build/ternarybit.img
+qemu-system-x86_64 -fda build/om.img
 ```
 
 ### On Real Hardware
-1. Write image to USB/floppy: `dd if=build/ternarybit.img of=/dev/sdX`
+1. Write image to USB/floppy: `dd if=build/om.img of=/dev/sdX`
 2. Boot from USB/floppy
 
 ## Commands

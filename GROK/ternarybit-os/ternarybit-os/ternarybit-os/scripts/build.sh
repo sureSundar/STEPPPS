@@ -33,24 +33,24 @@ echo "✓ Bootloader built successfully"
 echo "Step 2: Creating disk image..."
 
 # Create empty disk image (1.44MB floppy)
-dd if=/dev/zero of=$BUILD_DIR/ternarybit.img bs=512 count=2880 2>/dev/null
+dd if=/dev/zero of=$BUILD_DIR/om.img bs=512 count=2880 2>/dev/null
 
 # Write boot sector
-dd if=$BUILD_DIR/boot.bin of=$BUILD_DIR/ternarybit.img bs=512 count=1 conv=notrunc 2>/dev/null
+dd if=$BUILD_DIR/boot.bin of=$BUILD_DIR/om.img bs=512 count=1 conv=notrunc 2>/dev/null
 
 # Write stage 2 bootloader (sectors 2-5)
-dd if=$BUILD_DIR/stage2.bin of=$BUILD_DIR/ternarybit.img bs=512 seek=1 count=4 conv=notrunc 2>/dev/null
+dd if=$BUILD_DIR/stage2.bin of=$BUILD_DIR/om.img bs=512 seek=1 count=4 conv=notrunc 2>/dev/null
 
-echo "✓ Disk image created: $BUILD_DIR/ternarybit.img"
+echo "✓ Disk image created: $BUILD_DIR/om.img"
 
 echo "Step 3: Build verification..."
 
 echo "  Boot sector: $(stat -c%s $BUILD_DIR/boot.bin) bytes"
 echo "  Stage 2:     $(stat -c%s $BUILD_DIR/stage2.bin) bytes"
-echo "  Disk image:  $(stat -c%s $BUILD_DIR/ternarybit.img) bytes"
+echo "  Disk image:  $(stat -c%s $BUILD_DIR/om.img) bytes"
 
 echo ""
 echo "🎉 TernaryBit OS built successfully!"
 echo ""
 echo "To test:"
-echo "  qemu-system-x86_64 -fda build/ternarybit.img"
+echo "  qemu-system-x86_64 -fda build/om.img"

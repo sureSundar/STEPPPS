@@ -1,5 +1,59 @@
 # TernaryBit OS - STEPPPS Universal Framework
 
+[![CI/CD Status](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://dev.azure.com/ternarybit/ternarybit-os/_apis/build/status/ternarybit.ternarybit-os?branchName=main)](https://dev.azure.com/ternarybit/ternarybit-os/_build/latest?definitionId=1&branchName=main)
+
+A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
+
+## 📦 Build Status
+
+| Platform | Status |
+|----------|--------|
+| Linux | [![Linux Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
+| Windows | [![Windows Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
+| macOS | [![macOS Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [x86_64-elf cross-compiler](https://wiki.osdev.org/GCC_Cross-Compiler)
+- QEMU (for testing)
+- NASM (Netwide Assembler)
+- Make
+
+### Building
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ternarybit-os.git
+cd ternarybit-os
+
+# Build the OS
+make all
+
+# Run in QEMU
+make run
+```
+
+### CI/CD
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+1. **On every push**:
+   - Builds on Linux, Windows, and macOS
+   - Runs unit tests
+   - Checks for build errors
+
+2. **On release tag (v*.*.*)**:
+   - Creates a new GitHub release
+   - Builds release binaries for all platforms
+   - Generates checksums for verification
+   - Updates documentation
+
+## 🏗 Project Overview
+
 A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
 
 ## Project Overview
@@ -67,11 +121,11 @@ This creates:
 - `build/boot.bin` - 512-byte boot sector
 - `build/stage2.bin` - Stage2 bootloader (4KB)
 - `build/kernel.bin` - Main kernel
-- `build/ternarybit.img` - Complete floppy disk image
+- `build/om.img` - Complete floppy disk image
 
 ### Testing
 ```bash
-qemu-system-i386 -fda build/ternarybit.img
+qemu-system-i386 -fda build/om.img
 ```
 
 Expected output sequence:

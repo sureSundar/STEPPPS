@@ -1,0 +1,1027 @@
+     1                                  ; TernaryBit OS - Simple Stage 2 for Kernel Boot
+     2                                  ; COLLABORATION LOG:
+     3                                  ; CC-Claude Code: could you suggest a concise commit summary when ready?
+     4                                  ; - Windsurf: Fixed GDT physical address , A20 gate
+     5                                  ; - Claude: Protected mode transition , sector count fixes
+     6                                  ; - Codex: GDT structure cleanup , added PM debug marker
+     7                                  ; - Codex: updated 2025: Runtime GDT base via CS, serial PM banner
+     8                                  ; - STATUS: !S2LKPA now reaches GDT load; protected-mode banner serializes
+     9                                  
+    10                                  [BITS 16]
+    11                                  [ORG 0x8000]
+    12                                  
+    13                                  ; Missing constants needed for stage2
+    14                                  %define BOOT_KERNEL_SECTOR_COUNT 8
+    15                                  %define BOOT_KERNEL_LBA_START 6
+    16                                  
+    17                                  ; Constants
+    18                                  CODE_SEG equ 0x08
+    19                                  DATA_SEG equ 0x10
+    20                                  KERNEL_ENTRY equ 0x0010000
+    21                                  
+    22                                  ; Debug levels - The Threefold Path
+    23                                  DEBUG_OFF     equ 0   ; Mouna (Silence)
+    24                                  DEBUG_NORMAL  equ 1   ; Jnana (Knowledge)
+    25                                  DEBUG_VERBOSE equ 2   ; Vipassana (Insight)
+    26                                  
+    27                                  ; Key codes
+    28                                  KEY_CTRL  equ 0x1D
+    29                                  KEY_ALT   equ 0x38
+    30                                  KEY_D     equ 0x20
+    31                                  
+    32                                  ; === STAGE2 ENTRY POINT - MUST BE FIRST ===
+    33 00000000 E9A100                  jmp stage2_start
+    34                                  
+    35                                  ; Debug state - Start with OFF for energy efficiency
+    36 00000003 00                      debug_level db DEBUG_OFF
+    37 00000004 00                      debug_keys_pressed db 0  ; Bit 0: Ctrl, Bit 1: Alt, Bit 2: D
+    38                                  
+    39                                  ; Debug messages
+    40 00000005 44656275673A204F75-     debug_msg_off    db 'Debug: Output disabled', 0x0D, 0x0A, 0
+    40 0000000E 747075742064697361-
+    40 00000017 626C65640D0A00     
+    41 0000001E 44656275673A204E6F-     debug_msg_normal db 'Debug: Normal output', 0x0D, 0x0A, 0
+    41 00000027 726D616C206F757470-
+    41 00000030 75740D0A00         
+    42 00000035 44656275673A205665-     debug_msg_verbose db 'Debug: Verbose output', 0x0D, 0x0A, 0
+    42 0000003E 72626F7365206F7574-
+    42 00000047 7075740D0A00       
+    43                                  
+    44                                  ; === DEBUG KEY HANDLER ===
+    45                                  check_debug_combo:
+    46 0000004D 60                          pusha
+    47                                      
+    48                                      ; Read key without removing from buffer
+    49 0000004E B401                        mov ah, 0x01
+    50 00000050 CD16                        int 0x16
+    51 00000052 7423                        jz .no_key
+    52                                      
+    53                                      ; Check for Ctrl+Alt+D
+    54 00000054 B411                        mov ah, 0x11
+    55 00000056 CD16                        int 0x16
+    56 00000058 741D                        jz .no_key
+    57                                      
+    58                                      ; Check if Ctrl+Alt+D is pressed
+    59 0000005A A83D                        test al, KEY_CTRL | KEY_ALT
+    60 0000005C 7500                        jnz .check_d_key
+    61                                      
+    62                                  .check_d_key:
+    63 0000005E 3C20                        cmp al, KEY_D
+    64 00000060 7515                        jne .no_key
+    65                                      
+    66                                      ; Toggle debug level
+    67 00000062 A0[0300]                    mov al, [debug_level]
+    68 00000065 FEC0                        inc al
+    69 00000067 3C03                        cmp al, DEBUG_VERBOSE + 1
+    70 00000069 7602                        jbe .set_level
+    71 0000006B 30C0                        xor al, al  ; Wrap around to OFF
+    72                                      
+    73                                  .set_level:
+    74 0000006D A2[0300]                    mov [debug_level], al
+    75                                      
+    76                                      ; Print debug level message
+    77 00000070 E80600                      call print_debug_status
+    78                                      
+    79                                      ; Clear the key from buffer
+    80 00000073 B400                        mov ah, 0x00
+    81 00000075 CD16                        int 0x16
+    82                                      
+    83                                  .no_key:
+    84 00000077 61                          popa
+    85 00000078 C3                          ret
+    86                                  
+    87                                  ; Print current debug status
+    88                                  print_debug_status:
+    89 00000079 60                          pusha
+    90 0000007A BE[1E00]                    mov si, debug_msg_normal
+    91 0000007D 803E[0300]00                cmp byte [debug_level], DEBUG_OFF
+    92 00000082 740F                        je .print
+    93 00000084 803E[0300]02                cmp byte [debug_level], DEBUG_VERBOSE
+    94 00000089 7208                        jb .print
+    95 0000008B BE[3500]                    mov si, debug_msg_verbose
+    96 0000008E EB03                        jmp .print
+    97                                  .print_off:
+    98 00000090 BE[0500]                    mov si, debug_msg_off
+    99                                  .print:
+   100 00000093 E8F203                      call print_string
+   101 00000096 61                          popa
+   102 00000097 C3                          ret
+   103                                  
+   104                                  ; Debug log function
+   105                                  ; AL = log level, SI = message
+   106                                  debug_log:
+   107 00000098 60                          pusha
+   108 00000099 3A06[0300]                  cmp al, [debug_level]
+   109 0000009D 7703                        ja .done
+   110 0000009F E8E603                      call print_string
+   111                                  .done:
+   112 000000A2 61                          popa
+   113 000000A3 C3                          ret
+   114                                  
+   115                                  ; === MAIN BOOTLOADER CODE ===
+   116                                  stage2_start:
+   117                                      ; Energy-efficient power monitoring
+   118 000000A4 E8D707                      call check_power_state
+   119                                  
+   120                                      ; Debug: Stage2 started
+   121 000000A7 B021                        mov al, '!'  ; Entry marker
+   122 000000A9 B40E                        mov ah, 0x0E
+   123 000000AB BB0700                      mov bx, 0x0007
+   124 000000AE CD10                        int 0x10
+   125                                  
+   126 000000B0 B053                        mov al, 'S'  ; Stage2
+   127 000000B2 B40E                        mov ah, 0x0E
+   128 000000B4 BB0700                      mov bx, 0x0007
+   129 000000B7 CD10                        int 0x10
+   130                                  
+   131 000000B9 B032                        mov al, '2'  ; Stage 2
+   132 000000BB B40E                        mov ah, 0x0E
+   133 000000BD BB0700                      mov bx, 0x0007
+   134 000000C0 CD10                        int 0x10
+   135                                  
+   136                                      ; === KERNEL LOADING ===
+   137                                      ; Load kernel at 0x1000:0000 (linear address 0x10000)
+   138 000000C2 B80010                      mov ax, 0x1000
+   139 000000C5 8EC0                        mov es, ax
+   140 000000C7 31DB                        xor bx, bx
+   141                                  
+   142                                      ; Debug: Loading kernel
+   143 000000C9 B04C                        mov al, 'L'
+   144 000000CB B40E                        mov ah, 0x0E
+   145 000000CD BB0700                      mov bx, 0x0007
+   146 000000D0 CD10                        int 0x10
+   147                                  
+   148                                      ; Get boot drive from boot sector (preserved at 0x0500)
+   149 000000D2 8A160005                    mov dl, [0x0500]
+   150                                  
+   151                                      ; Load kernel sectors (configured at build time)
+   152 000000D6 B402                        mov ah, 0x02        ; BIOS read sectors
+   153 000000D8 B008                        mov al, BOOT_KERNEL_SECTOR_COUNT
+   154 000000DA B500                        mov ch, 0           ; Cylinder 0
+   155 000000DC B106                        mov cl, BOOT_KERNEL_LBA_START
+   156 000000DE B600                        mov dh, 0           ; Head 0
+   157 000000E0 CD13                        int 0x13
+   158 000000E2 0F829503                    jc kernel_error
+   159                                  
+   160                                      ; Debug: Kernel loaded
+   161 000000E6 B04B                        mov al, 'K'
+   162 000000E8 B40E                        mov ah, 0x0E
+   163 000000EA BB0700                      mov bx, 0x0007
+   164 000000ED CD10                        int 0x10
+   165                                  
+   166                                      ; === PROTECTED MODE TRANSITION ===
+   167 000000EF FA                          cli                     ; Disable interrupts
+   168                                  
+   169 000000F0 B050                        mov al, 'P'            ; Protected mode start
+   170 000000F2 B40E                        mov ah, 0x0E
+   171 000000F4 BB0700                      mov bx, 0x0007
+   172 000000F7 CD10                        int 0x10
+   173                                  
+   174                                      ; Enable A20 gate
+   175 000000F9 BE[5905]                    mov si, msg_a20
+   176 000000FC E88903                      call print_string
+   177 000000FF E8CE03                      call enable_a20
+   178 00000102 0F82A003                    jc a20_error
+   179                                      
+   180 00000106 BE[3607]                    mov si, msg_ok
+   181 00000109 E87C03                      call print_string
+   182                                  
+   183                                      ; Load GDT
+   184 0000010C FA                          cli
+   185                                      
+   186                                      ; Debug: Print GDT loading message
+   187 0000010D BE[6A05]                    mov si, msg_gdt
+   188 00000110 E87503                      call print_string
+   189                                      
+   190                                      ; Calculate GDT physical address using current code segment base
+   191 00000113 BE[7B05]                    mov si, msg_calc_gdt
+   192 00000116 E86F03                      call print_string
+   193                                  
+   194 00000119 6631D2                      xor edx, edx
+   195 0000011C 8CCA                        mov dx, cs
+   196 0000011E 66C1E204                    shl edx, 4              ; edx = current segment base
+   197 00000122 668916[A407]                mov [stage2_base], edx
+   198                                  
+   199                                      ; Compute and show stage2 physical base for debugging
+   200 00000127 66A1[A407]                  mov eax, [stage2_base]
+   201 0000012B 66BB[A4000000]              mov ebx, stage2_start
+   202 00000131 6601D8                      add eax, ebx
+   203 00000134 66A3[A807]                  mov [stage2_phys], eax
+   204                                  
+   205 00000138 BE[9805]                    mov si, msg_stage2_base
+   206 0000013B E84A03                      call print_string
+   207 0000013E 66A1[A807]                  mov eax, [stage2_phys]
+   208 00000142 E86903                      call print_hex_dword
+   209 00000145 E85103                      call newline
+   210                                  
+   211 00000148 BE[EF05]                    mov si, msg_gdt_offset
+   212 0000014B E83A03                      call print_string
+   213 0000014E 66B8[28050000]              mov eax, gdt_start
+   214 00000154 E85703                      call print_hex_dword
+   215 00000157 E83F03                      call newline
+   216                                  
+   217                                      ; Report CS base (segment << 4)
+   218 0000015A BE[B105]                    mov si, msg_cs_base
+   219 0000015D E82803                      call print_string
+   220 00000160 66A1[A407]                  mov eax, [stage2_base]
+   221 00000164 E84703                      call print_hex_dword
+   222 00000167 E82F03                      call newline
+   223                                  
+   224                                      ; Compute physical GDT base and update descriptor
+   225 0000016A 66A1[A407]                  mov eax, [stage2_base]
+   226 0000016E 66BB[28050000]              mov ebx, gdt_start
+   227 00000174 6601D8                      add eax, ebx
+   228 00000177 66A3[0509]                  mov [gdt_descriptor + 2], eax
+   229                                  
+   230 0000017B BE[BD05]                    mov si, msg_gdt_final
+   231 0000017E E80703                      call print_string
+   232 00000181 66A1[0509]                  mov eax, [gdt_descriptor + 2]
+   233 00000185 E82603                      call print_hex_dword
+   234 00000188 E80E03                      call newline
+   235                                  
+   236                                      ; Show descriptor pointer (physical)
+   237 0000018B BE[D405]                    mov si, msg_gdt_descriptor
+   238 0000018E E8F702                      call print_string
+   239 00000191 66A1[A407]                  mov eax, [stage2_base]
+   240 00000195 66BB[03090000]              mov ebx, gdt_descriptor
+   241 0000019B 6601D8                      add eax, ebx
+   242 0000019E E80D03                      call print_hex_dword
+   243 000001A1 E8F502                      call newline
+   244                                  
+   245                                      ; Load GDT with debug output
+   246 000001A4 BE[FE05]                    mov si, msg_loading_gdt
+   247 000001A7 E8DE02                      call print_string
+   248                                  
+   249                                      ; Actual GDT load
+   250 000001AA 0F0116[0309]                lgdt [gdt_descriptor]
+   251                                  
+   252                                      ; Verify GDT was loaded
+   253 000001AF BE[0F06]                    mov si, msg_gdt_loaded
+   254 000001B2 E8D302                      call print_string
+   255                                  
+   256                                      ; Read back GDTR contents safely
+   257 000001B5 0F0106[9E07]                sgdt [gdtr_buffer]
+   258                                  
+   259                                      ; Display GDTR base for confirmation
+   260 000001BA BE[2A06]                    mov si, msg_gdtr_verification
+   261 000001BD E8C802                      call print_string
+   262 000001C0 66A1[A007]                  mov eax, dword [gdtr_buffer + 2]
+   263 000001C4 E8E702                      call print_hex_dword
+   264 000001C7 E8CF02                      call newline
+   265                                  
+   266                                      ; Print success
+   267 000001CA BE[3607]                    mov si, msg_ok
+   268 000001CD E8B802                      call print_string
+   269                                      
+   270 000001D0 B047                        mov al, 'G'            ; GDT loaded
+   271 000001D2 B40E                        mov ah, 0x0E
+   272 000001D4 BB0700                      mov bx, 0x0007
+   273 000001D7 CD10                        int 0x10
+   274                                  
+   275                                      ; Prepare for protected mode transition
+   276 000001D9 BE[4706]                    mov si, msg_pm_transition
+   277 000001DC E8A902                      call print_string
+   278                                      
+   279                                      ; Enable protected mode (set PE bit in CR0)
+   280 000001DF 0F20C0                      mov eax, cr0
+   281 000001E2 6683C801                    or eax, 0x1
+   282 000001E6 0F22C0                      mov cr0, eax
+   283                                  
+   284                                      ; Far jump flushes pipeline and loads CS selector
+   285 000001E9 EA[EE01]0800                jmp CODE_SEG:init_pmode
+   286                                  
+   287                                  [BITS 32]
+   288                                  ; Protected mode entry point
+   289                                  init_pmode:
+   290                                      ; Set up segment registers
+   291 000001EE 66B81000                    mov ax, DATA_SEG       ; Data segment selector
+   292 000001F2 8ED8                        mov ds, ax
+   293 000001F4 8EC0                        mov es, ax
+   294 000001F6 8EE0                        mov fs, ax
+   295 000001F8 8EE8                        mov gs, ax
+   296                                      
+   297                                      ; Set up stack
+   298 000001FA 8ED0                        mov ss, ax
+   299 000001FC BC00000900                  mov esp, 0x90000       ; Set stack pointer
+   300                                  
+   301                                      ; Initialize serial port so -nographic runs still show PM banner
+   302 00000201 E8B6000000                  call serial_init
+   303 00000206 BE[AC070000]                mov esi, pm_msg
+   304 0000020B E8F5000000                  call serial_print
+   305 00000210 B00D                        mov al, 0x0D
+   306 00000212 E8DB000000                  call serial_write_char
+   307 00000217 B00A                        mov al, 0x0A
+   308 00000219 E8D4000000                  call serial_write_char
+   309                                      
+   310                                      ; Clear screen
+   311 0000021E BF00800B00                  mov edi, 0xB8000
+   312 00000223 B9D0070000                  mov ecx, 80*25         ; 80x25 text mode
+   313 00000228 B8200F200F                  mov eax, 0x0F200F20    ; Black on white space
+   314 0000022D F3AB                        rep stosd
+   315                                      
+   316                                      ; Print success message
+   317 0000022F BE[AC070000]                mov esi, pm_msg
+   318 00000234 BF00800B00                  mov edi, 0xB8000
+   319 00000239 B40F                        mov ah, 0x0F           ; White on black
+   320 0000023B FC                          cld
+   321                                  .print_loop:
+   322 0000023C AC                          lodsb
+   323 0000023D 84C0                        test al, al
+   324 0000023F 7404                        jz .print_done
+   325 00000241 66AB                        stosw
+   326 00000243 EBF7                        jmp .print_loop
+   327                                  .print_done:
+   328                                      
+   329                                      ; Print GDT info
+   330 00000245 BE[D2070000]                mov esi, gdt_info_msg
+   331 0000024A BFA0800B00                  mov edi, 0xB8000 + 160 ; Second line
+   332 0000024F E814020000                  call pm_print_string
+   333                                      
+   334                                      ; Print CS value
+   335 00000254 BF40810B00                  mov edi, 0xB8000 + 320 ; Third line
+   336 00000259 BE[EA070000]                mov esi, cs_msg
+   337 0000025E E805020000                  call pm_print_string
+   338                                      
+   339                                      ; Announce TBDS readiness on serial when debug enabled
+   340 00000263 A0[03000000]                mov al, [debug_level]
+   341 00000268 3C00                        cmp al, DEBUG_OFF
+   342 0000026A 7441                        je .skip_tbds_serial
+   343                                  
+   344 0000026C BE[59070000]                mov esi, tbds_ready_msg
+   345 00000271 E88F000000                  call serial_print
+   346 00000276 E8B1010000                  call serial_crlf
+   347                                  
+   348 0000027B BE[84070000]                mov esi, tbds_ptr_msg
+   349 00000280 E880000000                  call serial_print
+   350 00000285 B8[F8070000]                mov eax, tbds_data
+   351 0000028A E887000000                  call serial_print_hex_dword
+   352 0000028F E898010000                  call serial_crlf
+   353                                  
+   354 00000294 BE[91070000]                mov esi, tbds_len_msg
+   355 00000299 E867000000                  call serial_print
+   356 0000029E B886000000                  mov eax, tbds_length
+   357 000002A3 E86E000000                  call serial_print_hex_dword
+   358 000002A8 E87F010000                  call serial_crlf
+   359                                  
+   360                                  .skip_tbds_serial:
+   361                                  
+   362                                      ; Deliver TBDS pointer (EAX) and length (EBX) to kernel
+   363 000002AD B8[F8070000]                mov eax, tbds_data
+   364 000002B2 BB86000000                  mov ebx, tbds_length
+   365                                      
+   366                                      ; Transfer control to 32-bit kernel entry
+   367 000002B7 E9(00000100)                jmp KERNEL_ENTRY
+   368                                  
+   369                                  serial_init:
+   370 000002BC 50                          push eax
+   371 000002BD 52                          push edx
+   372 000002BE 66BAF903                    mov dx, 0x3F9          ; COM1 interrupt enable
+   373 000002C2 31C0                        xor eax, eax
+   374 000002C4 EE                          out dx, al             ; Disable interrupts
+   375 000002C5 66BAFB03                    mov dx, 0x3FB          ; Line control register
+   376 000002C9 B080                        mov al, 0x80           ; Enable DLAB
+   377 000002CB EE                          out dx, al
+   378 000002CC 66BAF803                    mov dx, 0x3F8          ; Divisor low byte
+   379 000002D0 B003                        mov al, 0x03           ; 115200 / 3 = 38400 baud
+   380 000002D2 EE                          out dx, al
+   381 000002D3 66BAF903                    mov dx, 0x3F9          ; Divisor high byte
+   382 000002D7 31C0                        xor eax, eax
+   383 000002D9 EE                          out dx, al
+   384 000002DA 66BAFB03                    mov dx, 0x3FB
+   385 000002DE B003                        mov al, 0x03           ; 8 bits, no parity, one stop
+   386 000002E0 EE                          out dx, al
+   387 000002E1 66BAFA03                    mov dx, 0x3FA          ; FIFO control
+   388 000002E5 B0C7                        mov al, 0xC7           ; Enable FIFO, clear queues
+   389 000002E7 EE                          out dx, al
+   390 000002E8 66BAFC03                    mov dx, 0x3FC          ; Modem control
+   391 000002EC B00B                        mov al, 0x0B           ; IRQs disabled, RTS/DSR set
+   392 000002EE EE                          out dx, al
+   393 000002EF 5A                          pop edx
+   394 000002F0 58                          pop eax
+   395 000002F1 C3                          ret
+   396                                      
+   397                                  serial_write_char:
+   398 000002F2 52                          push edx
+   399 000002F3 50                          push eax
+   400                                  .serial_wait_tx:
+   401 000002F4 66BAFD03                    mov dx, 0x3FD          ; Line status register
+   402 000002F8 EC                          in al, dx
+   403 000002F9 A820                        test al, 0x20          ; THR empty?
+   404 000002FB 74F7                        jz .serial_wait_tx
+   405 000002FD 66BAF803                    mov dx, 0x3F8          ; Transmit holding register
+   406 00000301 58                          pop eax                ; Restore character into AL
+   407 00000302 EE                          out dx, al
+   408 00000303 5A                          pop edx
+   409 00000304 C3                          ret
+   410                                  
+   411                                  serial_print:
+   412 00000305 50                          push eax
+   413 00000306 56                          push esi
+   414                                  .serial_loop:
+   415 00000307 AC                          lodsb
+   416 00000308 84C0                        test al, al
+   417 0000030A 7407                        jz .serial_done
+   418 0000030C E8E1FFFFFF                  call serial_write_char
+   419 00000311 EBF4                        jmp .serial_loop
+   420                                  .serial_done:
+   421 00000313 5E                          pop esi
+   422 00000314 58                          pop eax
+   423 00000315 C3                          ret
+   424                                  
+   425                                  serial_print_hex_dword:
+   426 00000316 50                          push eax
+   427 00000317 52                          push edx
+   428 00000318 51                          push ecx
+   429 00000319 89C2                        mov edx, eax
+   430 0000031B B908000000                  mov ecx, 8
+   431                                  .serial_hex_loop:
+   432 00000320 C1C204                      rol edx, 4
+   433 00000323 88D0                        mov al, dl
+   434 00000325 240F                        and al, 0x0F
+   435 00000327 0430                        add al, '0'
+   436 00000329 3C39                        cmp al, '9'
+   437 0000032B 7602                        jbe .serial_digit
+   438 0000032D 0407                        add al, 7
+   439                                  .serial_digit:
+   440 0000032F E8BEFFFFFF                  call serial_write_char
+   441 00000334 E2EA                        loop .serial_hex_loop
+   442 00000336 59                          pop ecx
+   443 00000337 5A                          pop edx
+   444 00000338 58                          pop eax
+   445 00000339 C3                          ret
+   446                                  
+   447                                  ; Dump memory in hex format
+   448                                  ; EAX = memory address, CX = byte count
+   449                                  dump_memory:
+   450 0000033A 60                          pusha
+   451 0000033B 89C6                        mov esi, eax
+   452 0000033D 89CB                        mov ebx, ecx
+   453                                      
+   454                                  .dump_loop:
+   455                                      ; Print address
+   456 0000033F 89F0                        mov eax, esi
+   457 00000341 E868010000                  call print_hex_dword
+   458 00000346 B03A                        mov al, ':'
+   459 00000348 E8A5FFFFFF                  call serial_write_char
+   460 0000034D B020                        mov al, ' '
+   461 0000034F E89EFFFFFF                  call serial_write_char
+   462                                      
+   463                                      ; Print hex bytes
+   464 00000354 51                          push ecx
+   465 00000355 B910000000                  mov ecx, 16
+   466 0000035A 39CB                        cmp ebx, ecx
+   467 0000035C 764B                        jbe .last_line
+   468 0000035E B910000000                  mov ecx, 16
+   469                                      
+   470                                  .print_hex:
+   471 00000363 AC                          lodsb
+   472 00000364 E8D4000000                  call print_hex_byte
+   473 00000369 B020                        mov al, ' '
+   474 0000036B E882FFFFFF                  call serial_write_char
+   475 00000370 E2F1                        loop .print_hex
+   476                                      
+   477                                      ; Print ASCII representation
+   478 00000372 83EE10                      sub esi, 16
+   479 00000375 B910000000                  mov ecx, 16
+   480 0000037A B07C                        mov al, '|'
+   481 0000037C E871FFFFFF                  call serial_write_char
+   482                                      
+   483                                  .print_ascii:
+   484 00000381 AC                          lodsb
+   485 00000382 3C20                        cmp al, 32
+   486 00000384 7206                        jb .non_printable
+   487 00000386 3C7E                        cmp al, 126
+   488 00000388 7702                        ja .non_printable
+   489 0000038A EB02                        jmp .print_char
+   490                                      
+   491                                  .non_printable:
+   492 0000038C B02E                        mov al, '.'
+   493                                      
+   494                                  .print_char:
+   495 0000038E E85FFFFFFF                  call serial_write_char
+   496 00000393 E2EC                        loop .print_ascii
+   497                                      
+   498 00000395 B07C                        mov al, '|'
+   499 00000397 E856FFFFFF                  call serial_write_char
+   500 0000039C E88B000000                  call serial_crlf
+   501                                      
+   502 000003A1 59                          pop ecx
+   503 000003A2 83EB10                      sub ebx, 16
+   504 000003A5 7598                        jnz .dump_loop
+   505 000003A7 EB04                        jmp .done
+   506                                      
+   507                                  .last_line:
+   508 000003A9 89D9                        mov ecx, ebx
+   509 000003AB EBB6                        jmp .print_hex
+   510                                      
+   511                                  .done:
+   512 000003AD 61                          popa
+   513 000003AE C3                          ret
+   514                                  
+   515                                  ; Dump all general purpose registers
+   516                                  dump_registers:
+   517 000003AF 60                          pusha
+   518 000003B0 9C                          pushf
+   519                                      
+   520                                      ; Save ESP before pushing
+   521 000003B1 89E5                        mov ebp, esp
+   522                                      
+   523                                      ; Get EIP
+   524 000003B3 68[26040000]                push .return_address
+   525 000003B8 8B0424                      mov eax, [esp]
+   526                                      
+   527                                      ; Print register values
+   528 000003BB BE[70060000]                mov esi, reg_names
+   529 000003C0 B908000000                  mov ecx, 8  ; Number of registers to print
+   530 000003C5 8D7C2408                    lea edi, [esp + 8]  ; Skip return address and flags
+   531                                      
+   532                                  .reg_loop:
+   533 000003C9 51                          push ecx
+   534                                      
+   535                                      ; Print register name
+   536 000003CA BE[70060000]                mov esi, reg_names
+   537 000003CF B908000000                  mov ecx, 8
+   538 000003D4 2B0C24                      sub ecx, [esp]
+   539 000003D7 C1E103                      shl ecx, 3  ; Each name is max 8 bytes
+   540 000003DA 01CE                        add esi, ecx
+   541                                      
+   542                                      ; Find end of register name
+   543 000003DC 56                          push esi
+   544 000003DD 89F7                        mov edi, esi
+   545 000003DF 30C0                        xor al, al
+   546 000003E1 B9FFFFFFFF                  mov ecx, -1
+   547 000003E6 F2AE                        repne scasb
+   548 000003E8 F7D1                        not ecx
+   549 000003EA 49                          dec ecx
+   550                                      
+   551                                      ; Print register name
+   552 000003EB B40E                        mov ah, 0x0E
+   553 000003ED BB07000000                  mov ebx, 0x0007
+   554                                      
+   555                                  .print_name:
+   556 000003F2 AC                          lodsb
+   557 000003F3 CD10                        int 0x10
+   558 000003F5 E2FB                        loop .print_name
+   559                                      
+   560                                      ; Print register value
+   561 000003F7 5E                          pop esi
+   562 000003F8 59                          pop ecx
+   563 000003F9 51                          push ecx
+   564                                      
+   565 000003FA 8B47FC                      mov eax, [edi - 4]  ; Get register value from stack
+   566 000003FD E8AC000000                  call print_hex_dword
+   567 00000402 E825000000                  call serial_crlf
+   568                                      
+   569 00000407 83C704                      add edi, 4
+   570 0000040A 59                          pop ecx
+   571 0000040B E2BC                        loop .reg_loop
+   572                                      
+   573                                      ; Print flags
+   574 0000040D BE[A6060000]                mov esi, msg_flags
+   575 00000412 E871000000                  call print_string
+   576 00000417 9C                          pushfd
+   577 00000418 58                          pop eax
+   578 00000419 E890000000                  call print_hex_dword
+   579 0000041E E809000000                  call serial_crlf
+   580                                      
+   581 00000423 9D                          popf
+   582 00000424 61                          popa
+   583 00000425 C3                          ret
+   584                                  
+   585                                  .return_address:
+   586 00000426 83C404                      add esp, 4  ; Clean up EIP
+   587 00000429 9D                          popf
+   588 0000042A 61                          popa
+   589 0000042B C3                          ret
+   590                                  
+   591                                  ; Print newline (CRLF)
+   592                                  serial_crlf:
+   593 0000042C 50                          push eax
+   594 0000042D B00D                        mov al, 0x0D
+   595 0000042F E8BEFEFFFF                  call serial_write_char
+   596 00000434 B00A                        mov al, 0x0A
+   597 00000436 E8B7FEFFFF                  call serial_write_char
+   598 0000043B 58                          pop eax
+   599 0000043C C3                          ret
+   600                                  
+   601                                  ; Print AL as hex
+   602                                  print_hex_byte:
+   603 0000043D 50                          push eax
+   604 0000043E 51                          push ecx
+   605                                      
+   606 0000043F 88C1                        mov cl, al
+   607 00000441 C0E804                      shr al, 4
+   608 00000444 E816000000                  call .nibble_to_hex
+   609 00000449 E8A4FEFFFF                  call serial_write_char
+   610                                      
+   611 0000044E 88C8                        mov al, cl
+   612 00000450 240F                        and al, 0x0F
+   613 00000452 E808000000                  call .nibble_to_hex
+   614 00000457 E896FEFFFF                  call serial_write_char
+   615                                      
+   616 0000045C 59                          pop ecx
+   617 0000045D 58                          pop eax
+   618 0000045E C3                          ret
+   619                                      
+   620                                  .nibble_to_hex:
+   621 0000045F 3C0A                        cmp al, 10
+   622 00000461 7202                        jb .is_digit
+   623 00000463 0407                        add al, 'A' - '0' - 10
+   624                                  .is_digit:
+   625 00000465 0430                        add al, '0'
+   626 00000467 C3                          ret
+   627                                  
+   628                                  ; Protected mode print string function
+   629                                  ; ESI = string, EDI = video memory offset
+   630                                  pm_print_string:
+   631 00000468 60                          pusha
+   632 00000469 B40F                        mov ah, 0x0F           ; White on black
+   633 0000046B FC                          cld
+   634                                  .pm_print_loop:
+   635 0000046C AC                          lodsb
+   636 0000046D 84C0                        test al, al
+   637 0000046F 7408                        jz .pm_print_done
+   638 00000471 668907                      mov [edi], ax
+   639 00000474 83C702                      add edi, 2
+   640 00000477 EBF3                        jmp .pm_print_loop
+   641                                  .pm_print_done:
+   642 00000479 61                          popa
+   643 0000047A C3                          ret
+   644                                  
+   645                                  
+   646                                  [BITS 16]
+   647                                  kernel_error:
+   648 0000047B B045                        mov al, 'E'  ; Error
+   649 0000047D B40E                        mov ah, 0x0E
+   650 0000047F BB0700                      mov bx, 0x0007
+   651 00000482 CD10                        int 0x10
+   652                                  
+   653                                  hang:
+   654 00000484 FA                          cli
+   655 00000485 F4                          hlt
+   656 00000486 EBFE                        jmp $
+   657                                      
+   658                                  ; Helper function to print string in real mode
+   659                                  print_string:
+   660 00000488 60                          pusha
+   661 00000489 B40E                        mov ah, 0x0E
+   662 0000048B BB0700                      mov bx, 0x0007
+   663                                  .repeat:
+   664 0000048E AC                          lodsb
+   665 0000048F 84C0                        test al, al
+   666 00000491 7404                        jz .done
+   667 00000493 CD10                        int 0x10
+   668 00000495 EBF7                        jmp .repeat
+   669                                  .done:
+   670 00000497 61                          popa
+   671 00000498 C3                          ret
+   672                                  
+   673                                  ; Print newline
+   674                                  newline:
+   675 00000499 60                          pusha
+   676 0000049A B40E                        mov ah, 0x0E
+   677 0000049C B00D                        mov al, 0x0D
+   678 0000049E CD10                        int 0x10
+   679 000004A0 B00A                        mov al, 0x0A
+   680 000004A2 CD10                        int 0x10
+   681 000004A4 61                          popa
+   682 000004A5 C3                          ret
+   683                                  
+   684                                  ; A20 error handler
+   685                                  a20_error:
+   686 000004A6 BE[4707]                    mov si, msg_error
+   687 000004A9 E8DCFF                      call print_string
+   688 000004AC EBFE                        jmp $
+   689                                  
+   690                                  ; Helper function to print DWORD in hex
+   691                                  print_hex_dword:
+   692 000004AE 60                          pusha
+   693 000004AF B90800                      mov cx, 8          ; 8 hex digits
+   694 000004B2 BB0700                      mov bx, 0x0007     ; Page 0, attribute 7 (normal)
+   695 000004B5 B40E                        mov ah, 0x0E       ; BIOS teletype
+   696 000004B7 6689C2                      mov edx, eax       ; Save original value
+   697                                  .next_digit:
+   698 000004BA 66C1C204                    rol edx, 4         ; Rotate left 4 bits
+   699 000004BE 88D0                        mov al, dl         ; Get lower nibble
+   700 000004C0 240F                        and al, 0x0F       ; Isolate nibble
+   701 000004C2 0430                        add al, '0'        ; Convert to ASCII
+   702 000004C4 3C39                        cmp al, '9'        ; Check if > '9'
+   703 000004C6 7602                        jbe .print_char
+   704 000004C8 0407                        add al, 7          ; Adjust for A-F
+   705                                  .print_char:
+   706 000004CA CD10                        int 0x10           ; Print character
+   707 000004CC E2EC                        loop .next_digit
+   708 000004CE 61                          popa
+   709 000004CF C3                          ret
+   710                                  
+   711                                  ; === ENABLE A20 GATE ===
+   712                                  enable_a20:
+   713 000004D0 FA                          cli
+   714                                      
+   715                                      ; Check for keypresses
+   716 000004D1 B401                        mov ah, 0x01
+   717 000004D3 CD16                        int 0x16
+   718 000004D5 7403                        jz .no_keypress
+   719                                      
+   720                                      ; Check for debug key combo (Ctrl+Alt+D)
+   721 000004D7 E873FB                      call check_debug_combo
+   722                                      
+   723                                      ; Process other keypresses if needed
+   724                                      ; ...nabled
+   725                                      
+   726                                  .no_keypress:
+   727                                      ; Try BIOS method first
+   728 000004DA B80124                      mov ax, 0x2401
+   729 000004DD CD15                        int 0x15
+   730 000004DF 733F                        jnc .a20_enabled
+   731                                      
+   732                                      ; Try keyboard controller method
+   733 000004E1 E82E00                      call .a20_wait
+   734 000004E4 B0AD                        mov al, 0xAD
+   735 000004E6 E664                        out 0x64, al
+   736                                      
+   737 000004E8 E82700                      call .a20_wait
+   738 000004EB B0D0                        mov al, 0xD0
+   739 000004ED E664                        out 0x64, al
+   740                                      
+   741 000004EF E82700                      call .a20_wait2
+   742 000004F2 E460                        in al, 0x60
+   743 000004F4 6650                        push eax
+   744                                      
+   745 000004F6 E81900                      call .a20_wait
+   746 000004F9 B0D1                        mov al, 0xD1
+   747 000004FB E664                        out 0x64, al
+   748                                      
+   749 000004FD E81200                      call .a20_wait
+   750 00000500 6658                        pop eax
+   751 00000502 0C02                        or al, 2
+   752 00000504 E660                        out 0x60, al
+   753                                      
+   754 00000506 E80900                      call .a20_wait
+   755 00000509 B0AE                        mov al, 0xAE
+   756 0000050B E664                        out 0x64, al
+   757                                      
+   758 0000050D E80200                      call .a20_wait
+   759 00000510 EB0E                        jmp .a20_enabled
+   760                                      
+   761                                  .a20_wait:
+   762 00000512 E464                        in al, 0x64
+   763 00000514 A802                        test al, 2
+   764 00000516 75FA                        jnz .a20_wait
+   765 00000518 C3                          ret
+   766                                      
+   767                                  .a20_wait2:
+   768 00000519 E464                        in al, 0x64
+   769 0000051B A801                        test al, 1
+   770 0000051D 74FA                        jz .a20_wait2
+   771 0000051F C3                          ret
+   772                                      
+   773                                  .a20_enabled:
+   774 00000520 C3                          ret
+   775                                  
+   776                                  ; === GLOBAL DESCRIPTOR TABLE (GDT) ===
+   777                                  ; Align GDT on 8-byte boundary for performance
+   778 00000521 90<rept>                align 8
+   779                                  gdt_start:
+   780                                      ; NULL descriptor (required)
+   781 00000528 0000000000000000            dq 0
+   782                                      
+   783                                      ; Code segment (selector 0x08)
+   784 00000530 FFFF                        dw 0xFFFF       ; Limit (bits 0-15)
+   785 00000532 0000                        dw 0x0000       ; Base (bits 0-15)
+   786 00000534 00                          db 0x00         ; Base (bits 16-23)
+   787 00000535 9A                          db 0x9A         ; Access byte (P=1, DPL=00, S=1, Type=1010)
+   788 00000536 CF                          db 0xCF         ; Flags (G=1, D/B=1, L=0, AVL=0) | Limit (bits 16-19)
+   789 00000537 00                          db 0x00         ; Base (bits 24-31)
+   790                                      
+   791                                      ; Data segment (selector 0x10)
+   792 00000538 FFFF                        dw 0xFFFF       ; Limit (bits 0-15)
+   793 0000053A 0000                        dw 0x0000       ; Base (bits 0-15)
+   794 0000053C 00                          db 0x00         ; Base (bits 16-23)
+   795 0000053D 92                          db 0x92         ; Access byte (P=1, DPL=00, S=1, Type=0010)
+   796 0000053E CF                          db 0xCF         ; Flags (G=1, D/B=1, L=0, AVL=0) | Limit (bits 16-19)
+   797 0000053F 00                          db 0x00         ; Base (bits 24-31)
+   798                                  gdt_end:
+   799                                  
+   800                                  ; Data section
+   801 00000540 4C6F6164696E672054-     msg_loading db 'Loading TernaryBit OS...', 0
+   801 00000549 65726E617279426974-
+   801 00000552 204F532E2E2E00     
+   802 00000559 456E61626C696E6720-     msg_a20 db 'Enabling A20... ', 0
+   802 00000562 4132302E2E2E2000   
+   803                                      
+   804                                  ; GDT-related messages
+   805 0000056A 4C6F6164696E672047-     msg_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
+   805 00000573 44542E2E2E0D0A00   
+   806 0000057B 43616C63756C617469-     msg_calc_gdt db 'Calculating GDT address...', 0x0D, 0x0A, 0
+   806 00000584 6E6720474454206164-
+   806 0000058D 64726573732E2E2E0D-
+   806 00000596 0A00               
+   807 00000598 537461676532207068-     msg_stage2_base db 'Stage2 physical base: 0x', 0
+   807 000005A1 79736963616C206261-
+   807 000005AA 73653A20307800     
+   808 000005B1 435320426173653A20-     msg_cs_base db 'CS Base: 0x', 0
+   808 000005BA 307800             
+   809 000005BD 446861726D612D616C-     msg_gdt_final db 'Dharma-aligned GDT: 0x', 0
+   809 000005C6 69676E656420474454-
+   809 000005CF 3A20307800         
+   810 000005D4 474454204465736372-     msg_gdt_descriptor db 'GDT Descriptor pointer: 0x', 0
+   810 000005DD 6970746F7220706F69-
+   810 000005E6 6E7465723A20307800 
+   811 000005EF 474454206F66667365-     msg_gdt_offset db 'GDT offset: 0x', 0
+   811 000005F8 743A20307800       
+   812 000005FE 4C6F6164696E672047-     msg_loading_gdt db 'Loading GDT...', 0x0D, 0x0A, 0
+   812 00000607 44542E2E2E0D0A00   
+   813 0000060F 474454204C6F616465-     msg_gdt_loaded db 'GDT Loaded. Verifying...', 0x0D, 0x0A, 0
+   813 00000618 642E20566572696679-
+   813 00000621 696E672E2E2E0D0A00 
+   814 0000062A 474454522042617365-     msg_gdtr_verification db 'GDTR Base (should match): 0x', 0
+   814 00000633 202873686F756C6420-
+   814 0000063C 6D61746368293A2030-
+   814 00000645 7800               
+   815 00000647 507265706172696E67-     msg_pm_transition db 'Preparing protected mode transition...', 0x0D, 0x0A, 0
+   815 00000650 2070726F7465637465-
+   815 00000659 64206D6F6465207472-
+   815 00000662 616E736974696F6E2E-
+   815 0000066B 2E2E0D0A00         
+   816                                      
+   817                                  ; Register names for dump
+   818                                  reg_names:
+   819 00000670 4541583A2000                db 'EAX: ', 0
+   820 00000676 4542583A2000                db 'EBX: ', 0
+   821 0000067C 4543583A2000                db 'ECX: ', 0
+   822 00000682 4544583A2000                db 'EDX: ', 0
+   823 00000688 4553493A2000                db 'ESI: ', 0
+   824 0000068E 4544493A2000                db 'EDI: ', 0
+   825 00000694 4553503A2000                db 'ESP: ', 0
+   826 0000069A 4542503A2000                db 'EBP: ', 0
+   827 000006A0 4549503A2000                db 'EIP: ', 0
+   828                                  
+   829                                  ; Debug messages
+   830 000006A6 4B61726D6120537461-     msg_flags db 'Karma State (EFLAGS): 0x', 0
+   830 000006AF 7465202845464C4147-
+   830 000006B8 53293A20307800     
+   831 000006BF 444841524D41204252-     msg_critical_hang db 'DHARMA BREACH: System seeking balance. Dumping state...', 0x0D, 0x0A, 0
+   831 000006C8 454143483A20537973-
+   831 000006D1 74656D207365656B69-
+   831 000006DA 6E672062616C616E63-
+   831 000006E3 652E2044756D70696E-
+   831 000006EC 672073746174652E2E-
+   831 000006F5 2E0D0A00           
+   832 000006F9 456E746572696E6720-     msg_pmode db 'Entering protected-mode darshan (heightened perception)...', 0x0D, 0x0A, 0
+   832 00000702 70726F746563746564-
+   832 0000070B 2D6D6F646520646172-
+   832 00000714 7368616E2028686569-
+   832 0000071D 676874656E65642070-
+   832 00000726 657263657074696F6E-
+   832 0000072F 292E2E2E0D0A00     
+   833 00000736 446861726D6120416C-     msg_ok db 'Dharma Aligned', 0x0D, 0x0A, 0
+   833 0000073F 69676E65640D0A00   
+   834 00000747 4B61726D6120496D62-     msg_error db 'Karma Imbalance', 0x0D, 0x0A, 0
+   834 00000750 616C616E63650D0A00 
+   835 00000759 544244532073747265-     tbds_ready_msg db 'TBDS stream consecrated for kernel darshan', 0
+   835 00000762 616D20636F6E736563-
+   835 0000076B 726174656420666F72-
+   835 00000774 206B65726E656C2064-
+   835 0000077D 61727368616E00     
+   836 00000784 54424453207074723A-     tbds_ptr_msg   db 'TBDS ptr: 0x', 0
+   836 0000078D 20307800           
+   837 00000791 54424453206C656E3A-     tbds_len_msg   db 'TBDS len: 0x', 0
+   837 0000079A 20307800           
+   838                                  
+   839                                  ; Buffer for SGDT verification
+   840 0000079E 0000                    gdtr_buffer dw 0
+   841 000007A0 00000000                            dd 0
+   842 000007A4 00000000                stage2_base dd 0
+   843 000007A8 00000000                stage2_phys dd 0
+   844                                  
+   845                                  ; Protected mode messages
+   846 000007AC 33322D626974205072-     pm_msg db '32-bit Protected-Mode Darshan Active!', 0
+   846 000007B5 6F7465637465642D4D-
+   846 000007BE 6F6465204461727368-
+   846 000007C7 616E20416374697665-
+   846 000007D0 2100               
+   847 000007D2 474454206C6F616465-     gdt_info_msg db 'GDT loaded successfully', 0
+   847 000007DB 642073756363657373-
+   847 000007E4 66756C6C7900       
+   848 000007EA 43533A203078303030-     cs_msg db 'CS: 0x0008', 0
+   848 000007F3 3800               
+   849                                  
+   850                                  ; Variables
+   851 000007F5 00                      boot_drive db 0
+   852                                  
+   853                                  ; TBDS constants
+   854                                  TBDS_SIGNATURE    equ 0x53444454
+   855                                  TBDS_VERSION_1_0  equ 0x0100
+   856                                  TBDS_DESCRIPTOR_COUNT equ 5
+   857                                  TBDS_TYPE_ARCH_INFO         equ 0x0001
+   858                                  TBDS_TYPE_FIRMWARE_INFO     equ 0x0002
+   859                                  TBDS_TYPE_MEMORY_MAP        equ 0x0003
+   860                                  TBDS_TYPE_BOOT_DEVICE       equ 0x0004
+   861                                  TBDS_TYPE_CONSOLE_INFO      equ 0x0006
+   862                                  
+   863 000007F6 90<rept>                align 8
+   864                                  tbds_data:
+   865 000007F8 54444453                    dd TBDS_SIGNATURE
+   866 000007FC 86000000                    dd tbds_end - tbds_data
+   867 00000800 0001                        dw TBDS_VERSION_1_0
+   868 00000802 0500                        dw TBDS_DESCRIPTOR_COUNT
+   869 00000804 00<rept>                    times 8 db 0
+   870                                  
+   871                                      ; ARCH_INFO descriptor
+   872 0000080C 0100                        dw TBDS_TYPE_ARCH_INFO
+   873 0000080E 0000                        dw 0
+   874 00000810 08000000                    dd 8
+   875 00000814 0100                        dw 0x0001
+   876 00000816 2000                        dw 0x0020
+   877 00000818 0100                        dw 0x0001
+   878 0000081A 0000                        dw 0x0000
+   879                                  
+   880                                      ; FIRMWARE_INFO descriptor
+   881 0000081C 0200                        dw TBDS_TYPE_FIRMWARE_INFO
+   882 0000081E 0000                        dw 0
+   883 00000820 08000000                    dd 8
+   884 00000824 0100                        dw 0x0001
+   885 00000826 0000                        dw 0x0000
+   886 00000828 00000100                    dd 0x00010000
+   887                                  
+   888                                      ; MEMORY_MAP descriptor (two entries)
+   889 0000082C 0300                        dw TBDS_TYPE_MEMORY_MAP
+   890 0000082E 0000                        dw 0
+   891 00000830 28000000                    dd 40
+   892 00000834 0000000000000000            dq 0x0000000000000000
+   893 0000083C 00FC090000000000            dq 0x000000000009FC00
+   894 00000844 01000000                    dd 0x00000001
+   895 00000848 0000100000000000            dq 0x0000000000100000
+   896 00000850 0000F03F00000000            dq 0x000000003FF00000
+   897 00000858 01000000                    dd 0x00000001
+   898                                  
+   899                                      ; BOOT_DEVICE descriptor
+   900 0000085C 0400                        dw TBDS_TYPE_BOOT_DEVICE
+   901 0000085E 0000                        dw 0
+   902 00000860 0C000000                    dd 12
+   903 00000864 00                          db 0x00
+   904 00000865 00                          db 0x00
+   905 00000866 0200                        dw 0x0002
+   906 00000868 06000000                    dd BOOT_KERNEL_LBA_START
+   907 0000086C 08000000                    dd BOOT_KERNEL_SECTOR_COUNT
+   908                                  
+   909                                      ; CONSOLE_INFO descriptor
+   910 00000870 0600                        dw TBDS_TYPE_CONSOLE_INFO
+   911 00000872 0000                        dw 0
+   912 00000874 06000000                    dd 6
+   913 00000878 0100                        dw 0x0001
+   914 0000087A 5000                        dw 80
+   915 0000087C 1900                        dw 25
+   916                                  
+   917                                  tbds_end:
+   918                                  tbds_length equ tbds_end - tbds_data
+   919                                  
+   920                                  ; === ENERGY-CONSCIOUS POWER MONITORING ===
+   921                                  check_power_state:
+   922 0000087E 60                          pusha
+   923                                  
+   924                                      ; Check APM (Advanced Power Management) availability
+   925 0000087F B80053                      mov ax, 0x5300  ; APM Installation Check
+   926 00000882 31DB                        xor bx, bx      ; APM BIOS (0000h)
+   927 00000884 CD15                        int 0x15
+   928 00000886 720A                        jc .no_apm
+   929                                  
+   930                                      ; APM available - enable power awareness
+   931 00000888 B001                        mov al, DEBUG_NORMAL
+   932 0000088A BE[9C08]                    mov si, msg_power_aware
+   933 0000088D E808F8                      call debug_log
+   934 00000890 EB08                        jmp .done
+   935                                  
+   936                                  .no_apm:
+   937                                      ; No APM - use basic energy efficiency
+   938 00000892 B002                        mov al, DEBUG_VERBOSE
+   939 00000894 BE[D708]                    mov si, msg_power_basic
+   940 00000897 E8FEF7                      call debug_log
+   941                                  
+   942                                  .done:
+   943 0000089A 61                          popa
+   944 0000089B C3                          ret
+   945                                  
+   946                                  ; Power awareness messages
+   947 0000089C 506F7765723A204150-     msg_power_aware db 'Power: APM available, consciousness-aware energy enabled', 0x0D, 0x0A, 0
+   947 000008A5 4D20617661696C6162-
+   947 000008AE 6C652C20636F6E7363-
+   947 000008B7 696F75736E6573732D-
+   947 000008C0 617761726520656E65-
+   947 000008C9 72677920656E61626C-
+   947 000008D2 65640D0A00         
+   948 000008D7 506F7765723A204261-     msg_power_basic db 'Power: Basic energy-efficient mode active', 0x0D, 0x0A, 0
+   948 000008E0 73696320656E657267-
+   948 000008E9 792D65666669636965-
+   948 000008F2 6E74206D6F64652061-
+   948 000008FB 63746976650D0A00   
+   949                                  
+   950                                  ; GDT Descriptor
+   951                                  gdt_descriptor:
+   952 00000903 1700                        dw gdt_end - gdt_start - 1  ; GDT size (16-bit)
+   953 00000905 [28050000]                  dd gdt_start                ; Physical address of GDT
+   954                                  
+   955                                  
+   956                                  ; Padding to 4KB
+   957 00000909 00<rept>                times 4096-($-$$) db 0

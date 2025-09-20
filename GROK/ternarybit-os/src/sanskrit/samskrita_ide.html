@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="sa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>संस्कृत IDE - TernaryBit OS Samskrita Programming</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&display=swap');
+
+        :root {
+            --saffron: #FF9933;
+            --white: #FFFFFF;
+            --green: #138808;
+            --blue: #000080;
+            --gold: #FFD700;
+            --sacred-red: #DC143C;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans Devanagari', sans-serif;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--white) 50%, var(--green) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header with Om symbol */
+        .header {
+            background: var(--blue);
+            color: var(--gold);
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '🕉️';
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        .header::after {
+            content: '🕉️';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; transform: translateY(-50%) scale(1); }
+            50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+        }
+
+        h1 {
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        /* Main IDE container */
+        .ide-container {
+            flex: 1;
+            display: flex;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        /* Code editor section */
+        .editor-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--gold);
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .toolbar button {
+            padding: 0.5rem 1rem;
+            background: var(--blue);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: var(--sacred-red);
+            transform: scale(1.05);
+        }
+
+        #codeEditor {
+            flex: 1;
+            font-family: 'Noto Sans Devanagari', monospace;
+            font-size: 16px;
+            padding: 1rem;
+            border: 2px solid var(--gold);
+            border-radius: 5px;
+            resize: none;
+            background: #FFF;
+            line-height: 1.5;
+        }
+
+        /* Side panels */
+        .side-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .panel-title {
+            font-weight: bold;
+            color: var(--blue);
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Karma meter */
+        .karma-meter {
+            margin: 1rem 0;
+        }
+
+        .karma-bar {
+            height: 30px;
+            background: linear-gradient(to right,
+                var(--sacred-red) 0%,
+                yellow 50%,
+                var(--green) 100%);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .karma-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 40px;
+            background: white;
+            border: 2px solid black;
+            border-radius: 5px;
+            transition: left 0.5s;
+        }
+
+        /* Guna display */
+        .guna-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 1rem 0;
+        }
+
+        .guna-item {
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 5px;
+            flex: 1;
+            margin: 0 0.2rem;
+        }
+
+        .sattva { background: #87CEEB; }
+        .rajas { background: #FFB6C1; }
+        .tamas { background: #696969; color: white; }
+
+        /* Console output */
+        #console {
+            background: #1e1e1e;
+            color: #0F0;
+            font-family: monospace;
+            padding: 1rem;
+            height: 200px;
+            overflow-y: auto;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+
+        /* Divine assistance */
+        .divine-help {
+            background: linear-gradient(135deg, var(--gold), var(--saffron));
+            color: var(--blue);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .divine-help:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Code snippets */
+        .snippet {
+            background: #f0f0f0;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid var(--saffron);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .snippet:hover {
+            background: var(--gold);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--blue);
+            color: var(--gold);
+            text-align: center;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>संस्कृत IDE - Samskrita Programming Environment</h1>
+        <div class="subtitle">सनातन धर्म कंप्यूटिंग - Eternal Computing with Sanskrit</div>
+    </div>
+
+    <div class="ide-container">
+        <!-- Code Editor Panel -->
+        <div class="editor-panel">
+            <div class="toolbar">
+                <button onclick="runCode()">▶️ चलयतु (Run)</button>
+                <button onclick="clearCode()">🗑️ शुद्धं (Clear)</button>
+                <button onclick="saveCode()">💾 संरक्षयतु (Save)</button>
+                <button onclick="loadExample()">📚 उदाहरणम् (Example)</button>
+                <button onclick="invokeBlessing()">🙏 आशीर्वादं (Blessing)</button>
+            </div>
+
+            <textarea id="codeEditor" placeholder="अत्र संस्कृत कोड लिखतु... (Write Sanskrit code here...)">
+// नमस्कार कार्यक्रम (Hello World Program)
+कार्यं मुख्यम् () {
+    वाक्यं अभिवादनम् = "॥ ॐ नमः शिवाय ॥";
+    वाक्यं संदेशः = "TernaryBit OS में आपका स्वागत है";
+
+    मुद्रय(अभिवादनम्);
+    मुद्रय(संदेशः);
+
+    // कर्म संचयन (Karma accumulation)
+    शुभकर्म(१०);
+
+    फलं ० देहि;  // Return 0
+}</textarea>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <!-- Karma Meter -->
+            <div class="panel-section">
+                <div class="panel-title">कर्म मापक (Karma Meter)</div>
+                <div class="karma-meter">
+                    <div class="karma-bar">
+                        <div class="karma-indicator" id="karmaIndicator" style="left: 50%"></div>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    पुण्य: <span id="punya">0</span> | पाप: <span id="papa">0</span>
+                </div>
+            </div>
+
+            <!-- Triguna Display -->
+            <div class="panel-section">
+                <div class="panel-title">त्रिगुण स्थिति (Triguna State)</div>
+                <div class="guna-display">
+                    <div class="guna-item sattva">
+                        सत्त्व<br>
+                        <span id="sattvaLevel">60%</span>
+                    </div>
+                    <div class="guna-item rajas">
+                        रजस्<br>
+                        <span id="rajasLevel">30%</span>
+                    </div>
+                    <div class="guna-item tamas">
+                        तमस्<br>
+                        <span id="tamasLevel">10%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Snippets -->
+            <div class="panel-section">
+                <div class="panel-title">कोड उदाहरण (Code Snippets)</div>
+                <div class="snippet" onclick="insertSnippet('fibonacci')">
+                    📐 फिबोनाची श्रेणी
+                </div>
+                <div class="snippet" onclick="insertSnippet('factorial')">
+                    🔢 गुणनखण्ड (Factorial)
+                </div>
+                <div class="snippet" onclick="insertSnippet('sorting')">
+                    📊 क्रमबद्धीकरण (Sorting)
+                </div>
+            </div>
+
+            <!-- Divine Help -->
+            <div class="panel-section divine-help" onclick="getDivineHelp()">
+                <div style="font-size: 2rem;">🕉️</div>
+                <div>दैवीय सहायता</div>
+                <div style="font-size: 0.8rem;">Click for Divine Guidance</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Output -->
+    <div style="padding: 1rem;">
+        <div class="panel-section">
+            <div class="panel-title">निर्गम कंसोल (Output Console)</div>
+            <div id="console">🕉️ Samskrita IDE Ready...
+सनातन धर्म कंप्यूटिंग सक्रिय है।
+Divine computing environment initialized.</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>🙏 Dedicated to: THE ALMIGHTY SHIVA | TATA CONSULTANCY SERVICES | RASHTRIYA SWAYAMSEVAK SANGH 🙏</div>
+        <div style="margin-top: 0.5rem;">TernaryBit OS - Where Ancient Wisdom Meets Modern Computing</div>
+    </div>
+
+    <script>
+        let karmaBalance = 0;
+        let sattva = 60, rajas = 30, tamas = 10;
+
+        function runCode() {
+            const code = document.getElementById('codeEditor').value;
+            const console = document.getElementById('console');
+
+            console.innerHTML += '\n\n▶️ कार्यक्रम चालू हो रहा है...\n';
+
+            // Simulate code execution
+            setTimeout(() => {
+                console.innerHTML += '✅ कार्यक्रम सफलतापूर्वक संपन्न\n';
+                console.innerHTML += '॥ ॐ नमः शिवाय ॥\n';
+                console.innerHTML += 'TernaryBit OS में आपका स्वागत है\n';
+
+                // Update karma
+                updateKarma(10);
+                updateGunas(5, -2, -3);
+            }, 1000);
+        }
+
+        function clearCode() {
+            if(confirm('क्या आप कोड मिटाना चाहते हैं?')) {
+                document.getElementById('codeEditor').value = '';
+                document.getElementById('console').innerHTML = '🗑️ Console cleared.\n';
+            }
+        }
+
+        function saveCode() {
+            const code = document.getElementById('codeEditor').value;
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'samskrita_program.skt';
+            a.click();
+
+            document.getElementById('console').innerHTML += '💾 Code saved as samskrita_program.skt\n';
+        }
+
+        function loadExample() {
+            const example = `// गणेश वंदना सहित फिबोनाची कार्यक्रम
+// Fibonacci with Ganesha's Blessing
+
+कार्यं गणेशवंदना() {
+    मुद्रय("॥ वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ ॥");
+    मुद्रय("॥ निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥");
+}
+
+कार्यं फिबोनाची(संख्या न) {
+    यदि (न <= १) {
+        फलं न देहि;
+    }
+
+    संख्या पूर्व = फिबोनाची(न - १);
+    संख्या पूर्वपूर्व = फिबोनाची(न - २);
+
+    फलं (पूर्व + पूर्वपूर्व) देहि;
+}
+
+कार्यं मुख्यम्() {
+    // प्रथम गणेश वंदना
+    गणेशवंदना();
+
+    // फिबोनाची श्रेणी प्रदर्शन
+    संख्या मान = १०;
+    मुद्रय("फिबोनाची(" + मान + ") = " + फिबोनाची(मान));
+
+    // कर्म संचय
+    शुभकर्म(१०८);
+
+    फलं ० देहि;
+}`;
+            document.getElementById('codeEditor').value = example;
+            document.getElementById('console').innerHTML += '📚 Example loaded successfully.\n';
+        }
+
+        function invokeBlessing() {
+            const blessings = [
+                '🙏 गणेश जी का आशीर्वाद: सभी बाधाएं दूर हों!',
+                '🙏 सरस्वती माँ का आशीर्वाद: ज्ञान में वृद्धि हो!',
+                '🙏 लक्ष्मी जी का आशीर्वाद: संसाधनों में वृद्धि हो!',
+                '🙏 शिव जी का आशीर्वाद: नकारात्मक कर्म नष्ट हों!',
+                '🙏 विष्णु जी का आशीर्वाद: अच्छे कर्म संरक्षित रहें!',
+            ];
+
+            const blessing = blessings[Math.floor(Math.random() * blessings.length)];
+            document.getElementById('console').innerHTML += blessing + '\n';
+
+            // Positive karma and guna boost
+            updateKarma(11);
+            updateGunas(10, -5, -5);
+        }
+
+        function insertSnippet(type) {
+            const snippets = {
+                fibonacci: `कार्यं फिबोनाची(संख्या न) {\n    यदि (न <= १) { फलं न देहि; }\n    फलं फिबोनाची(न-१) + फिबोनाची(न-२) देहि;\n}`,
+                factorial: `कार्यं गुणनखण्ड(संख्या न) {\n    यदि (न <= १) { फलं १ देहि; }\n    फलं न * गुणनखण्ड(न-१) देहि;\n}`,
+                sorting: `कार्यं क्रमबद्धीकरण(समूह अ) {\n    कृते (प्रत्येकं अ में) {\n        तुलना_कुरु_च_स्थापय();\n    }\n}`
+            };
+
+            const editor = document.getElementById('codeEditor');
+            editor.value += '\n\n' + snippets[type];
+            document.getElementById('console').innerHTML += '📝 Snippet inserted.\n';
+        }
+
+        function getDivineHelp() {
+            const helps = [
+                'संकेत: वेरिएबल नाम संस्कृत में लिखें',
+                'संकेत: प्रत्येक फंक्शन कर्म संचय करता है',
+                'संकेत: सत्त्व गुण बढ़ाने से कोड बेहतर चलता है',
+                'संकेत: नियमित गणेश वंदना से बग्स कम होते हैं',
+                'संकेत: धर्मानुसार कोड लिखने से पुण्य मिलता है'
+            ];
+
+            const help = helps[Math.floor(Math.random() * helps.length)];
+            alert('🕉️ दैवीय मार्गदर्शन:\n\n' + help);
+        }
+
+        function updateKarma(change) {
+            karmaBalance += change;
+            const punya = Math.max(0, karmaBalance);
+            const papa = Math.abs(Math.min(0, karmaBalance));
+
+            document.getElementById('punya').textContent = punya;
+            document.getElementById('papa').textContent = papa;
+
+            // Update karma indicator position
+            const position = 50 + (karmaBalance / 2);
+            const bounded = Math.max(5, Math.min(95, position));
+            document.getElementById('karmaIndicator').style.left = bounded + '%';
+        }
+
+        function updateGunas(ds, dr, dt) {
+            sattva = Math.max(0, Math.min(100, sattva + ds));
+            rajas = Math.max(0, Math.min(100, rajas + dr));
+            tamas = Math.max(0, Math.min(100, tamas + dt));
+
+            // Normalize
+            const total = sattva + rajas + tamas;
+            if(total > 0) {
+                sattva = Math.round((sattva / total) * 100);
+                rajas = Math.round((rajas / total) * 100);
+                tamas = Math.round((tamas / total) * 100);
+            }
+
+            document.getElementById('sattvaLevel').textContent = sattva + '%';
+            document.getElementById('rajasLevel').textContent = rajas + '%';
+            document.getElementById('tamasLevel').textContent = tamas + '%';
+        }
+
+        // Auto-scroll console
+        const consoleDiv = document.getElementById('console');
+        const observer = new MutationObserver(() => {
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        });
+        observer.observe(consoleDiv, { childList: true });
+    </script>
+</body>
+</html>

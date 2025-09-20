@@ -1,0 +1,74 @@
+name: Cross-Compile
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  cross-compile:
+    name: Cross-Compile for ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, arm, arm64, riscv64]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up QEMU
+      if: matrix.arch != 'x86_64'
+      uses: docker/setup-qemu-action@v2
+      with:
+        platforms: ${{ matrix.arch == 'arm' && 'arm' || matrix.arch == 'arm64' && 'arm64' || 'riscv64' }}
+    
+    - name: Install cross-compiler
+      run: |
+        sudo apt-get update
+        case "${{ matrix.arch }}" in
+          x86_64)
+            sudo apt-get install -y gcc gcc-multilib qemu-system-x86
+            ;;
+          arm)
+            sudo apt-get install -y gcc-arm-none-eabi qemu-system-arm
+            ;;
+          arm64)
+            sudo apt-get install -y gcc-aarch64-linux-gnu qemu-system-aarch64
+            ;;
+          riscv64)
+            sudo apt-get install -y gcc-riscv64-unknown-elf qemu-system-riscv64
+            ;;
+        esac
+    
+    - name: Build
+      run: |
+        make ARCH=${{ matrix.arch }} clean
+        make ARCH=${{ matrix.arch }} all
+    
+    - name: Run tests
+      if: matrix.arch == 'x86_64'  # Only run tests on x86_64
+      run: |
+        make ARCH=${{ matrix.arch }} test
+    
+    - name: Create artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ternarybit-os-${{ matrix.arch }}
+        path: |
+          build/${{ matrix.arch }}/kernel.bin
+          build/${{ matrix.arch }}/bootloader.bin
+          build/${{ matrix.arch }}/tbos
+    
+    - name: Create release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          build/${{ matrix.arch }}/*.bin
+          build/${{ matrix.arch }}/tbos
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

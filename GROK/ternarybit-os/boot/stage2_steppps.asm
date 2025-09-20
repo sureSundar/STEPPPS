@@ -49,10 +49,10 @@
 ; Configuration (overridable via NASM -D defines)
 ; -----------------------------------------------------------------------------
 %ifndef BOOT_KERNEL_LBA_START
-    %define BOOT_KERNEL_LBA_START 6
+    %define BOOT_KERNEL_LBA_START 9   ; Kernel starts at sector 9 according to build script
 %endif
 %ifndef BOOT_KERNEL_SECTOR_COUNT
-    %define BOOT_KERNEL_SECTOR_COUNT 0
+    %define BOOT_KERNEL_SECTOR_COUNT 40  ; 40 sectors = 20KB kernel (enough for 31 sector kernel)
 %endif
 
 %define KERNEL_LBA_START       BOOT_KERNEL_LBA_START
@@ -60,6 +60,7 @@
 %define KERNEL_LOAD_SEG        0x1000
 %define KERNEL_LOAD_OFFSET     0x0000
 %define KERNEL_LOAD_ADDRESS    0x0010000
+%define KERNEL_START_SECTOR    KERNEL_LBA_START  ; Codex: keep loader aligned with stage2_simple params
 
 ; STEPPPS Memory Management Framework
 ; 1. Detect total RAM first
@@ -152,6 +153,7 @@ stage2_start:
     ; Initialize Universal TBDS with Divine Protection
     mov word [tbds_base], 0x7000    ; Sacred location protected by Hanuman
     call indra_tbds_initialize_universal
+    call tbds_initialize           ; Codex: seed TBDS buffer before descriptors
 
     ; Invoke Lakshmi for system prosperity
     mov si, lakshmi_prosperity_msg
@@ -189,71 +191,9 @@ stage2_start:
     mov bx, 0x0007
     int 0x10
 
-    ; Set up kernel loading address
-    mov ax, 0x1000      ; Load kernel at 0x1000:0000
-    mov es, ax
-    xor bx, bx          ; Offset 0
-
-    ; Load kernel sectors - try multi-sector read
-    mov ah, 0x02        ; BIOS read sectors
-    mov al, 18          ; Try reading 18 sectors (1 track)
-    mov ch, 0           ; Cylinder 0
-    mov cl, 10          ; Start at sector 10 (LBA 9)
-    mov dh, 0           ; Head 0
-    mov dl, 0x00        ; Drive A
-    int 0x13
-    jc .try_single_sectors
-
-    ; Successfully loaded first track
-    mov al, 'T'         ; Track loaded
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-
-    ; Load remaining 10 sectors from next track
-    mov ax, es
-    add ax, 0x240       ; Advance by 18*512/16 = 18*32 = 576 = 0x240
-    mov es, ax
-
-    mov ah, 0x02        ; BIOS read sectors
-    mov al, 10          ; Read remaining 10 sectors
-    mov ch, 0           ; Cylinder 0
-    mov cl, 10          ; Start at sector 10 of track 1
-    mov dh, 1           ; Head 1
-    mov dl, 0x00        ; Drive A
-    int 0x13
-    jc .hanuman_disk_error
-
-    mov al, 'K'         ; Kernel fully loaded!
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-    jmp .hanuman_success
-
-.try_single_sectors:
-    ; Fallback: load just first sector
-    mov ah, 0x02        ; BIOS read
-    mov al, 1           ; 1 sector
-    mov ch, 0           ; Cylinder 0
-    mov cl, 10          ; Sector 10 (LBA 9)
-    mov dh, 0           ; Head 0
-    mov dl, 0x00        ; Drive A
-    int 0x13
-    jc .hanuman_disk_error
-
-    mov al, '1'         ; 1 sector loaded
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-
-    jmp .hanuman_success
-
-.hanuman_disk_error:
-    ; Ravana detected! Disk corruption
-    mov al, 'X'
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
+    ; Codex: route through shared loader so BOOT_KERNEL_* defines stay authoritative.
+    call load_kernel_real_mode_safe
+    call tbds_finalize             ; Codex: make sure TBDS header carries final length
 
 .hanuman_success:
 
@@ -333,7 +273,21 @@ protected_mode_entry:
     ; Set up stack for kernel
     mov esp, 0x90000
 
-    ; Jump to kernel loaded at 0x10000
+    ; **CRITICAL FIX**: Pass TBDS data to kernel in EAX/EBX as expected by kernel_entry.asm
+    ; EAX = TBDS pointer (physical address)
+    ; EBX = TBDS length in bytes
+    mov eax, TBDS_BASE              ; Physical address of TBDS stream
+    mov ebx, [tbds_total_length]    ; Length of TBDS data
+
+    ; DEBUG: Show what we're passing to kernel
+    push eax
+    push ebx
+    mov esi, tbds_handoff_msg
+    call print_string_32
+    pop ebx
+    pop eax
+
+    ; Jump to kernel loaded at 0x10000 with TBDS data in EAX/EBX
     jmp 0x10000
 
     ; Should never reach here
@@ -726,6 +680,7 @@ tbds_finalize:
     mov ax, [tbds_cursor]
     sub eax, TBDS_BASE
     mov [TBDS_BASE + 4], eax
+    mov [tbds_total_length], eax   ; Codex: stash length for protected-mode handoff
     ret
 
 tbds_add_arch_info:
@@ -1004,6 +959,7 @@ CONSOLE_INFO_PAYLOAD_LEN equ console_info_payload_end - console_info_payload
 
 tbds_cursor            dw 0
 tbds_descriptor_count  dw 0
+tbds_total_length      dd 0
 
 arch_info_payload:
     dw ARCH_ID_X86             ; architecture id
@@ -1069,6 +1025,7 @@ kernel_ready_msg   db 'Handing off to TernaryBit kernel...', 0x00
 debug_msg1         db 'Debug: Checking kernel load...', 0x00
 kernel_not_loaded_msg db 'ERROR: Kernel not loaded at 0x10000', 0x00
 kernel_found_msg   db 'OK: Kernel found at 0x10000', 0x00
+tbds_handoff_msg   db 'TBDS handoff to kernel - EAX/EBX set', 0x0D, 0x0A, 0x00
 before_protected_msg db 'About to enter protected mode...', 0x0D, 0x0A, 0x00
 a20_enabled_msg     db 'A20 line enabled...', 0x0D, 0x0A, 0x00
 back_from_kernel_msg db 'DEBUG: Back from kernel load', 0x0D, 0x0A, 0x00

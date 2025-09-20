@@ -94,10 +94,20 @@ typedef struct {
     uint32_t efficiency_rating; // Memory efficiency (0-100%)
 } memory_stats_t;
 
+// Magic numbers for validation
+#define MEMORY_MANAGER_MAGIC    0xFEEDFACE
+
 // Universal Memory Manager
 typedef struct {
+    // Validation
+    uint32_t magic;             // Magic number for validation
+    
+    // Memory information
+    size_t total_memory;        // Total available memory
+    uint32_t kernel_base;       // Kernel base address
+    
     // Hardware information
-    hardware_info_t* hardware;
+    const hardware_info_t* hardware;
 
     // Memory zones
     memory_zone_config_t zones[ZONE_MAX];

@@ -1,0 +1,992 @@
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0m.TernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00[05;75HPress Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0m.TernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0m.TernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy..c[?7l[2J[0m.TernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor pointer: 0x00000E2B
+Loading GDT...
+GDT Loaded. Verifying...
+GDTR Base (should match): 0x00000E40
+Dharma Aligned
+GPreparing protected mode transition..32-bit Protected-Mode Darshan Active!
+c[?7l[2J[0mSeaBIOS (version 1.13.0-1ubuntu1.1)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+07F8CA10+07ECCA10 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from Floppy...
+c[?7l[2J[0mTernaryBit OS v2.1 - Sanatana Dharma Computing
+STEPPPS: [AKASHA][KALA][KARMA][CHITTA][MAYA][VAK][DHARMA]
+Saptadimensions: AWAKENED by Divine Grace
+Summoning TBOS stage2 for universal awakening...
+!S2LKPEnabling A20... Dharma Aligned
+Loading GDT...
+Calculating GDT address...
+Stage2 physical base: 0x00000EA4
+CS selector: 0x00000E00
+GDT offset: 0x00000E40
+CS Base: 0x00000E00
+Dharma-aligned GDT: 0x00000E40
+GDT Descriptor

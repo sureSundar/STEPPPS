@@ -13,6 +13,8 @@
 #include "../boot/universal_boot.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>  // For size_t
+#include <stdint.h>  // For uint32_t, etc.
 
 // Magic numbers for validation
 #define MEMORY_BLOCK_MAGIC      0xDEADBEEF
@@ -27,7 +29,221 @@ static memory_block_t* create_memory_block(void* address, size_t size, uint32_t 
 
 // Simple allocator for initial setup
 static void* simple_alloc(size_t size) {
-    return malloc(size);
+    void* ptr = malloc(size);
+    if (ptr) {
+        memset(ptr, 0, size); // Zero-initialize memory
+    }
+    return ptr;
+}
+
+// Simple deallocator
+static void simple_free(void* ptr) {
+    if (ptr) {
+        free(ptr);
+    }
+}
+
+// Global memory block list
+static memory_block_t* g_all_blocks = NULL;
+
+// Helper function to align memory
+static inline size_t align_up(size_t size, size_t alignment) {
+    return (size + alignment - 1) & ~(alignment - 1);
+}
+
+// Helper function to create a new memory block
+static memory_block_t* create_memory_block(memory_manager_t* manager, void* address, 
+                                         size_t size, uint32_t flags, memory_zone_t zone, 
+                                         uint32_t alignment, uint32_t alloc_id) {
+    if (!manager || !address || size == 0) {
+        return NULL;
+    }
+
+    memory_block_t* block = (memory_block_t*)simple_alloc(sizeof(memory_block));
+    if (!block) {
+        return NULL;
+    }
+
+    // Initialize block
+    block->address = address;
+    block->size = size;
+    block->flags = flags;
+    block->zone = zone;
+    block->alignment = alignment;
+    block->is_free = true;
+    block->magic = 0xDEADBEEF;
+    block->alloc_id = alloc_id;
+    block->next = NULL;
+    block->prev = NULL;
+
+    // Add to global block list
+    if (!manager->all_blocks) {
+        manager->all_blocks = block;
+    } else {
+        // Add to the beginning of the list
+        block->next = manager->all_blocks;
+        manager->all_blocks->prev = block;
+        manager->all_blocks = block;
+    }
+
+    // Add to zone's block list if zone is valid
+    if (zone < ZONE_MAX) {
+        memory_zone_config_t* zone_cfg = &manager->zones[zone];
+        if (!zone_cfg->first_block) {
+            zone_cfg->first_block = block;
+        } else {
+            // Add to the beginning of zone's block list
+            block->next = zone_cfg->first_block;
+            zone_cfg->first_block->prev = block;
+            zone_cfg->first_block = block;
+        }
+        zone_cfg->block_count++;
+        zone_cfg->total_size += size;
+        if (block->is_free && size > zone_cfg->largest_free_block) {
+            zone_cfg->largest_free_block = size;
+        }
+    }
+
+    return block;
+}
+
+// Helper function to find a block in a specific zone
+static memory_block_t* find_block_in_zone(memory_zone_config_t* zone, void* address) {
+    if (!zone || !address || !zone->is_active) {
+        return NULL;
+    }
+
+    uintptr_t addr_val = (uintptr_t)address;
+    uintptr_t zone_start = zone->base_address;
+    uintptr_t zone_end = zone_start + zone->total_size;
+    
+    // Check if address is within this zone
+    if (addr_val < zone_start || addr_val >= zone_end) {
+        return NULL;
+    }
+
+    // Search through blocks in this zone
+    memory_block_t* block = zone->first_block;
+    while (block) {
+        uintptr_t block_start = (uintptr_t)block->address;
+        uintptr_t block_end = block_start + block->size;
+        
+        if (addr_val >= block_start && addr_val < block_end) {
+            return block;
+        }
+        block = block->next;
+    }
+    
+    return NULL;
+}
+
+// Helper function to get a memory block by address
+memory_block_t* get_memory_block(memory_manager_t* manager, void* address) {
+    if (!manager || !address) {
+        return NULL;
+    }
+    
+    // Check if address is within any zone
+    for (int i = 0; i < ZONE_MAX; i++) {
+        memory_block_t* block = find_block_in_zone(&manager->zones[i], address);
+        if (block) {
+            return block;
+        }
+    }
+    
+    return NULL;
+}
+
+// Global memory manager instance
+memory_manager_t* g_memory_manager = NULL;
+
+// Forward declarations
+static memory_block_t* create_memory_block(memory_manager_t* manager, void* address, 
+                                         size_t size, uint32_t flags, memory_zone_t zone, 
+                                         uint32_t alignment, uint32_t alloc_id);
+static memory_block_t* find_block_in_zone(memory_zone_config_t* zone, void* address);
+
+/**
+ * @brief Set up default memory zones based on system configuration
+ * @param manager Memory manager instance
+ * @param total_memory Total available memory in bytes
+ * @param kernel_base Kernel base address
+ */
+static void setup_default_memory_zones(memory_manager_t* manager, size_t total_memory, uint32_t kernel_base) {
+    if (!manager) return;
+    
+    // Initialize all zones as inactive first
+    for (int i = 0; i < ZONE_MAX; i++) {
+        manager->zones[i].is_active = false;
+        manager->zones[i].first_block = NULL;
+        manager->zones[i].block_count = 0;
+        manager->zones[i].allocation_count = 0;
+        manager->zones[i].allocated_size = 0;
+        manager->zones[i].total_size = 0;
+        manager->zones[i].largest_free_block = 0;
+        manager->zones[i].base_address = 0;
+    }
+    
+    // Initialize all zones as inactive first
+    for (int i = 0; i < ZONE_MAX; i++) {
+        manager->zones[i].is_active = false;
+        manager->zones[i].first_block = NULL;
+        manager->zones[i].block_count = 0;
+        manager->zones[i].allocation_count = 0;
+        manager->zones[i].allocated_size = 0;
+        manager->zones[i].total_size = 0;
+        manager->zones[i].largest_free_block = 0;
+    }
+
+    // Kernel zone (first 16MB or 1/4 of total memory, whichever is smaller)
+    size_t kernel_size = (total_memory < (16 * 1024 * 1024)) ? 
+                         (total_memory / 4) : (16 * 1024 * 1024);
+    
+    // STEPPPS framework zone (1/8 of total memory, minimum 4MB)
+    size_t steppps_size = (total_memory / 8) > (4 * 1024 * 1024) ? 
+                          (total_memory / 8) : (4 * 1024 * 1024);
+    
+    // Application zone (remaining memory)
+    size_t app_size = total_memory - kernel_size - steppps_size;
+
+    // Set up kernel zone
+    manager->zones[ZONE_KERNEL].base_address = kernel_base;
+    manager->zones[ZONE_KERNEL].total_size = kernel_size;
+    manager->zones[ZONE_KERNEL].is_active = true;
+
+    // Set up STEPPPS zone
+    manager->zones[ZONE_STEPPPS].base_address = kernel_base + kernel_size;
+    manager->zones[ZONE_STEPPPS].total_size = steppps_size;
+    manager->zones[ZONE_STEPPPS].is_active = true;
+
+    // Set up application zone
+    manager->zones[ZONE_APPLICATION].base_address = kernel_base + kernel_size + steppps_size;
+    manager->zones[ZONE_APPLICATION].total_size = app_size;
+    manager->zones[ZONE_APPLICATION].is_active = true;
+
+    // Initialize free blocks for each zone
+    for (int i = 0; i < ZONE_MAX; i++) {
+        if (manager->zones[i].is_active) {
+            // Create a single free block for the entire zone
+            memory_block_t* block = (memory_block_t*)simple_alloc(sizeof(memory_block_t));
+            if (block) {
+                block->address = (void*)manager->zones[i].base_address;
+                block->size = manager->zones[i].total_size;
+                block->flags = MEM_FLAG_NONE;
+                block->zone = (memory_zone_t)i;
+                block->alignment = ALIGN_DEFAULT;
+                block->is_free = true;
+                block->next = NULL;
+                block->prev = NULL;
+                block->magic = 0xDEADBEEF; // Magic number for validation
+                block->alloc_id = 0;
+                
+                manager->zones[i].first_block = block;
+                manager->zones[i].block_count = 1;
+                manager->zones[i].largest_free_block = block->size;
+            }
+        }
+    }
 }
 
 static void simple_free(void* ptr) {
@@ -42,27 +258,54 @@ memory_manager_t* initialize_memory_manager(
     size_t total_memory,
     uint32_t kernel_base
 ) {
+    if (!hardware || total_memory == 0) {
+        return NULL;
+    }
     if (!hardware) return NULL;
 
-    // Allocate manager structure
+    // Allocate and initialize manager structure
     memory_manager_t* manager = (memory_manager_t*)simple_alloc(sizeof(memory_manager_t));
-    if (!manager) return NULL;
-
-    // Initialize manager structure
-    memset(manager, 0, sizeof(memory_manager_t));
-    manager->hardware = (hardware_info_t*)hardware;
-
+    if (!manager) {
+        return NULL;
+    }
+    
+    // Initialize manager fields
+    manager->magic = MEMORY_MANAGER_MAGIC;
+    manager->total_memory = total_memory;
+    manager->kernel_base = kernel_base;
+    manager->hardware = hardware;
+    
+    // Initialize memory zones
+    for (int i = 0; i < ZONE_MAX; i++) {
+        manager->zones[i].is_active = false;
+        manager->zones[i].first_block = NULL;
+        manager->zones[i].block_count = 0;
+        manager->zones[i].allocation_count = 0;
+        manager->zones[i].allocated_size = 0;
+        manager->zones[i].total_size = 0;
+        manager->zones[i].largest_free_block = 0;
+    }
+    
     // Initialize statistics
     manager->stats.total_memory = total_memory;
     manager->stats.free_memory = total_memory;
+    manager->stats.allocated_memory = 0;
+    manager->stats.largest_free = total_memory;
+    manager->stats.fragmentation = 0;
+    manager->stats.allocation_count = 0;
+    manager->stats.deallocation_count = 0;
+    manager->stats.failed_allocations = 0;
+    manager->stats.memory_leaks = 0;
     manager->stats.efficiency_rating = 100;
-
-    // Configure capabilities based on hardware
-    manager->mmu_enabled = hardware->has_mmu;
+    
+    // Set default configuration based on hardware capabilities
+    manager->mmu_enabled = (hardware->capabilities & HW_CAP_MMU) != 0;
     manager->compression_enabled = (total_memory > 65536); // Enable on >64KB systems
-    manager->garbage_collection_enabled = (total_memory > 4096); // Enable on >4KB systems
     manager->leak_detection_enabled = true;
-    manager->protection_enabled = hardware->has_mmu;
+    manager->protection_enabled = (hardware->capabilities & HW_CAP_MMU) != 0;
+
+    // Set up initial memory zones
+    setup_default_memory_zones(manager, total_memory, kernel_base);
 
     // Initialize allocation tracking
     manager->next_alloc_id = 1;
