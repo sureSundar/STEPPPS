@@ -1,10 +1,49 @@
 # TernaryBit OS - STEPPPS Universal Framework
 
-[![CI/CD Status](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml)
+[Read the Full Documentation → README_FULL.md](README_FULL.md)
+
+[Research Paper → RESEARCH_PAPER.md](RESEARCH_PAPER.md)
+
+[![CI](https://img.shields.io/github/actions/workflow/status/suresundar/steppps/ci.yml?branch=main)](https://github.com/suresundar/steppps/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://dev.azure.com/ternarybit/ternarybit-os/_apis/build/status/ternarybit.ternarybit-os?branchName=main)](https://dev.azure.com/ternarybit/ternarybit-os/_build/latest?definitionId=1&branchName=main)
+[![Repo](https://img.shields.io/badge/GitHub-suresundar%2Fsteppps-blue?logo=github)](https://github.com/suresundar/steppps)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.placeholder-blue)](https://doi.org/10.5281/zenodo.placeholder)
 
 A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
+
+## 🚀 TBOS Alpine Quick Start
+
+Build (x86_64):
+
+```bash
+cd deploy/alpine
+bash build-x86_64.sh
+# artifact: deploy/alpine/out/x86_64/initramfs.cpio.gz
+```
+
+Boot (QEMU):
+
+```bash
+cd deploy/alpine/qa
+bash qemu-x86_64.sh \
+  --kernel /path/to/bzImage \
+  --initrd ../out/x86_64/initramfs.cpio.gz
+```
+
+Demos (inside TBOS):
+
+```bash
+bash deploy/alpine/qa/tbos-optic-demo.sh
+bash deploy/alpine/qa/tbos-optic-link-demo.sh
+```
+
+Persona-aware shell:
+
+```text
+mode calc    # calc 2+3*7
+mode tiny    # compact
+mode default # full
+```
 
 ## 📦 Build Status
 
@@ -209,3 +248,20 @@ This project demonstrates successful collaboration between multiple AI coding ag
 ---
 
 **Status**: Active Development | **Last Updated**: 2025-09-19 | **Build**: v2.1
+
+## 📚 Citation
+
+If you use this work, please cite:
+
+```
+@misc{tbos_steppps_2025,
+  title        = {TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems},
+  author       = {Suresh Sundararajan and Cascade},
+  year         = {2025},
+  howpublished = {GitHub},
+  doi          = {10.5281/zenodo.placeholder},
+  url          = {https://github.com/suresundar/steppps}
+}
+```
+
+Also see `CITATION.cff` at the repo root. After Zenodo mints a DOI for a release, replace the placeholder with the actual DOI.

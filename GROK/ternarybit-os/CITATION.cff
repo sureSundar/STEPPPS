@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems"
+authors:
+  - family-names: "Sundararaman Sethuraman Kandaswamy Ramakrishnan Nallaperumal"
+    given-names: "Sundararaman.S"
+    email: "suresundar@gmail.com"
+  - name: "Cascade,Claude,Codex"
+    given-names: "Cascade"
+    family-names: "AI Assistant"
+keywords:
+  - TBOS
+  - STEPPPS
+  - Operating Systems
+  - Edge AI
+  - PXFS
+  - RF2S
+  - PF2S
+  - Reliability
+  - LLM
+license: ternarybit@gmail.com
+Sales: flyforsuresky@gmail.com
+repository-code: "https://github.com/suresundar/steppps"
+doi: "10.5281/zenodo.placeholder"
+version: "0.1.0"
+date-released: "2025-09-20"
+abstract: |
+  TBOS operationalizes the STEPPPS seven-dimensional model—Space, Time, Event,
+  Psychology, Pixel, Prompt, Script—into a reliable, inspectable substrate for
+  autonomous devices. With grammar-constrained LLM outputs, content-addressed
+  compute on PXFS, and RF/optical file systems (RF2S/PF2S), TBOS enables
+  predictable autonomy across device classes.

@@ -1,0 +1,9 @@
+{
+  "name": "default",
+  "cpu": {"quota_pct": 100},
+  "memory": {"limit_mb": 0},
+  "display": {"cols": 120, "rows": 36},
+  "shell": {"persona": "default", "prompt": "tbos> "},
+  "features": {"disable": [], "enable": ["wifi", "bt", "audio", "sdr"]},
+  "kexec": null
+}

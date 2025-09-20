@@ -114,6 +114,45 @@ dd if="$BUILD_DIR/stage2.bin" of="$IMG" bs=512 seek=1 conv=notrunc status=none
 dd if="$BUILD_DIR/kernel_padded.bin" of="$IMG" bs=512 seek=$((KERNEL_START_SECTOR)) \
    conv=notrunc status=none
 
+# ---------------------------------------------------------------------------
+# Step 4: Pixelize kernel using TBPX (Mode L) and verify roundtrip
+# ---------------------------------------------------------------------------
+display_step "Pixelizing kernel via TBPX (lossless image)"
+
+TBPX_TOOL="tools/tbpx_codec.py"
+if [[ -f "$TBPX_TOOL" ]]; then
+    # Prefer PNG if Pillow is available, else use PPM (no deps)
+    if python3 -c "import PIL" >/dev/null 2>&1; then
+        TBPX_FORMAT="png"
+    else
+        TBPX_FORMAT="ppm"
+    fi
+    TBPX_OUT="$BUILD_DIR/kernel_tbpx.$TBPX_FORMAT"
+    TBPX_ENC_OPTS=( --width 256 --repeat-header --format "$TBPX_FORMAT" )
+    # Optional integrity/signing
+    if [[ "${TBPX_SHA256:-}" == "1" ]]; then
+        TBPX_ENC_OPTS+=( --sha256 )
+    fi
+    if [[ -n "${TBPX_SIGN_PRIV:-}" ]]; then
+        TBPX_ENC_OPTS+=( --sign "$TBPX_SIGN_PRIV" )
+    fi
+    python3 "$TBPX_TOOL" encode "$BUILD_DIR/kernel.bin" "$TBPX_OUT" "${TBPX_ENC_OPTS[@]}" >/dev/null
+
+    TBPX_DEC_OPTS=()
+    if [[ -n "${TBPX_VERIFY_PUB:-}" ]]; then
+        TBPX_DEC_OPTS+=( --verify "$TBPX_VERIFY_PUB" )
+    fi
+    python3 "$TBPX_TOOL" decode "$TBPX_OUT" "$BUILD_DIR/kernel_from_tbpx.bin" "${TBPX_DEC_OPTS[@]}" >/dev/null
+    if cmp -s "$BUILD_DIR/kernel.bin" "$BUILD_DIR/kernel_from_tbpx.bin"; then
+        echo "   TBPX roundtrip: OK (kernel.bin -> $TBPX_FORMAT -> bin)"
+    else
+        echo "Error: TBPX roundtrip failed (kernel mismatch after decode)" >&2
+        exit 1
+    fi
+else
+    echo "   Skipping TBPX step (tools/tbpx_codec.py not found)"
+fi
+
 echo ""
 echo "Build complete!"
 echo "  Boot sector : $BOOT_SIZE bytes"

@@ -1,0 +1,42 @@
+# GBNF grammar for a minimal STEPPPS Frame JSON (v0.1)
+# This grammar constrains the model to emit a small, valid JSON frame with
+# meta.version, time.ts, and optional events/links arrays.
+
+root         ::= ws object ws
+
+object       ::= '{' ws (pair (ws ',' ws pair)*)? ws '}'
+pair         ::= string ws ':' ws value
+array        ::= '[' ws (value (ws ',' ws value)*)? ws ']'
+value        ::= string | number | object | array | 'true' | 'false' | 'null'
+
+string       ::= '"' chars '"'
+chars        ::= {char}
+char         ::= [^"\\\u0000-\u001F] | '\\"' | '\\\\' | '\\/' | '\\b' | '\\f' | '\\n' | '\\r' | '\\t'
+               | '\\u' hex hex hex hex
+hex          ::= [0-9a-fA-F]
+
+number       ::= '-'? int frac? exp?
+int          ::= '0' | [1-9] [0-9]*
+frac         ::= '.' [0-9]+
+exp          ::= [eE] [+-]? [0-9]+
+
+ws           ::= { [ \t\n\r] }
+
+# Constrain to a frame-like object with known keys
+frame        ::= '{' ws meta ',' ws time (',' ws events)? (',' ws links)? ws '}'
+meta         ::= '"meta"' ws ':' ws '{' ws '"version"' ws ':' ws version_str (ws ',' ws '"profile"' ws ':' ws profile_str)? ws '}'
+version_str  ::= '"0.1"'
+profile_str  ::= '"micro"' | '"edge"' | '"full"'
+
+time         ::= '"time"' ws ':' ws '{' ws '"ts"' ws ':' ws iso8601 ws '}'
+iso8601      ::= '"' iso_core '"'
+iso_core     ::= [0-9]{4} '-' [0-9]{2} '-' [0-9]{2} 'T' [0-9]{2} ':' [0-9]{2} ':' [0-9]{2} 'Z'
+
+events       ::= '"events"' ws ':' ws '[' ws (event (ws ',' ws event)*)? ws ']'
+event        ::= '{' ws '"time"' ws ':' ws '{' ws '"ts"' ws ':' ws iso8601 ws '}' ws ',' ws '"kind"' ws ':' ws string (ws ',' ws '"data"' ws ':' ws object)? ws '}'
+
+links        ::= '"links"' ws ':' ws '[' ws (link (ws ',' ws link)*)? ws ']'
+link         ::= '{' ws '"rel"' ws ':' ws string ws ',' ws '"href"' ws ':' ws string ws '}'
+
+# Entry point should be a frame
+root         ::= ws frame ws

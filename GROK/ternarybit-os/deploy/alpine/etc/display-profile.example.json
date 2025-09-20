@@ -1,0 +1,11 @@
+{
+  "description": "Example display profile for sRGB-like panel. Copy to /etc/tbos/display-profile.json to override defaults.",
+  "gamma": 2.2,
+  "primaries_nm": {
+    "R": 610.0,
+    "G": 540.0,
+    "B": 460.0
+  },
+  "sigma_nm": 15.0,
+  "white_point": "D65"
+}

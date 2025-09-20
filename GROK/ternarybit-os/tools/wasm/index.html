@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TernaryBit OS - Web Interface</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #00ff9f;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(0, 255, 159, 0.1);
+            padding: 10px 20px;
+            border-bottom: 2px solid #00ff9f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff9f;
+        }
+
+        .status {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .terminal {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.8);
+            margin: 10px;
+            border: 2px solid #00ff9f;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .terminal::before {
+            content: '🔱 TernaryBit OS Terminal';
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            background: #1a1a2e;
+            padding: 0 10px;
+            color: #00ff9f;
+            font-size: 12px;
+        }
+
+        .output {
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #ff6b6b;
+            margin-right: 5px;
+        }
+
+        .input {
+            background: transparent;
+            border: none;
+            color: #00ff9f;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            flex: 1;
+        }
+
+        .cursor {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .controls {
+            padding: 10px 20px;
+            background: rgba(0, 255, 159, 0.05);
+            border-top: 1px solid #00ff9f;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: rgba(0, 255, 159, 0.2);
+            border: 1px solid #00ff9f;
+            color: #00ff9f;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 159, 0.4);
+            box-shadow: 0 0 10px rgba(0, 255, 159, 0.5);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 2px solid rgba(0, 255, 159, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid #00ff9f;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔱 TernaryBit OS</div>
+            <div class="status">
+                <div>Status: <span id="status">Initializing...</span></div>
+                <div>Memory: <span id="memory">0 MB</span></div>
+                <div>Uptime: <span id="uptime">00:00:00</span></div>
+            </div>
+        </div>
+
+        <div class="terminal" id="terminal">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Loading TernaryBit OS WebAssembly Module...</div>
+            </div>
+            <div id="output" class="output"></div>
+            <div class="input-line">
+                <span class="prompt">tbos@web:~$</span>
+                <input type="text" class="input" id="input" disabled>
+                <span class="cursor">█</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="TBOS_Web.boot()">🚀 Boot TBOS</button>
+            <button class="btn" onclick="TBOS_Web.reset()">🔄 Reset</button>
+            <button class="btn" onclick="TBOS_Web.showInfo()">ℹ️ System Info</button>
+            <button class="btn" onclick="TBOS_Web.runDemo()">🎮 Demo Mode</button>
+            <button class="btn" onclick="TBOS_Web.openFS()">📁 File System</button>
+            <button class="btn" onclick="TBOS_Web.showHelp()">❓ Help</button>
+        </div>
+    </div>
+
+    <script src="tbos.js"></script>
+    <script src="tbos-web-interface.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "STEPPPS Frame",
+  "type": "object",
+  "required": ["meta", "time"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {"type": "string"},
+        "id": {"type": "string"},
+        "profile": {"type": "string", "enum": ["micro", "edge", "full"]},
+        "origin": {"type": "string"},
+        "sig": {"type": "string"}
+      }
+    },
+    "time": {
+      "type": "object",
+      "required": ["ts"],
+      "properties": {
+        "ts": {"type": "string"},
+        "duration_ms": {"type": "number"}
+      }
+    },
+    "space": {
+      "type": "object",
+      "properties": {
+        "device_id": {"type": "string"},
+        "loc": {
+          "type": "object",
+          "properties": {
+            "lat": {"type": "number"},
+            "lon": {"type": "number"},
+            "alt": {"type": "number"}
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {"$ref": "steppps_event.json"}
+    },
+    "pixel": {"type": "object"},
+    "prompt": {"$ref": "steppps_prompt.json"},
+    "script": {"type": "object"},
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rel", "href"],
+        "properties": {
+          "rel": {"type": "string"},
+          "href": {"type": "string"}
+        }
+      }
+    }
+  }
+}

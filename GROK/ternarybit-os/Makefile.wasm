@@ -1,0 +1,55 @@
+# TernaryBit OS WebAssembly Build System
+# Enables TBOS to run in web browsers and JavaScript environments
+
+CC = emcc
+LD = emcc
+CFLAGS = -O2 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=4
+LDFLAGS = -s EXPORTED_FUNCTIONS='["_main","_tbos_init","_tbos_run","_tbos_shutdown"]' \
+          -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
+          -s ALLOW_MEMORY_GROWTH=1 \
+          -s INITIAL_MEMORY=32MB \
+          -s MAXIMUM_MEMORY=512MB \
+          -s USE_PTHREADS=1 \
+          -s PTHREAD_POOL_SIZE=4 \
+          -s MODULARIZE=1 \
+          -s EXPORT_NAME='TBOS'
+
+# Source files
+WASM_SRCS = \
+    kernel/wasm/tbos_wasm_main.c \
+    kernel/core/init.c \
+    kernel/core/scheduler.c \
+    kernel/core/memory.c \
+    kernel/drivers/wasm/console.c \
+    kernel/drivers/wasm/storage.c \
+    kernel/fs/vfs.c \
+    lib/string.c \
+    lib/math.c
+
+# Output files
+WASM_OUT = build/wasm
+WASM_JS = $(WASM_OUT)/tbos.js
+WASM_WASM = $(WASM_OUT)/tbos.wasm
+
+# Build targets
+.PHONY: wasm wasm-clean wasm-test
+
+wasm: $(WASM_JS)
+
+$(WASM_JS): $(WASM_SRCS) | $(WASM_OUT)
+	@echo "🌐 Building TBOS WebAssembly..."
+	$(CC) $(CFLAGS) $(WASM_SRCS) -o $@ $(LDFLAGS)
+	@echo "📦 Generating TBOS Web Package..."
+	@cp tools/wasm/* $(WASM_OUT)/
+	@echo "✅ TBOS WebAssembly build complete!"
+
+$(WASM_OUT):
+	@mkdir -p $(WASM_OUT)
+
+wasm-clean:
+	@rm -rf $(WASM_OUT)
+
+wasm-test: wasm
+	@echo "🧪 Testing TBOS WebAssembly..."
+	@cd $(WASM_OUT) && python3 -m http.server 8080 &
+	@echo "🌐 Test server: http://localhost:8080"

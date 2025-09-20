@@ -1,0 +1,17 @@
+#!/bin/sh
+# Usage: mount-pxfs <mountpoint> [--backing DIR] [--sep R,G,B]
+set -eu
+MP=${1:-}
+shift || true
+[ -n "$MP" ] || { echo "usage: mount-pxfs <mountpoint> [--backing DIR] [--sep R,G,B]"; exit 1; }
+BACKING=/var/lib/pxfs
+SEP=255,255,255
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --backing) BACKING=$2; shift 2 ;;
+    --sep) SEP=$2; shift 2 ;;
+    *) break ;;
+  esac
+done
+mkdir -p "$MP" "$BACKING"
+exec pxfs_fuse.py --backing "$BACKING" --sep "$SEP" "$MP"

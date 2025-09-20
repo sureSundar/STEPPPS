@@ -1,0 +1,136 @@
+#!/bin/sh
+# TBOS first-boot installer: installs optional shells and filesystem tooling via apk/pip.
+# Controlled by /etc/tbos/features.conf (if present). Idempotent via marker file.
+set -eu
+
+MARKER=/var/run/tbos-firstboot.done
+[ -f "$MARKER" ] && exit 0
+
+log() { echo "[tbos-firstboot] $*" | tee -a /var/log/tbos/firstboot.log; }
+warn() { echo "[tbos-firstboot][WARN] $*" | tee -a /var/log/tbos/firstboot.log >&2; }
+
+# Defaults
+TBOS_SHELLS=${TBOS_SHELLS:-"bash zsh mksh tcsh"}
+TBOS_FS=${TBOS_FS:-"ntfs exfat fusepy"}
+TBOS_EXTRAS=${TBOS_EXTRAS:-""}
+TBOS_SENSORS=${TBOS_SENSORS:-"wifi bt audio sdr"}
+
+# Load config if present
+if [ -f /etc/tbos/features.conf ]; then
+  # shellcheck disable=SC1091
+  . /etc/tbos/features.conf
+fi
+
+# Ensure apk index
+if ! command -v apk >/dev/null 2>&1; then
+  warn "apk not available; skipping package installs"
+  exit 0
+fi
+
+log "Updating apk index"
+apk update || true
+
+install_pkg() {
+  PKG="$1"
+  if apk info -e "$PKG" >/dev/null 2>&1; then
+    log "already installed: $PKG"
+  else
+    log "installing: $PKG"
+    apk add --no-cache "$PKG" || warn "failed: $PKG"
+  fi
+}
+
+# Install shells
+for shpkg in $TBOS_SHELLS; do
+  case "$shpkg" in
+    bash) install_pkg bash ;;
+    zsh) install_pkg zsh ;;
+    mksh) install_pkg mksh ;;
+    tcsh) install_pkg tcsh ;;
+    ksh|oksh) install_pkg oksh || warn "oksh not found" ;;
+    pwsh|powershell)
+      # PowerShell is heavy and may not exist in Alpine repos; attempt if available
+      install_pkg powershell || warn "PowerShell not available in repo; skipped"
+      ;;
+    *) warn "unknown shell: $shpkg" ;;
+  esac
+done
+
+# Filesystem tooling
+for fspkg in $TBOS_FS; do
+  case "$fspkg" in
+    ntfs) install_pkg ntfs-3g ;;
+    exfat) install_pkg exfatprogs ;;
+    fuse|fuse3) install_pkg fuse; install_pkg fuse3 ;;
+    fusepy)
+      install_pkg python3 || true
+      install_pkg py3-pip || true
+      if command -v pip3 >/dev/null 2>&1; then
+        log "pip install fusepy"
+        pip3 install --no-cache-dir fusepy || warn "pip fusepy failed"
+      fi
+      ;;
+    sqlite) install_pkg sqlite ;; 
+    *) warn "unknown fs feature: $fspkg" ;;
+  esac
+done
+
+# Sensor tooling
+for sgrp in $TBOS_SENSORS; do
+  case "$sgrp" in
+    wifi)
+      install_pkg iw || true
+      install_pkg wireless-tools || true
+      ;;
+    bt|bluetooth)
+      install_pkg bluez || true
+      ;;
+    audio|mic)
+      install_pkg alsa-utils || true
+      install_pkg sox || true
+      ;;
+    sdr)
+      install_pkg rtl-sdr || true
+      install_pkg hackrf || true
+      ;;
+    *) warn "unknown sensor group: $sgrp" ;;
+  esac
+done
+
+# Drop default radio policy if missing
+if [ ! -f /etc/tbos/radio-policy.json ]; then
+  install -Dm644 /dev/stdin /etc/tbos/radio-policy.json <<'JSON'
+{
+  "tx_enabled": false,
+  "whitelist": [
+    {"min_mhz": 2400.0, "max_mhz": 2483.5, "max_dbm": 10}
+  ]
+}
+JSON
+fi
+
+# Install mount helpers and FUSE prototypes if present in image
+for helper in /usr/local/lib/tbos/fs/helpers/*; do
+  [ -f "$helper" ] || continue
+  install -Dm755 "$helper" "/usr/bin/$(basename "$helper")"
+  log "installed helper $(basename "$helper")"
+done
+for py in /usr/local/lib/tbos/fs/fuse/*.py; do
+  [ -f "$py" ] || continue
+  install -Dm755 "$py" "/usr/bin/$(basename "$py")"
+  log "installed FUSE impl $(basename "$py")"
+done
+
+# Extras
+for pkg in $TBOS_EXTRAS; do
+  install_pkg "$pkg"
+done
+
+# Attempt optional tools for profiles/hotkeys if present in repos
+install_pkg py3-evdev || true
+install_pkg kexec-tools || true
+
+# Mark done
+mkdir -p "$(dirname "$MARKER")"
+: > "$MARKER"
+log "first-boot complete"

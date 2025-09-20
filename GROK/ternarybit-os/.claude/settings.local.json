@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 2 qemu-system-i386:*)",
+      "Bash(qemu-system-i386:*)",
+      "Read(//media/sf_vboxshare/lab/STEPPPS/GROK/buildroot-2024.02/**)",
+      "Bash(python3:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

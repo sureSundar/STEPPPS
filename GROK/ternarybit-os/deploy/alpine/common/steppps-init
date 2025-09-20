@@ -1,0 +1,158 @@
+#!/bin/sh
+# Minimal init for TBOS × Alpine.
+# Must be static and simple: mount core, set up console, net (optional), hand off to tbos-shell.
+
+set -eu
+
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+echo "[steppps-init] booting..."
+
+# Mount core filesystems
+mount -t proc proc /proc || true
+mount -t sysfs sysfs /sys || true
+mount -t devtmpfs devtmpfs /dev || mknod -m 622 /dev/console c 5 1 || true
+mount -t tmpfs tmpfs /run || true
+
+# Ensure console
+[ -c /dev/console ] || mknod -m 600 /dev/console c 5 1
+[ -c /dev/null ] || mknod -m 666 /dev/null c 1 3
+
+# Set hostname
+echo tbos-alpine > /proc/sys/kernel/hostname || true
+
+# Bring up loopback
+ip link set lo up 2>/dev/null || ifconfig lo up 2>/dev/null || true
+
+# Attempt basic DHCP on first eth-like interface
+IFACE="$(ls /sys/class/net 2>/dev/null | grep -E '^(eth|enp|ens|eno|enx|wlan)' | head -n1 || true)"
+if [ -n "${IFACE}" ]; then
+  echo "[steppps-init] bringing up ${IFACE} via udhcpc"
+  ip link set "${IFACE}" up 2>/dev/null || true
+  # Try BusyBox udhcpc if present
+  if command -v udhcpc >/dev/null 2>&1; then
+    udhcpc -i "${IFACE}" -q -s /usr/share/udhcpc/default.script || true
+  fi
+fi
+
+# Start minimal syslog (optional)
+if command -v syslogd >/dev/null 2>&1; then
+  syslogd || true
+fi
+if command -v klogd >/dev/null 2>&1; then
+  klogd || true
+fi
+
+# Create essential dirs
+mkdir -p /dev/pts /dev/shm /run /var/log /etc
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+
+# Ensure TBOS logging dir
+mkdir -p /var/log/tbos || true
+
+# Health logging helper
+log_health() {
+  TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)
+  printf '{"ts":"%s","event":"%s","name":"%s","pid":%s,"try":%s}\n' \
+    "$TS" "$1" "$2" "${3:-0}" "${4:-0}" >> /var/log/tbos/health.jsonl 2>/dev/null || true
+}
+
+# Optional first-boot package/install step
+if [ -x /usr/bin/tbos-firstboot ]; then
+  echo "[steppps-init] running tbos-firstboot"
+  /usr/bin/tbos-firstboot || true
+fi
+
+# Load TBOS feature config if present
+if [ -f /etc/tbos/features.conf ]; then
+  # shellcheck disable=SC1091
+  . /etc/tbos/features.conf
+fi
+
+# Start sensor daemons if enabled
+start_bg() {
+  name="$1"; shift
+  echo "[steppps-init] starting $name"
+  "$@" &
+}
+
+# Supervised background process with exponential backoff (max 60s)
+supervise_bg() {
+  name="$1"; shift
+  cmd="$*"
+  tries=0
+  backoff=1
+  while :; do
+    echo "[steppps-init] supervise $name: starting ($tries) -> $cmd"
+    sh -c "$cmd" &
+    pid=$!
+    log_health start "$name" "$pid" "$tries"
+    wait "$pid"
+    rc=$?
+    log_health exit "$name" "$pid" "$tries"
+    tries=$((tries+1))
+    # If too many rapid failures, back off up to 60s
+    sleep "$backoff" || true
+    if [ "$backoff" -lt 60 ]; then backoff=$((backoff*2)); fi
+    # Reset backoff if it's been stable recently (optional hook)
+  done &
+}
+
+start_tbds_if_configured() {
+  TBDS_ARG="${TBOS_TBDS:-}"
+  if [ -z "$TBDS_ARG" ]; then
+    # Parse /proc/cmdline for tbds=...
+    CMDLINE="$(cat /proc/cmdline 2>/dev/null || true)"
+    for tok in $CMDLINE; do
+      case "$tok" in
+        tbds=*) TBDS_ARG="${tok#tbds=}" ;;
+      esac
+    done
+  fi
+  if [ -n "$TBDS_ARG" ] && [ -x /usr/bin/tbds-agent ]; then
+    start_bg tbds-agent /usr/bin/tbds-agent --tbds "$TBDS_ARG"
+  fi
+}
+
+start_tbds_if_configured
+
+case " ${TBOS_DAEMONS:-} " in *" mic "*|*"mic"*)
+  [ -x /usr/bin/tbos-sensord-mic ] && start_bg tbos-sensord-mic /usr/bin/tbos-sensord-mic || true
+  ;;
+esac
+case " ${TBOS_DAEMONS:-} " in *" wifi "*|*"wifi"*)
+  [ -x /usr/bin/tbos-sensord-wifi ] && start_bg tbos-sensord-wifi /usr/bin/tbos-sensord-wifi || true
+  ;;
+esac
+case " ${TBOS_DAEMONS:-} " in *" bt "*|*"bluetooth"*|*"bt"*)
+  [ -x /usr/bin/tbos-sensord-bt ] && start_bg tbos-sensord-bt /usr/bin/tbos-sensord-bt || true
+  ;;
+esac
+
+case " ${TBOS_DAEMONS:-} " in *" hotkeys "*|*"hotkeys"*)
+  [ -x /usr/bin/tbos-hotkeys ] && supervise_bg tbos-hotkeys /usr/bin/tbos-hotkeys || true
+  ;;
+esac
+
+case " ${TBOS_DAEMONS:-} " in *" llm "*|*"llm"*)
+  [ -x /usr/bin/tbos-llm-proxy ] && supervise_bg tbos-llm-proxy /usr/bin/tbos-llm-proxy || true
+  ;;
+esac
+
+case " ${TBOS_DAEMONS:-} " in *" jobd "*|*"jobd"*)
+  [ -x /usr/bin/tbos-jobd ] && supervise_bg tbos-jobd /usr/bin/tbos-jobd || true
+  ;;
+esac
+
+# Prefer tbos-shell, fallback to /bin/sh
+if [ -x /usr/bin/tbos-shell ]; then
+  echo "[steppps-init] exec tbos-shell"
+  exec /usr/bin/tbos-shell
+fi
+if [ -x /bin/sh ]; then
+  echo "[steppps-init] exec /bin/sh"
+  exec /bin/sh
+fi
+
+echo "[steppps-init] no shell found, dropping to kernel panic"
+exec sh -c 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger'

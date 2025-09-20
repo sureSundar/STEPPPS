@@ -1,0 +1,9 @@
+{
+  "name": "calculator",
+  "cpu": {"quota_pct": 5},
+  "memory": {"limit_mb": 32},
+  "display": {"cols": 24, "rows": 6, "theme": "mono"},
+  "shell": {"persona": "calc", "prompt": "calc> "},
+  "features": {"disable": ["wifi", "bt", "sdr"], "enable": []},
+  "kexec": null
+}

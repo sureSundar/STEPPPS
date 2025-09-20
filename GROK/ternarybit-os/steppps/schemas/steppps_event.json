@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "STEPPPS Event",
+  "type": "object",
+  "required": ["time", "kind"],
+  "properties": {
+    "time": {"type": "object", "required": ["ts"], "properties": {"ts": {"type": "string"}}},
+    "kind": {"type": "string"},
+    "msg": {"type": "string"},
+    "data": {"type": "object"}
+  }
+}
