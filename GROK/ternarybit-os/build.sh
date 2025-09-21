@@ -15,8 +15,8 @@ echo "[BUILD] Assembling boot sector..."
 nasm -f bin boot/tbos_sacred.asm -o build/boot.bin
 
 # Assemble stage 2
-echo "[BUILD] Assembling Sacred OM GUI..."
-nasm -f bin boot/stage2_om_gui.asm -o build/stage2.bin
+echo "[BUILD] Assembling working stage2..."
+nasm -f bin boot/stage2_working.asm -o build/stage2.bin
 
 # Compile kernel
 echo "[BUILD] Compiling kernel..."
@@ -29,10 +29,13 @@ gcc -m32 -c kernel/memory.c -o build/memory.o -ffreestanding -nostdlib -fno-buil
 gcc -m32 -c kernel/interrupt.c -o build/interrupt.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/timer.c -o build/timer.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/steppps.c -o build/steppps.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c fs/pxfs_core.c -o build/pxfs.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/ternary_engine.c -o build/ternary.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/aito_sequence.c -o build/aito.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 
 # Link kernel
 echo "[BUILD] Linking kernel..."
-ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o
+ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o
 
 # Create disk image
 echo "[BUILD] Creating disk image..."

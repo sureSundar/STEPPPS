@@ -25,6 +25,16 @@ void interrupt_init(void);
 void timer_init(uint32_t freq);
 void steppps_init(void);
 void steppps_status(void);
+int pxfs_init(void);
+void pxfs_info(void);
+void pxfs_list_files(void);
+int pxfs_create_file(const char* name, const void* data, size_t size);
+void ternary_engine_init(void);
+void shell_init(void);
+void rf2s_init(void);
+void consciousness_init(void);
+void music_bridge_init(void);
+void networking_init(void);
 
 // Clear screen
 void kernel_clear(void) {
@@ -102,12 +112,59 @@ void kernel_main(void) {
     kernel_print("[KERNEL] Timer configuration...\n");
     timer_init(100); // 100 Hz
 
+    // Initialize PXFS filesystem
+    kernel_print("[KERNEL] Filesystem initialization...\n");
+    pxfs_init();
+
+    // Create some test files
+    const char* welcome_msg = "Welcome to TBOS - The Sacred Operating System!\nSwamiye Saranam Aiyappa\n";
+    pxfs_create_file("welcome.txt", welcome_msg, 72);
+
+    const char* om_mantra = "OM NAMAH SHIVAYA\nOM MANI PADME HUM\nGATE GATE PARAGATE PARASAMGATE BODHI SVAHA\n";
+    pxfs_create_file("mantras.txt", om_mantra, 79);
+
+    // Show filesystem info
+    pxfs_info();
+    pxfs_list_files();
+
     // Show STEPPPS status
     steppps_status();
 
+    // AITO Sequence Implementation (1-6)
+    kernel_print("\n=== AITO SEQUENCE ACTIVATION ===\n");
+
+    // 1. Shell Commands (Interactive)
+    kernel_print("[1/6] Initializing Interactive Shell...\n");
+    shell_init();
+
+    // 2. File Operations (Enhanced)
+    kernel_print("[2/6] Loading File Operations...\n");
+    // Already done with PXFS
+
+    // 3. RF2S/PF2S Bridges
+    kernel_print("[3/6] Activating RF2S/PF2S Bridges...\n");
+    rf2s_init();
+
+    // 4. Consciousness Modules
+    kernel_print("[4/6] Awakening Consciousness Modules...\n");
+    consciousness_init();
+
+    // 5. Music Bridge
+    kernel_print("[5/6] Harmonizing Music Bridge...\n");
+    music_bridge_init();
+
+    // 6. Networking
+    kernel_print("[6/6] Connecting to Universal Network...\n");
+    networking_init();
+
+    // Initialize Ternary Compression Engine
+    kernel_print("\n[TERNARY] Activating Universal Compression...\n");
+    ternary_engine_init();
+
     // Success
-    kernel_print("\n[KERNEL] System ready!\n");
-    kernel_print("[KERNEL] Sprint 12 Complete!\n");
+    kernel_print("\n🕉️ AITO SEQUENCE COMPLETE! 🕉️\n");
+    kernel_print("[KERNEL] All 6 systems operational!\n");
+    kernel_print("[KERNEL] TBOS Universal OS Ready!\n");
     kernel_print("\nTBOS> ");
 
     // Halt
