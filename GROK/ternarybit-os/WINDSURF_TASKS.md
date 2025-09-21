@@ -121,6 +121,21 @@ struct steppps_module {
 4. Test before merge
 5. Update this file with progress
 
+## Progress Update (2025-09-21)
+- WINDSURF: Scaffolding created to match planned structure:
+  - `drivers/vga/`: `vga.c`, `vga.h`, `fonts.c` (text-mode stub writes to 0xB8000)
+  - `drivers/keyboard/`: `ps2.c`, `ps2.h`, `keymaps.c` (ring buffer and minimal scancode map)
+  - `drivers/timer/`: `pit.c`, `pit.h` (tick counter stub and sleep loop placeholder)
+  - `shell/`: `shell.c`, `shell.h` (minimal shell banner and loop placeholder)
+  - `fs/`: `pxfs.c`, `pxfs.h` and `fs/tools/README.md` (PXFS API stubs)
+  - `net/`: `ethernet.c`, `ip.c`, `tcp.c`, `socket.c` (network API stubs)
+  - `tests/unit/`: `test_boot.c`, `test_memory.c` (placeholder unit tests)
+  - `tests/run_tests.sh`: simple unit test builder/runner
+
+Notes:
+- These are minimal, compilable stubs with `// WINDSURF:` comments for traceability.
+- Next steps: wire into build system, add QEMU automation, expand tests per plan.
+
 ## Success Metrics
 - [ ] VGA driver displays text
 - [ ] Keyboard input works

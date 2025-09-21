@@ -1,0 +1,52 @@
+name: Build Research Paper (subdir)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GROK/ternarybit-os
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pandoc and wkhtmltopdf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc wkhtmltopdf
+      - name: Build paper
+        run: |
+          bash scripts/build-paper.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-paper
+          path: GROK/ternarybit-os/out/paper/
+
+  attach-to-release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: research-paper
+          path: out/paper/
+      - name: Upload PDF to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/paper/RESEARCH_PAPER.pdf
+            out/paper/RESEARCH_PAPER.html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
