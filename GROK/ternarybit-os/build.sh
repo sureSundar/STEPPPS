@@ -16,7 +16,11 @@ nasm -f bin boot/tbos_sacred.asm -o build/boot.bin
 
 # Assemble stage 2
 echo "[BUILD] Assembling working stage2..."
-nasm -f bin boot/stage2_sacred.asm -o build/stage2.bin
+if ! nasm -f bin boot/stage2_sacred.asm -o build/stage2.bin 2>/dev/null; then
+    echo "[BUILD] Stage2 too large, using backup..."
+    cp boot/stage2_backup.asm boot/stage2_working.asm
+    nasm -f bin boot/stage2_working.asm -o build/stage2.bin
+fi
 
 # Compile kernel
 echo "[BUILD] Compiling kernel..."

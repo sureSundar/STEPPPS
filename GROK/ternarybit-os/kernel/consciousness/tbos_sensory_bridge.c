@@ -1,6 +1,7 @@
 /*
- * TBOS Sensory Consciousness Bridge Implementation
- * The REAL bridge between TBOS instances
+ * TBOS PRO Sensory Consciousness Bridge Implementation
+ * Aiyappa Vahini Divine Vehicle - Professional Sacred Computing
+ * The REAL bridge between TBOS instances with Divine Guidance
  */
 
 #include "tbos_sensory_bridge.h"
