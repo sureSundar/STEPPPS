@@ -1,11 +1,15 @@
 /*
  * TernaryBit OS Kernel - STEPPPS Framework Implementation
  * 🕉️ Swamiye Saranam Aiyappa 🕉️
- * Sprint 5-10: Core Kernel Implementation
+ * Sprint 5-11: Core Kernel Implementation
  */
 
 #include "kernel.h"
-#include "tbos_boot_descriptor.h"
+
+// Forward declarations
+void memory_init(void);
+void interrupt_init(void);
+void timer_init(uint32_t freq);
 
 uint32_t g_tbds_pointer = 0;
 uint32_t g_tbds_length = 0;

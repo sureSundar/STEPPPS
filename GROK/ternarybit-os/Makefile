@@ -21,16 +21,43 @@ SRC_DIR = src
 TEST_DIR = tests
 ARCH_DIR = arch/$(ARCH)
 
+# WINDSURF: Additional source roots (scaffolded)
+DRV_DIR = drivers
+FS_DIR  = fs
+NET_DIR = net
+SHELL2_DIR = shell
+
 # Source files
 CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c) \
             $(wildcard $(ARCH_DIR)/*.c)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.c)
 SHELL_SRCS = $(wildcard $(SRC_DIR)/shell/*.c)
 
+# WINDSURF: New scaffolding sources
+DRV_SRCS  = $(shell find $(DRV_DIR) -type f -name '*.c')
+FS_SRCS   = $(shell find $(FS_DIR)  -type f -name '*.c')
+NET_SRCS  = $(shell find $(NET_DIR) -type f -name '*.c')
+SHELL2_SRCS = $(shell find $(SHELL2_DIR) -maxdepth 1 -type f -name '*.c')
+
 # Object files
 CORE_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CORE_SRCS))
 BOOT_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(BOOT_SRCS))
 SHELL_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SHELL_SRCS))
+
+# WINDSURF: Objects for new scaffolding
+DRV_OBJS    = $(patsubst $(DRV_DIR)/%.c,$(BUILD_DIR)/$(DRV_DIR)/%.o,$(DRV_SRCS))
+FS_OBJS     = $(patsubst $(FS_DIR)/%.c,$(BUILD_DIR)/$(FS_DIR)/%.o,$(FS_SRCS))
+NET_OBJS    = $(patsubst $(NET_DIR)/%.c,$(BUILD_DIR)/$(NET_DIR)/%.o,$(NET_SRCS))
+SHELL2_OBJS = $(patsubst $(SHELL2_DIR)/%.c,$(BUILD_DIR)/$(SHELL2_DIR)/%.o,$(SHELL2_SRCS))
+
+# WINDSURF: Host build (no cross toolchain) for quick validation
+HOST_BUILD_DIR = build/host
+HOST_CC = gcc
+HOST_CFLAGS = -Wall -Wextra -O0 -g
+HOST_DRV_OBJS    = $(patsubst $(DRV_DIR)/%.c,$(HOST_BUILD_DIR)/$(DRV_DIR)/%.o,$(DRV_SRCS))
+HOST_FS_OBJS     = $(patsubst $(FS_DIR)/%.c,$(HOST_BUILD_DIR)/$(FS_DIR)/%.o,$(FS_SRCS))
+HOST_NET_OBJS    = $(patsubst $(NET_DIR)/%.c,$(HOST_BUILD_DIR)/$(NET_DIR)/%.o,$(NET_SRCS))
+HOST_SHELL2_OBJS = $(patsubst $(SHELL2_DIR)/%.c,$(HOST_BUILD_DIR)/$(SHELL2_DIR)/%.o,$(SHELL2_SRCS))
 
 # Test files
 TEST_SRCS = $(wildcard $(TEST_DIR)/unit/test_*.c)
@@ -43,6 +70,19 @@ all: $(BUILD_TARGETS) $(SHELL_TARGETS)
 	@echo "  Bootloader: $(BOOTLOADER_BIN)"
 	@echo "  Shell: $(SHELL_TARGETS)"
 	@echo "\nRun 'make test' to execute tests or 'make run' to start in QEMU"
+
+# WINDSURF: Build scaffolding-only (drivers, fs, net, shell stubs)
+.PHONY: drivers
+drivers: | $(BUILD_DIR)
+	@echo "🔧 Building scaffolding (drivers/fs/net/shell) for $(ARCH)..."
+	@$(MAKE) --no-print-directory $(DRV_OBJS) $(FS_OBJS) $(NET_OBJS) $(SHELL2_OBJS)
+	@echo "✅ Scaffolding objects built under $(BUILD_DIR)/"
+
+.PHONY: drivers-host
+drivers-host:
+	@echo "🔧 Building scaffolding (drivers/fs/net/shell) with host GCC..."
+	@$(MAKE) --no-print-directory $(HOST_DRV_OBJS) $(HOST_FS_OBJS) $(HOST_NET_OBJS) $(HOST_SHELL2_OBJS)
+	@echo "✅ Host scaffolding objects built under $(HOST_BUILD_DIR)/"
 
 # Kernel target
 $(KERNEL_BIN): $(CORE_OBJS) $(SHELL_OBJS) | $(BUILD_DIR)
@@ -69,6 +109,48 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
 	@echo "🔨 Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+# WINDSURF: Compile rules for new directories
+$(BUILD_DIR)/$(DRV_DIR)/%.o: $(DRV_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [DRV] Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/$(FS_DIR)/%.o: $(FS_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [FS] Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/$(NET_DIR)/%.o: $(NET_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [NET] Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/$(SHELL2_DIR)/%.o: $(SHELL2_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [SHELL] Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# WINDSURF: Host compile rules
+$(HOST_BUILD_DIR)/$(DRV_DIR)/%.o: $(DRV_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [HOST-DRV] Compiling $<..."
+	@$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+$(HOST_BUILD_DIR)/$(FS_DIR)/%.o: $(FS_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [HOST-FS] Compiling $<..."
+	@$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+$(HOST_BUILD_DIR)/$(NET_DIR)/%.o: $(NET_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [HOST-NET] Compiling $<..."
+	@$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+$(HOST_BUILD_DIR)/$(SHELL2_DIR)/%.o: $(SHELL2_DIR)/%.c
+	@mkdir -p $(@D)
+	@echo "🔨 [HOST-SHELL] Compiling $<..."
+	@$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
 
 # Include dependency files
 -include $(CORE_OBJS:.o=.d) $(BOOT_OBJS:.o=.d) $(SHELL_OBJS:.o=.d)
@@ -255,6 +337,8 @@ help:
 	@echo "TernaryBit Universal OS - Development Targets"
 	@echo "============================================"
 	@echo "all          - Build all components"
+	@echo "drivers      - Build scaffolding objects (drivers/fs/net/shell)"
+	@echo "drivers-host - Build scaffolding with host GCC (no cross toolchain)"
 	@echo "test         - Run all tests"
 	@echo "test-hardware - Test hardware detection only"
 	@echo "test-boot    - Test boot system only"
