@@ -36,6 +36,12 @@ void consciousness_init(void);
 void music_bridge_init(void);
 void networking_init(void);
 
+// Process and scheduler functions
+void process_management_init(void);
+void scheduler_management_init(void);
+void device_driver_management_init(void);
+void system_integration_init(void);
+
 // Clear screen
 void kernel_clear(void) {
     for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
@@ -161,10 +167,27 @@ void kernel_main(void) {
     kernel_print("\n[TERNARY] Activating Universal Compression...\n");
     ternary_engine_init();
 
+    // Hour 5: Process Management
+    kernel_print("\n[HOUR 5] Initializing Process Management...\n");
+    process_management_init();
+
+    // Hour 6: Basic Scheduler
+    kernel_print("\n[HOUR 6] Activating Advanced Scheduler...\n");
+    scheduler_management_init();
+
+    // Hour 7: Device Drivers
+    kernel_print("\n[HOUR 7] Loading Universal Device Drivers...\n");
+    device_driver_management_init();
+
+    // Hour 8: System Integration
+    kernel_print("\n[HOUR 8] Final System Integration...\n");
+    system_integration_init();
+
     // Success
     kernel_print("\n🕉️ AITO SEQUENCE COMPLETE! 🕉️\n");
     kernel_print("[KERNEL] All 6 systems operational!\n");
-    kernel_print("[KERNEL] TBOS Universal OS Ready!\n");
+    kernel_print("[KERNEL] Hours 5-8: Complete Day 1 Integration!\n");
+    kernel_print("[KERNEL] TBOS Universal OS - DAY 1 COMPLETE!\n");
     kernel_print("\nTBOS> ");
 
     // Halt
