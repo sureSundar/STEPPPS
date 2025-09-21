@@ -5,6 +5,7 @@
 [Research Paper → RESEARCH_PAPER.md](RESEARCH_PAPER.md)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/suresundar/steppps/ci.yml?branch=main)](https://github.com/suresundar/steppps/actions)
+[![CI/CD Status](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Repo](https://img.shields.io/badge/GitHub-suresundar%2Fsteppps-blue?logo=github)](https://github.com/suresundar/steppps)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.placeholder-blue)](https://doi.org/10.5281/zenodo.placeholder)
@@ -50,9 +51,9 @@ mode default # full
 
 | Platform | Status |
 |----------|--------|
-| Linux | [![Linux Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
-| Windows | [![Windows Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
-| macOS | [![macOS Build](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/yourusername/ternarybit-os/actions/workflows/ci-cd.yml) |
+| Linux | [![Linux Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
+| Windows | [![Windows Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
+| macOS | [![macOS Build](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg?branch=main&event=push)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml) |
 
 ## 🚀 Quick Start
 
@@ -67,7 +68,7 @@ mode default # full
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ternarybit-os.git
+git clone https://github.com/suresundar/ternarybit-os.git
 cd ternarybit-os
 
 # Build the OS
@@ -248,7 +249,7 @@ This project demonstrates successful collaboration between multiple AI coding ag
 
 ---
 
-**Status**: Active Development | **Last Updated**: 2025-09-19 | **Build**: v2.1
+**Status**: Active Development | **Last Updated**: 2025-09-21 | **Build**: v2.2
 
 ## 📚 Citation
 
