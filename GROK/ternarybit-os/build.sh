@@ -49,12 +49,29 @@ gcc -m32 -c kernel/resonance.c -o build/resonance.o -ffreestanding -nostdlib -fn
 echo "[BUILD] Linking kernel..."
 ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o
 
-# Create disk image
-echo "[BUILD] Creating disk image..."
-dd if=/dev/zero of=build/tbos.img bs=1M count=10 2>/dev/null
+# Build Alpine GUI Integration
+echo "[BUILD] Building Alpine GUI integration..."
+if [ ! -f "deploy/alpine/out/x86_64/initramfs.gz" ]; then
+    echo "[ALPINE] Building Alpine initramfs with GUI..."
+    cd deploy/alpine
+    ./build-x86_64.sh
+    cd ../..
+else
+    echo "[ALPINE] Using existing Alpine initramfs"
+fi
+
+# Create disk image with Alpine
+echo "[BUILD] Creating sacred disk image with Alpine GUI..."
+dd if=/dev/zero of=build/tbos.img bs=1M count=50 2>/dev/null
 dd if=build/boot.bin of=build/tbos.img conv=notrunc 2>/dev/null
 dd if=build/stage2.bin of=build/tbos.img seek=1 conv=notrunc 2>/dev/null
 dd if=build/kernel.bin of=build/tbos.img seek=10 conv=notrunc 2>/dev/null
+
+# Add Alpine initramfs if available
+if [ -f "deploy/alpine/out/x86_64/initramfs.gz" ]; then
+    echo "[ALPINE] Adding Alpine GUI to disk image..."
+    dd if=deploy/alpine/out/x86_64/initramfs.gz of=build/tbos.img seek=500 conv=notrunc 2>/dev/null
+fi
 
 echo "[BUILD] Build complete!"
 echo ""

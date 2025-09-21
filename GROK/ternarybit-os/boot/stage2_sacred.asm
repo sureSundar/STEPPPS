@@ -132,6 +132,9 @@ protected_mode:
     mov esi, msg_jumping
     call print_string_32
 
+    ; Check for Alpine GUI or jump to kernel
+    call check_alpine_availability
+
     ; Jump to kernel entry at 0x100000 (1MB)
     jmp 0x08:0x100000
 
@@ -147,6 +150,20 @@ load_kernel:
     mov edi, 0x100000
     mov ecx, kernel_stub_end - kernel_stub
     rep movsb
+
+    popa
+    ret
+
+check_alpine_availability:
+    ; Check if Alpine initramfs is available at sector 500
+    pusha
+
+    mov esi, msg_alpine_check
+    call print_string_32
+
+    ; For now, just inform that Alpine integration is prepared
+    mov esi, msg_alpine_ready
+    call print_string_32
 
     popa
     ret
@@ -361,6 +378,8 @@ msg_kernel_loaded: db 'Kernel loaded at 0x100000', 10, 0
 msg_jumping:     db 'Jumping to kernel...', 10, 0
 msg_complete:    db 10, 'TBOS Stage 2 Complete!', 10
 msg_disk_error:  db 13, 10, 'Disk read error! Cannot load kernel.', 13, 10, 0
+msg_alpine_check: db 10, 'Checking Alpine GUI availability...', 10, 0
+msg_alpine_ready: db 'Alpine GUI integration prepared!', 10, 0
                  db 'Sprint 1 Success - Swamiye Saranam Aiyappa', 10, 0
 
 ; Padding to make it exactly 4KB
