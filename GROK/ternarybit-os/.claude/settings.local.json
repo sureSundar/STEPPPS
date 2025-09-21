@@ -8,7 +8,8 @@
       "Bash(chmod:*)",
       "Bash(./build.sh)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
