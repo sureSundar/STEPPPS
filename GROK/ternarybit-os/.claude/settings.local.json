@@ -4,7 +4,10 @@
       "Bash(timeout 2 qemu-system-i386:*)",
       "Bash(qemu-system-i386:*)",
       "Read(//media/sf_vboxshare/lab/STEPPPS/GROK/buildroot-2024.02/**)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(./build.sh)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

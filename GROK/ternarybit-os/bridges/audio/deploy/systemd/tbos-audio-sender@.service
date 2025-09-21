@@ -1,0 +1,24 @@
+[Unit]
+Description=TBOS Audio Sender (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Override with: sudo systemctl edit tbos-audio-sender@my.stream
+# Environment examples:
+# STREAM_INPUT=/path/to/input.mp3
+# STREAM_GROUP=239.255.0.1
+# STREAM_PORT=5004
+# STREAM_BITRATE=128k
+# STREAM_FRAME=20
+# STREAM_LOWDELAY=1
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/tbos/audio/sender-%i.env
+WorkingDirectory=/media/sf_vboxshare/lab/STEPPPS/GROK/ternarybit-os/bridges/audio
+ExecStart=/usr/bin/env python3 sender.py --input ${STREAM_INPUT} --group ${STREAM_GROUP} --port ${STREAM_PORT} --bitrate ${STREAM_BITRATE} --frame ${STREAM_FRAME} $([ -n "${STREAM_LOWDELAY}" ] && echo --lowdelay)
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

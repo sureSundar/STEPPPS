@@ -1,0 +1,37 @@
+[Unit]
+Description=TBOS AITO Audio Control (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Environment file example at /etc/tbos/audio/aito-%i.env
+# Variables:
+#   AITO_MQTT_URL=mqtt://localhost:1883
+#   AITO_MQTT_USER=
+#   AITO_MQTT_PASS=
+#   AITO_MODE=monitor        # monitor|autotune|advertise
+#   AITO_MATCH=              # regex for autotune
+#   AITO_ID=                 # id for advertise
+#   AITO_GROUP=239.255.0.1   # group for advertise
+#   AITO_PORT=5004           # port for advertise
+#   AITO_CODEC=opus
+#   AITO_BITRATE=128k
+#   AITO_RECEIVER_BACKEND=auto
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/tbos/audio/aito-%i.env
+WorkingDirectory=/media/sf_vboxshare/lab/STEPPPS/GROK/ternarybit-os/bridges/audio
+# Build command dynamically via bash -lc to include optional args
+ExecStart=/bin/bash -lc 'export AITO_MQTT_URL; export AITO_MQTT_USER; export AITO_MQTT_PASS; \
+  if [ "$AITO_MODE" = "advertise" ]; then \
+    exec /usr/bin/env python3 aito.py advertise --id ${AITO_ID} --group ${AITO_GROUP} --port ${AITO_PORT} --codec ${AITO_CODEC} --bitrate ${AITO_BITRATE}; \
+  elif [ "$AITO_MODE" = "autotune" ]; then \
+    exec /usr/bin/env python3 aito.py autotune $([ -n "${AITO_MATCH}" ] && echo --match ${AITO_MATCH}) $([ -n "${AITO_RECEIVER_BACKEND}" ] && echo --backend ${AITO_RECEIVER_BACKEND}); \
+  else \
+    exec /usr/bin/env python3 aito.py monitor; \
+  fi'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

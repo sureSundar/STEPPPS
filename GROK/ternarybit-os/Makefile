@@ -1,3 +1,8 @@
+.PHONY: paper
+paper:
+	@echo "[make] Building research paper via scripts/build-paper.sh"
+	@bash scripts/build-paper.sh
+	@echo "[make] Done. See out/paper/RESEARCH_PAPER.{pdf,html}"
 # TernaryBit Universal OS - Modular Build System
 # Traceability: PRD-044 (Build System Enhancement)
 # Supports cross-compilation for x86_64, ARM, and RISC-V architectures

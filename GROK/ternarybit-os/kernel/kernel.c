@@ -1,6 +1,7 @@
 /*
  * TernaryBit OS Kernel - STEPPPS Framework Implementation
- * Minimal kernel with full STEPPPS dimension integration
+ * 🕉️ Swamiye Saranam Aiyappa 🕉️
+ * Sprint 5-10: Core Kernel Implementation
  */
 
 #include "kernel.h"

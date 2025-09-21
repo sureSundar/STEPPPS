@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Repo](https://img.shields.io/badge/GitHub-suresundar%2Fsteppps-blue?logo=github)](https://github.com/suresundar/steppps)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.placeholder-blue)](https://doi.org/10.5281/zenodo.placeholder)
+[![Paper Build](https://img.shields.io/github/actions/workflow/status/suresundar/steppps/paper.yml?branch=main&label=Paper)](https://github.com/suresundar/steppps/actions/workflows/paper.yml)
 
 A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
 

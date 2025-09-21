@@ -1,0 +1,21 @@
+[Unit]
+Description=TBOS Audio Receiver (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Environment file example at /etc/tbos/audio/receiver-%i.env
+# Variables:
+#   STREAM_GROUP=239.255.0.1
+#   STREAM_PORT=5004
+#   RECEIVER_BACKEND=auto   # auto|ffplay|gst
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/tbos/audio/receiver-%i.env
+WorkingDirectory=/media/sf_vboxshare/lab/STEPPPS/GROK/ternarybit-os/bridges/audio
+ExecStart=/usr/bin/env python3 receiver.py --group ${STREAM_GROUP} --port ${STREAM_PORT} $([ -n "${RECEIVER_BACKEND}" ] && echo --backend ${RECEIVER_BACKEND})
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

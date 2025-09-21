@@ -23,7 +23,7 @@ Paste the abstract from RESEARCH_PAPER.md here.
 ```
 @misc{tbos_steppps_2025,
   title        = {TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems},
-  author       = {Suresh Sundararajan and Cascade},
+  author       = {Sundararaman.S<sundararaman.s@tcs.com,suresundar@gmail.com,ternarybit@gmail.com,flyforsuresky@gmail.com> and Cascade<cascade@cascade.dev>,Claude-Code,Openai Codex,Rashtriya Swayamsevak Sangh  },
   year         = {2025},
   howpublished = {GitHub},
   doi          = {10.5281/zenodo.placeholder},

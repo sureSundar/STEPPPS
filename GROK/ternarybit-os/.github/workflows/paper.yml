@@ -2,14 +2,13 @@ name: Build Research Paper
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'RESEARCH_PAPER.md'
-      - 'scripts/build-paper.sh'
-      - 'CITATION.cff'
+    branches: [ main, master ]
   workflow_dispatch: {}
   release:
     types: [published]
+
+permissions:
+  contents: write
 
 jobs:
   build:
