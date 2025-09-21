@@ -26,8 +26,10 @@ stage2_start:
     or eax, 1               ; Set PE bit
     mov cr0, eax
 
-    ; Far jump to 32-bit code - use simpler addressing
-    jmp 0x08:protected_mode
+    ; Far jump to flush pipeline and enter protected mode
+    db 0x66, 0xEA          ; 32-bit far jump opcode
+    dd protected_mode_32 + 0x8000  ; offset (absolute)
+    dw 0x08                ; segment selector
 
 ;==========================================
 ; 16-bit Functions
@@ -95,13 +97,13 @@ gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size
-    dd gdt_start                ; GDT address
+    dd gdt_start + 0x8000       ; GDT address (absolute)
 
 ;==========================================
 ; 32-bit Protected Mode Code
 ;==========================================
 [BITS 32]
-protected_mode:
+protected_mode_32:
     ; Setup segments
     mov ax, 0x10            ; Data segment selector
     mov ds, ax
@@ -111,42 +113,42 @@ protected_mode:
     mov ss, ax
     mov esp, 0x90000        ; Setup stack
 
-    ; Clear screen and show immediate success
-    mov edi, 0xB8000
-    mov ecx, 2000
-    mov ax, 0x0720
-    rep stosw
+    ; Output AITO to serial console
+    mov dx, 0x3F8          ; COM1 port
+    mov al, 'A'
+    out dx, al
+    mov al, 'I'
+    out dx, al
+    mov al, 'T'
+    out dx, al
+    mov al, 'O'
+    out dx, al
+    mov al, '!'
+    out dx, al
+    mov al, 10             ; newline
+    out dx, al
 
-    ; Show immediate protected mode success
+    ; Write to VGA as well
     mov edi, 0xB8000
-    mov esi, msg_pm_success
-    mov ah, 0x0A  ; Green text
-.pm_loop:
-    lodsb
-    or al, al
-    jz .pm_done
-    cmp al, 10
-    je .pm_newline
-    stosw
-    jmp .pm_loop
-.pm_newline:
-    mov eax, edi
-    sub eax, 0xB8000
-    shr eax, 1
-    mov edx, 0
-    mov ecx, 80
-    div ecx
-    inc eax
-    mul ecx
-    shl eax, 1
-    add eax, 0xB8000
-    mov edi, eax
-    jmp .pm_loop
-.pm_done:
-    ; Continue without pause
+    mov ax, 0x0F41          ; 'A' in white
+    mov [edi], ax
+    mov ax, 0x0F49          ; 'I' in white
+    mov [edi+2], ax
+    mov ax, 0x0F54          ; 'T' in white
+    mov [edi+4], ax
+    mov ax, 0x0F4F          ; 'O' in white
+    mov [edi+6], ax
+
+    ; Success - enter TBOS Protected Interactive Mode
 
     ; STEPPPS Initialization
     call init_steppps_32
+
+    ; Enter Protected Sacred Area with Shining UI
+    call enter_protected_sacred_area
+
+    ; Interactive UI loop with user response
+    call shining_ui_main_loop
 
     ; Load kernel
     mov esi, msg_kernel_load
@@ -274,6 +276,150 @@ boot_alpine:
     ; Return to continue boot process
     ret
 
+enter_protected_sacred_area:
+    ; Clear screen for sacred entry
+    call clear_screen_32
+
+    ; Display sacred entry message
+    mov edi, 0xB8000
+    mov esi, sacred_entry_msg
+    mov ah, 0x0D  ; Bright magenta
+    call print_kernel_string
+
+    ; Brief pause for visual effect
+    call sacred_pause
+    ret
+
+shining_ui_main_loop:
+    ; Clear screen for shining UI
+    call clear_screen_32
+
+    ; Create shining border
+    call create_shining_border
+
+    ; Display main UI
+    mov edi, 0xB8000 + (2*80*2) + (10*2)  ; Row 2, Col 10
+    mov esi, shining_ui_header
+    mov ah, 0x0F  ; Bright white
+    call print_kernel_string
+
+    ; Display sacred menu
+    mov edi, 0xB8000 + (5*80*2) + (15*2)  ; Row 5, Col 15
+    mov esi, sacred_menu
+    mov ah, 0x0E  ; Yellow
+    call print_kernel_string
+
+    ; Display user prompt
+    mov edi, 0xB8000 + (15*80*2) + (20*2)  ; Row 15, Col 20
+    mov esi, user_prompt_msg
+    mov ah, 0x0A  ; Bright green
+    call print_kernel_string
+
+    ; Wait for user input
+    call wait_for_user_input
+    ret
+
+create_shining_border:
+    pusha
+
+    ; Top border (shining stars)
+    mov edi, 0xB8000
+    mov ecx, 80
+    mov ax, 0x0E2A  ; Yellow star
+.top_border:
+    mov [edi], ax
+    add edi, 2
+    loop .top_border
+
+    ; Bottom border
+    mov edi, 0xB8000 + (24*80*2)
+    mov ecx, 80
+    mov ax, 0x0E2A  ; Yellow star
+.bottom_border:
+    mov [edi], ax
+    add edi, 2
+    loop .bottom_border
+
+    ; Side borders
+    mov ecx, 23
+    mov edi, 0xB8000 + (80*2)
+.side_borders:
+    mov ax, 0x0E2A  ; Yellow star
+    mov [edi], ax         ; Left side
+    mov [edi + 158], ax   ; Right side (80*2 - 2)
+    add edi, 160          ; Next row
+    loop .side_borders
+
+    popa
+    ret
+
+wait_for_user_input:
+    ; Display blinking cursor
+    mov edi, 0xB8000 + (16*80*2) + (25*2)
+    mov ax, 0x0F5F  ; White underscore
+
+.input_loop:
+    ; Blink cursor effect
+    mov [edi], ax
+    call sacred_pause
+
+    mov word [edi], 0x0720  ; Clear cursor
+    call sacred_pause
+
+    ; Check for keyboard input (simplified)
+    in al, 0x64
+    test al, 1
+    jz .input_loop
+
+    ; Read key
+    in al, 0x60
+
+    ; Handle common keys
+    cmp al, 0x1C  ; Enter key
+    je .enter_pressed
+    cmp al, 0x01  ; ESC key
+    je .esc_pressed
+
+    jmp .input_loop
+
+.enter_pressed:
+    ; Display sacred response
+    mov edi, 0xB8000 + (18*80*2) + (20*2)
+    mov esi, sacred_response_msg
+    mov ah, 0x0C  ; Bright red
+    call print_kernel_string
+
+    call sacred_pause
+    call sacred_pause
+    jmp .continue_boot
+
+.esc_pressed:
+    ; Display exit message
+    mov edi, 0xB8000 + (18*80*2) + (20*2)
+    mov esi, exit_message
+    mov ah, 0x08  ; Dark gray
+    call print_kernel_string
+
+    call sacred_pause
+    jmp .continue_boot
+
+.continue_boot:
+    ; Continue to full TBOS kernel
+    call clear_screen_32
+    mov esi, continuing_msg
+    call print_string_32
+    ret
+
+sacred_pause:
+    ; Medium pause for visual effects
+    push ecx
+    mov ecx, 0x800000
+.pause_loop:
+    nop
+    loop .pause_loop
+    pop ecx
+    ret
+
 alpine_pause:
     ; No pause - immediate return
     ret
@@ -388,12 +534,20 @@ clear_screen_32:
 print_string_32:
     push eax
     push ebx
+    push edx
     push edi
     mov edi, [cursor_pos]
 .loop:
     lodsb
     or al, al
     jz .done
+
+    ; Output to serial port for debugging
+    push dx
+    mov dx, 0x3F8          ; COM1 port
+    out dx, al
+    pop dx
+
     cmp al, 10              ; Check for newline
     je .newline
     mov ah, 0x07            ; White on black
@@ -417,6 +571,7 @@ print_string_32:
 .done:
     mov [cursor_pos], edi
     pop edi
+    pop edx
     pop ebx
     pop eax
     ret
