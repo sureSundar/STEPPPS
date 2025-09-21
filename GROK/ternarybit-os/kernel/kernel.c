@@ -267,6 +267,9 @@ void kernel_main(void) {
         video[i] = 0x1F00 | msg[i];
     }
 
+    // Initialize interrupts (IDT + PIC) early so faults/IRQs are handled
+    interrupt_init();
+
     for (;;) {
         asm volatile ("nop");
     }

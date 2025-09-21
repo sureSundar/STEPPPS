@@ -36,10 +36,13 @@ gcc -m32 -c kernel/process.c -o build/process.o -ffreestanding -nostdlib -fno-bu
 gcc -m32 -c kernel/scheduler.c -o build/scheduler.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/drivers.c -o build/drivers.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/integration.c -o build/integration.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/gui.c -o build/gui.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/network.c -o build/network.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/audio.c -o build/audio.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 
 # Link kernel
 echo "[BUILD] Linking kernel..."
-ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o
+ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o
 
 # Create disk image
 echo "[BUILD] Creating disk image..."
