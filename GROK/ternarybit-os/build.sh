@@ -15,8 +15,8 @@ echo "[BUILD] Assembling boot sector..."
 nasm -f bin boot/tbos_sacred.asm -o build/boot.bin
 
 # Assemble stage 2
-echo "[BUILD] Assembling stage 2..."
-nasm -f bin boot/stage2_sacred.asm -o build/stage2.bin
+echo "[BUILD] Assembling Sacred OM GUI..."
+nasm -f bin boot/stage2_om_gui.asm -o build/stage2.bin
 
 # Compile kernel
 echo "[BUILD] Compiling kernel..."

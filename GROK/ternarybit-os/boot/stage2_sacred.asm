@@ -128,11 +128,50 @@ protected_mode:
     jmp 0x08:0x100000
 
 load_kernel:
-    ; Simple kernel loading - read from disk to 1MB
-    ; This is a placeholder - needs proper disk driver
+    ; Load kernel from disk sectors 10+ to 0x100000 (1MB)
+    pusha
+
+    ; Reset to 16-bit mode temporarily for BIOS disk access
+    ; For now, just simulate kernel loading
     mov esi, msg_kernel_loaded
     call print_string_32
+
+    ; Copy a simple kernel stub to 0x100000
+    mov esi, kernel_stub
+    mov edi, 0x100000
+    mov ecx, kernel_stub_end - kernel_stub
+    rep movsb
+
+    popa
     ret
+
+; Simple kernel stub that we'll copy to 0x100000
+kernel_stub:
+    ; Clear screen first
+    mov edi, 0xB8000
+    mov ecx, 2000
+    mov ax, 0x0720
+    rep stosw
+
+    ; Print kernel message
+    mov edi, 0xB8000
+    mov esi, kernel_msg
+    mov ah, 0x07
+.print_loop:
+    lodsb
+    or al, al
+    jz .done
+    stosw
+    jmp .print_loop
+.done:
+    ; Infinite loop
+    cli
+.halt:
+    hlt
+    jmp .halt
+
+kernel_msg db 'TBOS Kernel Active! Swamiye Saranam Aiyappa', 0
+kernel_stub_end:
 
 ;==========================================
 ; 32-bit Functions
