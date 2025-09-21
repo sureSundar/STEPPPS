@@ -23,6 +23,8 @@ void kernel_clear(void);
 void memory_init(void);
 void interrupt_init(void);
 void timer_init(uint32_t freq);
+void steppps_init(void);
+void steppps_status(void);
 
 // Clear screen
 void kernel_clear(void) {
@@ -85,15 +87,8 @@ void kernel_main(void) {
     kernel_print("    Swamiye Saranam Aiyappa\n");
     kernel_print("=====================================\n\n");
 
-    // Initialize subsystems
-    kernel_print("[KERNEL] Initializing STEPPPS...\n");
-    kernel_print("  [SPACE] Hardware abstraction... OK\n");
-    kernel_print("  [TIME] Temporal subsystem... OK\n");
-    kernel_print("  [EVENT] Event handler... OK\n");
-    kernel_print("  [PSYCHOLOGY] AI consciousness... OK\n");
-    kernel_print("  [PIXEL] Display driver... OK\n");
-    kernel_print("  [PROMPT] Command interface... OK\n");
-    kernel_print("  [SCRIPT] Execution engine... OK\n\n");
+    // Initialize STEPPPS framework
+    steppps_init();
 
     // Initialize memory
     kernel_print("[KERNEL] Memory management...\n");
@@ -107,9 +102,12 @@ void kernel_main(void) {
     kernel_print("[KERNEL] Timer configuration...\n");
     timer_init(100); // 100 Hz
 
+    // Show STEPPPS status
+    steppps_status();
+
     // Success
     kernel_print("\n[KERNEL] System ready!\n");
-    kernel_print("[KERNEL] Sprint 11 Complete!\n");
+    kernel_print("[KERNEL] Sprint 12 Complete!\n");
     kernel_print("\nTBOS> ");
 
     // Halt
