@@ -83,6 +83,14 @@ gdt_start:
     db 11001111b            ; Flags + Limit (bits 16-19)
     db 0x00                 ; Base (bits 24-31)
 
+    ; Real mode segment descriptor (16-bit)
+    dw 0xFFFF               ; Limit (bits 0-15)
+    dw 0x0000               ; Base (bits 0-15)
+    db 0x00                 ; Base (bits 16-23)
+    db 10011010b            ; Access byte (16-bit code)
+    db 00000000b            ; Flags (16-bit)
+    db 0x00                 ; Base (bits 24-31)
+
 gdt_end:
 
 gdt_descriptor:
@@ -128,21 +136,103 @@ protected_mode:
     jmp 0x08:0x100000
 
 load_kernel:
-    ; Load kernel from disk sectors 10+ to 0x100000 (1MB)
+    ; Load real kernel from disk sectors 10+ to 0x100000 (1MB)
     pusha
 
-    ; Reset to 16-bit mode temporarily for BIOS disk access
-    ; For now, just simulate kernel loading
+    ; We need to use BIOS interrupts in 16-bit mode
+    ; Switch back to real mode temporarily
+    jmp 0x18:real_mode_kernel_load
+
+real_mode_kernel_load:
+    [BITS 16]
+    ; Disable protected mode
+    mov eax, cr0
+    and eax, 0xFFFFFFFE
+    mov cr0, eax
+
+    ; Far jump to fix CS
+    jmp 0x0000:real_mode_setup
+
+real_mode_setup:
+    ; Reset segments
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    mov sp, 0x7000
+
+    ; Load kernel from sector 10 (where build.sh puts it)
+    ; Load to 0x1000:0x0000 (which is 0x10000 physical)
+    mov ax, 0x1000
+    mov es, ax
+    xor bx, bx          ; es:bx = 0x1000:0x0000 = 0x10000
+
+    mov ah, 0x02        ; Read sectors
+    mov al, 32          ; Read 32 sectors (16KB) - should be enough for kernel
+    mov ch, 0           ; Cylinder 0
+    mov cl, 11          ; Sector 11 (BIOS sectors start at 1, dd seek=10 = BIOS sector 11)
+    mov dh, 0           ; Head 0
+    mov dl, 0x00        ; Drive A:
+    int 0x13            ; BIOS disk interrupt
+
+    jc kernel_load_error
+
+    ; Re-enter protected mode
+    cli
+    lgdt [gdt_descriptor]
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    ; Jump back to protected mode
+    jmp 0x08:protected_mode_copy_kernel
+
+[BITS 32]
+protected_mode_copy_kernel:
+    ; Setup segments again
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; Copy kernel from 0x10000 to 0x100000 (1MB)
+    mov esi, 0x10000
+    mov edi, 0x100000
+    mov ecx, 8192       ; Copy 32KB (32 sectors * 512 bytes / 4)
+    rep movsd
+
     mov esi, msg_kernel_loaded
     call print_string_32
 
-    ; Copy a simple kernel stub to 0x100000
-    mov esi, kernel_stub
-    mov edi, 0x100000
-    mov ecx, kernel_stub_end - kernel_stub
-    rep movsb
-
     popa
+    ret
+
+[BITS 16]
+kernel_load_error:
+    ; Print error and halt
+    mov si, msg_disk_error
+    call print_string_16_basic
+    cli
+    hlt
+
+print_string_16_basic:
+    push ax
+    push bx
+.loop:
+    lodsb
+    or al, al
+    jz .done
+    mov ah, 0x0E
+    mov bx, 0x0007
+    int 0x10
+    jmp .loop
+.done:
+    pop bx
+    pop ax
     ret
 
 ; Simple kernel stub that we'll copy to 0x100000
@@ -291,6 +381,7 @@ msg_kernel_load: db 10, 'Loading TBOS kernel...', 10, 0
 msg_kernel_loaded: db 'Kernel loaded at 0x100000', 10, 0
 msg_jumping:     db 'Jumping to kernel...', 10, 0
 msg_complete:    db 10, 'TBOS Stage 2 Complete!', 10
+msg_disk_error:  db 13, 10, 'Disk read error! Cannot load kernel.', 13, 10, 0
                  db 'Sprint 1 Success - Swamiye Saranam Aiyappa', 10, 0
 
 ; Padding to make it exactly 4KB
