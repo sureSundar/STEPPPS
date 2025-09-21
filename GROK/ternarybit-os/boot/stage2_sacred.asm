@@ -26,8 +26,8 @@ stage2_start:
     or eax, 1               ; Set PE bit
     mov cr0, eax
 
-    ; Far jump to 32-bit code
-    jmp 0x08:(0x8000 + protected_mode)
+    ; Far jump to 32-bit code - use simpler addressing
+    jmp 0x08:protected_mode
 
 ;==========================================
 ; 16-bit Functions
@@ -95,7 +95,7 @@ gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size
-    dd 0x8000 + gdt_start       ; GDT address (absolute)
+    dd gdt_start                ; GDT address
 
 ;==========================================
 ; 32-bit Protected Mode Code
@@ -143,8 +143,7 @@ protected_mode:
     mov edi, eax
     jmp .pm_loop
 .pm_done:
-    ; Pause so human can read protected mode success
-    call alpine_pause
+    ; Continue without pause
 
     ; STEPPPS Initialization
     call init_steppps_32
@@ -236,9 +235,6 @@ boot_alpine:
     mov esi, msg_alpine_starting
     call print_string_32
 
-    ; Pause for human readability
-    call alpine_pause
-
     ; Clear screen for Alpine
     call clear_screen_32
 
@@ -248,63 +244,38 @@ boot_alpine:
     mov ah, 0x0B  ; Cyan on black
     call print_kernel_string
 
-    ; Pause to read header
-    call alpine_pause
-
     ; Show Alpine GUI modules loading
     mov esi, alpine_modules_msg
     mov ah, 0x0A  ; Green
     call print_kernel_string
-
-    ; Pause to read modules
-    call alpine_pause
 
     ; Show GUI initialization
     mov esi, alpine_gui_init
     mov ah, 0x0E  ; Yellow
     call print_kernel_string
 
-    ; Pause to read initialization
-    call alpine_pause
-
     ; Show TBOS-Alpine integration
     mov esi, alpine_integration_msg
     mov ah, 0x0C  ; Red
     call print_kernel_string
-
-    ; Pause to read integration
-    call alpine_pause
 
     ; Final Alpine GUI ready message
     mov esi, alpine_ready_msg
     mov ah, 0x0F  ; White
     call print_kernel_string
 
-    ; Pause to read ready message
-    call alpine_pause
-
     ; Show completion message and exit cleanly
     mov esi, alpine_complete_msg
     mov ah, 0x0D  ; Magenta
     call print_kernel_string
 
-    ; Final pause before continuing
-    call alpine_pause
+    ; Continue without pause
 
     ; Return to continue boot process
     ret
 
 alpine_pause:
-    ; VERY long pause for human reading (about 5-7 seconds)
-    push ecx
-    mov ecx, 0x10000000  ; Much longer pause
-.pause_loop:
-    nop
-    nop
-    nop
-    nop
-    loop .pause_loop
-    pop ecx
+    ; No pause - immediate return
     ret
 
 ; Sacred kernel that shows TBOS in action
@@ -456,37 +427,32 @@ init_steppps_32:
     ; Initialize SPACE dimension
     mov esi, msg_space
     call print_string_32
-    call alpine_pause
 
     ; Initialize TIME dimension
     mov esi, msg_time
     call print_string_32
-    call alpine_pause
 
     ; Initialize EVENT dimension
     mov esi, msg_event
     call print_string_32
-    call alpine_pause
 
     ; Initialize PSYCHOLOGY dimension
     mov esi, msg_psychology
     call print_string_32
-    call alpine_pause
 
     ; Initialize PIXEL dimension
     mov esi, msg_pixel
     call print_string_32
-    call alpine_pause
 
     ; Initialize PROMPT dimension
     mov esi, msg_prompt
     call print_string_32
-    call alpine_pause
 
     ; Initialize SCRIPT dimension
     mov esi, msg_script
     call print_string_32
-    call alpine_pause
+
+    ; Continue without pause
 
     pop esi
     ret
