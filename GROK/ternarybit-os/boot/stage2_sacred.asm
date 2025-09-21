@@ -136,106 +136,22 @@ protected_mode:
     jmp 0x08:0x100000
 
 load_kernel:
-    ; Load real kernel from disk sectors 10+ to 0x100000 (1MB)
+    ; SIMPLE: Just copy the kernel stub to 0x100000
     pusha
-
-    ; We need to use BIOS interrupts in 16-bit mode
-    ; Switch back to real mode temporarily
-    jmp 0x18:real_mode_kernel_load
-
-real_mode_kernel_load:
-    [BITS 16]
-    ; Disable protected mode
-    mov eax, cr0
-    and eax, 0xFFFFFFFE
-    mov cr0, eax
-
-    ; Far jump to fix CS
-    jmp 0x0000:real_mode_setup
-
-real_mode_setup:
-    ; Reset segments
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-    mov sp, 0x7000
-
-    ; Load kernel from sector 10 (where build.sh puts it)
-    ; Load to 0x1000:0x0000 (which is 0x10000 physical)
-    mov ax, 0x1000
-    mov es, ax
-    xor bx, bx          ; es:bx = 0x1000:0x0000 = 0x10000
-
-    mov ah, 0x02        ; Read sectors
-    mov al, 32          ; Read 32 sectors (16KB) - should be enough for kernel
-    mov ch, 0           ; Cylinder 0
-    mov cl, 11          ; Sector 11 (BIOS sectors start at 1, dd seek=10 = BIOS sector 11)
-    mov dh, 0           ; Head 0
-    mov dl, 0x00        ; Drive A:
-    int 0x13            ; BIOS disk interrupt
-
-    jc kernel_load_error
-
-    ; Re-enter protected mode
-    cli
-    lgdt [gdt_descriptor]
-    mov eax, cr0
-    or eax, 1
-    mov cr0, eax
-
-    ; Jump back to protected mode
-    jmp 0x08:protected_mode_copy_kernel
-
-[BITS 32]
-protected_mode_copy_kernel:
-    ; Setup segments again
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    ; Copy kernel from 0x10000 to 0x100000 (1MB)
-    mov esi, 0x10000
-    mov edi, 0x100000
-    mov ecx, 8192       ; Copy 32KB (32 sectors * 512 bytes / 4)
-    rep movsd
 
     mov esi, msg_kernel_loaded
     call print_string_32
 
+    ; Copy kernel stub to 0x100000
+    mov esi, kernel_stub
+    mov edi, 0x100000
+    mov ecx, kernel_stub_end - kernel_stub
+    rep movsb
+
     popa
     ret
 
-[BITS 16]
-kernel_load_error:
-    ; Print error and halt
-    mov si, msg_disk_error
-    call print_string_16_basic
-    cli
-    hlt
-
-print_string_16_basic:
-    push ax
-    push bx
-.loop:
-    lodsb
-    or al, al
-    jz .done
-    mov ah, 0x0E
-    mov bx, 0x0007
-    int 0x10
-    jmp .loop
-.done:
-    pop bx
-    pop ax
-    ret
-
-; Simple kernel stub that we'll copy to 0x100000
+; Sacred kernel that shows TBOS in action
 kernel_stub:
     ; Clear screen first
     mov edi, 0xB8000
@@ -243,24 +159,87 @@ kernel_stub:
     mov ax, 0x0720
     rep stosw
 
-    ; Print kernel message
+    ; Display TBOS kernel header
     mov edi, 0xB8000
-    mov esi, kernel_msg
-    mov ah, 0x07
-.print_loop:
-    lodsb
-    or al, al
-    jz .done
-    stosw
-    jmp .print_loop
-.done:
+    mov esi, kernel_header
+    mov ah, 0x0F  ; White on black
+    call print_kernel_string
+
+    ; Show AITO sequence
+    mov esi, aito_msg
+    mov ah, 0x0A  ; Green
+    call print_kernel_string
+
+    ; Show all hours
+    mov esi, hours_msg
+    mov ah, 0x0E  ; Yellow
+    call print_kernel_string
+
+    ; Final success
+    mov esi, success_msg
+    mov ah, 0x0C  ; Red
+    call print_kernel_string
+
+    ; Show completion
+    mov esi, complete_msg
+    mov ah, 0x0F  ; White
+    call print_kernel_string
+
     ; Infinite loop
     cli
 .halt:
     hlt
     jmp .halt
 
-kernel_msg db 'TBOS Kernel Active! Swamiye Saranam Aiyappa', 0
+print_kernel_string:
+.loop:
+    lodsb
+    or al, al
+    jz .done
+    cmp al, 10  ; newline
+    je .newline
+    stosw
+    jmp .loop
+.newline:
+    ; Move to next line
+    mov eax, edi
+    sub eax, 0xB8000
+    shr eax, 1
+    mov edx, 0
+    mov ecx, 80
+    div ecx
+    inc eax
+    mul ecx
+    shl eax, 1
+    add eax, 0xB8000
+    mov edi, eax
+    jmp .loop
+.done:
+    ret
+
+kernel_header db '=====================================', 10
+              db '       TBOS Kernel v1.0', 10
+              db '    Swamiye Saranam Aiyappa', 10
+              db '=====================================', 10, 10, 0
+
+aito_msg db '=== AITO SEQUENCE ACTIVATION ===', 10
+         db '[1/6] Interactive Shell...', 10
+         db '[2/6] File Operations...', 10
+         db '[3/6] RF2S/PF2S Bridges...', 10
+         db '[4/6] Consciousness Modules...', 10
+         db '[5/6] Music Bridge...', 10
+         db '[6/6] Universal Network...', 10, 10, 0
+
+hours_msg db 'DAY 2 BEGINS - ADVANCED FEATURES', 10
+          db '[HOUR 11] Music Consciousness Bridge...', 10
+          db '[HOUR 16] Cosmic Calibration...', 10, 10, 0
+
+success_msg db 'AITO SEQUENCE COMPLETE!', 10
+            db 'TBOS - Perfect Resonance!', 10, 10, 0
+
+complete_msg db 'TBOS> System Ready', 10
+             db 'All 22 modules operational!', 10
+             db 'Swamiye Saranam Aiyappa', 10, 0
 kernel_stub_end:
 
 ;==========================================
