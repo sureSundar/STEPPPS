@@ -49,6 +49,8 @@ void audio_management_init(void);
 void pxfs_advanced_management_init(void);
 void security_management_init(void);
 void performance_management_init(void);
+void testing_management_init(void);
+void resonance_management_init(void);
 
 // Clear screen
 void kernel_clear(void) {
@@ -218,12 +220,20 @@ void kernel_main(void) {
     kernel_print("\n[HOUR 14] आश्रम - Sacred Performance Discipline...\n");
     performance_management_init();
 
+    // Hour 15: Testing & Validation
+    kernel_print("\n[HOUR 15] मिथाकाल - एक..दो..एक Validation March...\n");
+    testing_management_init();
+
+    // Hour 16: Final Resonance Calibration
+    kernel_print("\n[HOUR 16] सत्यम्.शिवम्.सुन्दरम् - Cosmic Calibration...\n");
+    resonance_management_init();
+
     // Success
     kernel_print("\n🕉️ AITO SEQUENCE COMPLETE! 🕉️\n");
     kernel_print("[KERNEL] All 6 systems operational!\n");
     kernel_print("[KERNEL] Day 1: Complete Foundation (Hours 1-8)!\n");
-    kernel_print("[KERNEL] Day 2: Advanced Features (Hours 9-14) Active!\n");
-    kernel_print("[KERNEL] TBOS Universal OS - आश्रम Disciplined System!\n");
+    kernel_print("[KERNEL] Day 2: Complete with Hours 9-16!\n");
+    kernel_print("[KERNEL] TBOS - सत्यम्.शिवम्.सुन्दरम् - Perfect Resonance!\n");
     kernel_print("\nTBOS> ");
 
     // Halt
