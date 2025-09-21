@@ -27,9 +27,7 @@ stage2_start:
     mov cr0, eax
 
     ; Far jump to flush pipeline and enter protected mode
-    db 0x66, 0xEA          ; 32-bit far jump opcode
-    dd protected_mode_32 + 0x8000  ; offset (absolute)
-    dw 0x08                ; segment selector
+    jmp 0x08:protected_mode_32
 
 ;==========================================
 ; 16-bit Functions
@@ -97,7 +95,7 @@ gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size
-    dd gdt_start + 0x8000       ; GDT address (absolute)
+    dd gdt_start                ; GDT address
 
 ;==========================================
 ; 32-bit Protected Mode Code
@@ -139,16 +137,34 @@ protected_mode_32:
     mov ax, 0x0F4F          ; 'O' in white
     mov [edi+6], ax
 
-    ; Success - enter TBOS Protected Interactive Mode
+    ; Success - simple protected mode test first
 
-    ; STEPPPS Initialization
-    call init_steppps_32
+    ; Output success message to serial
+    mov dx, 0x3F8
+    mov al, 'S'
+    out dx, al
+    mov al, 'U'
+    out dx, al
+    mov al, 'C'
+    out dx, al
+    mov al, 'C'
+    out dx, al
+    mov al, 'E'
+    out dx, al
+    mov al, 'S'
+    out dx, al
+    mov al, 'S'
+    out dx, al
+    mov al, '!'
+    out dx, al
+    mov al, 10
+    out dx, al
 
-    ; Enter Protected Sacred Area with Shining UI
-    call enter_protected_sacred_area
-
-    ; Interactive UI loop with user response
-    call shining_ui_main_loop
+    ; Simple halt for now
+    cli
+.halt:
+    hlt
+    jmp .halt
 
     ; Load kernel
     mov esi, msg_kernel_load
@@ -686,6 +702,33 @@ alpine_ready_msg db 'ALPINE GUI READY!', 10
 
 alpine_complete_msg db 10, '🕉️ ALPINE GUI BOOT COMPLETE! 🕉️', 10
                     db 'Continuing to TBOS kernel...', 10, 0
+
+; Sacred UI Messages
+sacred_entry_msg db '=====================================', 10
+                 db '     ENTERING PROTECTED SACRED AREA', 10
+                 db '         🕉️ DIVINE ACCESS GRANTED 🕉️', 10
+                 db '=====================================', 10, 0
+
+shining_ui_header db 'TBOS SACRED INTERACTIVE INTERFACE', 10
+                  db 'Swamiye Saranam Aiyappa', 10, 0
+
+sacred_menu db '1. Enter Full TBOS Kernel', 10
+            db '2. Display System Information', 10
+            db '3. Sacred Meditation Mode', 10
+            db '4. Music Consciousness Bridge', 10
+            db '5. Alpine GUI Integration', 10, 0
+
+user_prompt_msg db 'Select option [1-5] or ESC to exit:', 10
+                db 'Press ENTER to continue...', 0
+
+sacred_response_msg db '🕉️ Sacred Choice Accepted 🕉️', 10
+                    db 'Entering Divine Kernel Mode...', 0
+
+exit_message db 'Exiting Sacred Area...', 10
+             db 'May Lord Ayyappa Bless You', 0
+
+continuing_msg db 10, 'Continuing to TBOS Full Kernel...', 10
+               db 'Loading all 22 sacred modules...', 10, 0
 
 ; Padding to make it exactly 4KB
 times 4096-($-$$) db 0
