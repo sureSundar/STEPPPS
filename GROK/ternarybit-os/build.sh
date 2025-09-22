@@ -15,12 +15,8 @@ echo "[BUILD] Assembling boot sector..."
 nasm -f bin boot/tbos_sacred.asm -o build/boot.bin
 
 # Assemble stage 2
-echo "[BUILD] Assembling working stage2..."
-if [ -f boot/stage2_working_fixed.asm ]; then
-    nasm -f bin boot/stage2_working_fixed.asm -o build/stage2.bin
-else
-    nasm -f bin boot/stage2_sacred.asm -o build/stage2.bin
-fi
+echo "[BUILD] Using stable stage2..."
+cp build/stage2_linux.bin build/stage2.bin
 
 # Compile kernel
 echo "[BUILD] Compiling kernel..."

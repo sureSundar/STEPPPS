@@ -25,6 +25,7 @@ void interrupt_init(void);
 void timer_init(uint32_t freq);
 void steppps_init(void);
 void steppps_status(void);
+void shell_command_loop(void);
 int pxfs_init(void);
 void pxfs_info(void);
 void pxfs_list_files(void);
@@ -235,10 +236,6 @@ void kernel_main(void) {
     kernel_print("[PRO] Advanced Aiyappa Consciousness: ONLINE!\n");
     kernel_print("[PRO] TBOS PRO - सत्यम्.शिवम्.सुन्दरम् - Divine Mastery!\n");
     kernel_print("[PRO] Ready for Professional Sacred Computing!\n");
-    kernel_print("\nTBOS-PRO> ");
-
-    // Halt
-    while(1) {
-        __asm__ volatile("hlt");
-    }
+    // Interactive shell loop
+    shell_command_loop();
 }

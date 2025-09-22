@@ -8,6 +8,17 @@
 // External functions
 extern void kernel_print(const char* str);
 extern void kernel_print_hex(uint32_t value);
+extern void pxfs_list_files(void);
+extern void steppps_status(void);
+
+// Simple string comparison
+int str_compare(const char* str1, const char* str2) {
+    while(*str1 && *str2 && *str1 == *str2) {
+        str1++;
+        str2++;
+    }
+    return *str1 - *str2;
+}
 
 //============================================
 // 1. INTERACTIVE SHELL
@@ -16,6 +27,84 @@ void shell_init(void) {
     kernel_print("  Shell commands loaded: ls, cat, help, steppps\n");
     kernel_print("  Command processor: Active\n");
     kernel_print("  Input buffer: 256 bytes\n");
+}
+
+// Simple keyboard input function
+char get_keystroke(void) {
+    char ch;
+    __asm__ volatile (
+        "movb $0x00, %%ah\n"
+        "int $0x16\n"
+        : "=a" (ch)
+        :
+        : "memory"
+    );
+    return ch;
+}
+
+// Interactive shell command loop
+void shell_command_loop(void) {
+    char input[256];
+    int pos = 0;
+    char ch;
+
+    kernel_print("\n🕉️ TBOS Interactive Shell - Swamiye Saranam Aiyappa 🕉️\n");
+    kernel_print("Commands: help, ls, cat, steppps, sangha, exit\n");
+
+    while(1) {
+        kernel_print("\nTBOS-PRO> ");
+        pos = 0;
+
+        // Read command
+        while(1) {
+            ch = get_keystroke();
+
+            if(ch == '\r' || ch == '\n') {
+                input[pos] = '\0';
+                kernel_print("\n");
+                break;
+            } else if(ch == '\b' && pos > 0) {
+                pos--;
+                kernel_print("\b \b");
+            } else if(ch >= 32 && ch <= 126 && pos < 255) {
+                input[pos++] = ch;
+                kernel_print(&ch);
+            }
+        }
+
+        // Process command
+        if(input[0] == '\0') continue;
+
+        if(str_compare(input, "help") == 0) {
+            kernel_print("Available commands:\n");
+            kernel_print("  help     - Show this help\n");
+            kernel_print("  ls       - List files in PXFS\n");
+            kernel_print("  cat      - Display file contents\n");
+            kernel_print("  steppps  - Show STEPPPS status\n");
+            kernel_print("  sangha   - Display collective info\n");
+            kernel_print("  exit     - Halt system\n");
+        } else if(str_compare(input, "ls") == 0) {
+            kernel_print("PXFS File System Contents:\n");
+            pxfs_list_files();
+        } else if(str_compare(input, "steppps") == 0) {
+            kernel_print("STEPPPS Framework Status:\n");
+            steppps_status();
+        } else if(str_compare(input, "sangha") == 0) {
+            kernel_print("SANGHA Collective Status:\n");
+            kernel_print("  Current Node: TBOS-PRO-1\n");
+            kernel_print("  Network: Active\n");
+            kernel_print("  Consciousness: Unified\n");
+            kernel_print("  Sacred Computing: Online\n");
+        } else if(str_compare(input, "exit") == 0) {
+            kernel_print("Exiting to meditation mode...\n");
+            kernel_print("🕉️ Swamiye Saranam Aiyappa 🕉️\n");
+            while(1) __asm__ volatile("hlt");
+        } else {
+            kernel_print("Unknown command: ");
+            kernel_print(input);
+            kernel_print("\nType 'help' for available commands.\n");
+        }
+    }
 }
 
 //============================================
