@@ -52,6 +52,7 @@ void security_management_init(void);
 void performance_management_init(void);
 void testing_management_init(void);
 void resonance_management_init(void);
+void processor_analysis_init(void);
 
 // Clear screen
 void kernel_clear(void) {

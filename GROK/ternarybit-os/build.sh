@@ -44,10 +44,11 @@ gcc -m32 -c kernel/security.c -o build/security.o -ffreestanding -nostdlib -fno-
 gcc -m32 -c kernel/performance.c -o build/performance.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/testing.c -o build/testing.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/resonance.c -o build/resonance.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/processor_analysis.c -o build/processor_analysis.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 
 # Link kernel
 echo "[BUILD] Linking kernel..."
-ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o
+ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o build/processor_analysis.o
 
 # Build Alpine GUI Integration
 echo "[BUILD] Building Alpine GUI integration..."
