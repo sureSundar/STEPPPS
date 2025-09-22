@@ -1,0 +1,44 @@
+{
+  "title": "TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems",
+  "authors": [
+    {
+      "name": "Sundararaman S. Sundararaman Sethuraman Kandaswamy Ramakrishnan Nallaperumal",
+      "affiliation": "Independent Researcher",
+      "email": "suresundar@gmail.com",
+      "orcid": ""
+    },
+    {
+      "name": "Cascade (Claude, Codex)",
+      "affiliation": "AI Assistant",
+      "email": "",
+      "orcid": ""
+    }
+  ],
+  "abstract": "We present TBOS (TernaryBit OS), a reliability-first substrate that operationalizes the STEPPPS model—Space, Time, Event, Psychology, Pixel, Prompt, Script—into a practical, on-device, low-footprint operating environment with graceful offload. TBOS unifies constrained generation (GBNF) for LLM outputs, content-addressed compute over a path-encoded filesystem (PXFS), radio/optical signal file systems (RF2S, PF2S), and an adaptive shell persona model to enable predictable, inspectable autonomy on devices ranging from calculators to servers. We demonstrate an optics pipeline (PF2S) and STEPPPS-aware transforms, job queuing with peer offload, and a Micro LLM that writes valid STEPPPS frames to RF2S/PXFS. Results show that (1) constrained decoding dramatically improves JSON validity and downstream composability; (2) compute-on-read with caching transforms CPU-bound tasks into I/O-limited retrieval; and (3) persona-controlled UX enforces graceful degradation while preserving observability.",
+  "keywords": [
+    "Operating Systems",
+    "Edge Computing",
+    "STEPPPS Framework",
+    "Filesystem Abstractions",
+    "Constrained LLM Generation",
+    "Content-Addressed Storage",
+    "Signal Processing",
+    "Cultural Computing",
+    "Multi-AI Collaboration",
+    "Phygital Systems"
+  ],
+  "subject_areas": [
+    "Computer Science - Operating Systems",
+    "Computer Science - Artificial Intelligence",
+    "Computer Science - Distributed Computing"
+  ],
+  "data_availability": "Source code and implementation available at https://github.com/suresundar/ternarybit-os",
+  "funding": "None",
+  "conflicts_of_interest": "The authors declare no conflicts of interest",
+  "supplementary_materials": [
+    "Full implementation on GitHub",
+    "Alpine Linux build system",
+    "QEMU demonstration scripts",
+    "Optics pipeline demos"
+  ]
+}
