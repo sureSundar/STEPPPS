@@ -1,0 +1,312 @@
+\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provides euro and other symbols
+\else % if luatex or xelatex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage[]{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\usepackage{hyperref}
+\hypersetup{
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+
+\title{TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems}
+\date{}
+
+\begin{document}
+\maketitle
+
+\hypertarget{tbos-steppps-a-universal-autonomously-orchestrated-operating-substrate-for-phygital-systems}{%
+\section{TBOS × STEPPPS: A Universal, Autonomously Orchestrated
+Operating Substrate for Phygital
+Systems}\label{tbos-steppps-a-universal-autonomously-orchestrated-operating-substrate-for-phygital-systems}}
+
+Authors: Suresh Sundararajan (concept, product vision), Cascade
+(engineering), community contributors Date: 2025-09-20
+
+Abstract We present TBOS (TernaryBit OS), a reliability-first substrate
+that operationalizes the STEPPPS model---Space, Time, Event, Psychology,
+Pixel, Prompt, Script---into a practical, on-device, low-footprint
+operating environment with graceful offload. TBOS unifies constrained
+generation (GBNF) for LLM outputs, content-addressed compute over a
+path-encoded filesystem (PXFS), radio/optical signal file systems (RF2S,
+PF2S), and an adaptive shell persona model to enable predictable,
+inspectable autonomy on devices ranging from calculators to servers. We
+demonstrate an optics pipeline (PF2S) and STEPPPS-aware transforms, job
+queuing with peer offload, and a Micro LLM that writes valid STEPPPS
+frames to RF2S/PXFS. Results show that (1) constrained decoding
+dramatically improves JSON validity and downstream composability; (2)
+compute-on-read with caching transforms CPU-bound tasks into I/O-limited
+retrieval; and (3) persona-controlled UX enforces graceful degradation
+while preserving observability.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Introduction Autonomous systems demand explainability and reliability
+  under resource constraints. STEPPPS offers a holistic data/intent
+  model---unifying spatial, temporal, perceptual, cognitive, and
+  procedural layers. TBOS embodies this model as an OS substrate: small
+  tools, explicit artifacts, predictable failure modes. This paper
+  argues for filesystem-first autonomy: if everything is a path and an
+  artifact, then introspection, caching, and offload become universal.
+\item
+  Related Work
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Functional dataflow systems and build tools (Bazel, Nix) emphasize
+  content-addressed results; TBOS adapts the idea to live devices via
+  PXFS.
+\item
+  LLM constrained decoding (GBNF, JSON mode) enhances structured output
+  reliability; TBOS standardizes GBNF for STEPPPS.
+\item
+  SDR pipelines treat RF as data; TBOS generalizes to RF2S and PF2S to
+  unify radio/optical I/O as files.
+\item
+  Edge orchestration often relies on heavyweight agents; TBOS pursues
+  minimal single-file tools for each role.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  System Design 3.1 STEPPPS Data Model
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Frames: versioned, timestamped JSON objects with optional
+  events/links; links may point to PXFS/RF2S/PF2S artifacts.
+\item
+  Validated by JSON schema; produced by constrained LLM or rules.
+\end{itemize}
+
+3.2 Filesystem-First Abstractions - PXFS: a virtual path namespace
+encoding operations and inputs. Reading a path computes the result on
+miss; results are cached by op+inputs hash. - RF2S/PF2S: domain-specific
+trees rooted by frequency/wavelength. Mount helpers present
+user-friendly views; backing stores ensure availability.
+
+3.3 Micro LLM - \texttt{tbos-llm-proxy} fronts llama.cpp with a STEPPPS
+GBNF grammar; writes frames to PXFS/RF2S and validates against schemas.
+Fallback mode produces minimal valid frames when the model is
+unavailable.
+
+3.4 Job System and Offload - \texttt{tbos-jobd} polls
+\texttt{/var/lib/tbos/jobs} and \texttt{/mnt/px/jobs} for JSON jobs and
+materializes them via \texttt{tbos-compute}. Offload to
+\texttt{tbos-offloadd} peers when persona/policy dictates.
+
+3.5 Personas and Profiles - \texttt{tbos-shell} personas: default
+(full), tiny (compact), calc (calculator). UX adapts without changing
+the substrate. - Profiles can raise/lower quotas or switch kernels
+(future work) for burst compute.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Implementation
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Single-file tools in \texttt{deploy/alpine/}: init, shell, sensors, FS
+  FUSE drivers, LLM proxy/CLI, compute/job/offload.
+\item
+  STEPPPS toolchain in \texttt{steppps/tools/steppps-tools.py}:
+  transforms (pixel ops, spectrum features, pixel↔spectrum, wave.fft2)
+  and validation.
+\item
+  Demos in \texttt{deploy/alpine/qa/}: QEMU boot, optics demos.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  Results 5.1 Constrained LLM → Valid STEPPPS
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Using \texttt{steppps\_json.gbnf} cut invalid JSON outputs to
+  near-zero in our tests, unblocking automation pipelines (validation,
+  rendering, transforms).
+\end{itemize}
+
+5.2 Compute as Caching - PXFS ops (e.g., spectrum.features,
+pixel.from\_spectrum) resolve to cached artifacts after first
+materialization, reducing CPU by orders of magnitude on constrained
+devices.
+
+5.3 RF2S/PF2S as First-Class I/O - RF/optical artifacts are discoverable
+and scriptable paths; this enables human-inspectable autonomy and
+cross-device remoting via simple file transfer.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{5}
+\tightlist
+\item
+  Discussion
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Inspectability: By letting everything be a file and a path, TBOS
+  reduces the cognitive gap between intent and dataflow. JSONL logs
+  provide time-indexed audit trails.
+\item
+  Reliability: Fallbacks (LLM rules), validation, and persona gating
+  produce predictable degradation instead of failure.
+\item
+  Extensibility: New ops and sensors are a file away. The grammar/schema
+  layer evolves with STEPPPS versioning.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{6}
+\tightlist
+\item
+  Ethics and Spirituality
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  The project intentionally blends science and spirituality. The
+  humility of ``graceful degradation'' mirrors dharmic ethics: act
+  responsibly within capacity, escalate transparently, and avoid harm.
+\item
+  Privacy and Consent: Offload and sensing should be policy-gated and
+  user-consented; signatures for jobs are recommended.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{7}
+\tightlist
+\item
+  Limitations
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  The pixel↔spectrum mappings rely on simplified Gaussian primaries;
+  calibrated SPDs improve accuracy.
+\item
+  Offload security is minimal; production requires signed envelopes and
+  mutual auth.
+\item
+  The wave.fft2 transform is educational; performance is limited by
+  naive DFT.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{8}
+\tightlist
+\item
+  Future Work
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Health endpoints and supervision backoff; signed job envelopes; peer
+  discovery.
+\item
+  Richer transforms and calibrated colorimetry; optics modulation with
+  camera/photodiode drivers.
+\item
+  Multi-STEPPPS orchestration and negotiation across devices.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{9}
+\tightlist
+\item
+  Conclusion TBOS demonstrates that a filesystem-first,
+  grammar-constrained, persona-aware substrate can make autonomy
+  inspectable and reliable on tiny devices. By grounding AI outputs in
+  valid schemas and persistent artifacts, we bring life to devices while
+  honoring predictability.
+\end{enumerate}
+
+Appendix A: Reproduction - Build:
+\texttt{deploy/alpine/build-x86\_64.sh} - Boot:
+\texttt{deploy/alpine/qa/qemu-x86\_64.sh\ -\/-kernel\ \textless{}bzImage\textgreater{}\ -\/-initrd\ ../out/x86\_64/initramfs.cpio.gz}
+- Demos: \texttt{deploy/alpine/qa/tbos-optic-demo.sh},
+\texttt{tbos-optic-link-demo.sh} - Compute ops:
+\texttt{tbos-compute\ pxfs://compute/...}
+
+Appendix B: Key Files - \texttt{deploy/alpine/common/steppps-init} -
+\texttt{deploy/alpine/common/tbos-shell} -
+\texttt{deploy/alpine/llm/tbos-llm-proxy.py}, \texttt{tbos-llmctl},
+\texttt{steppps\_json.gbnf} -
+\texttt{deploy/alpine/compute/tbos-compute.py}, \texttt{tbos-jobd.py},
+\texttt{tbos-offloadd.py} - \texttt{deploy/alpine/fs/*\_fuse.py},
+\texttt{deploy/alpine/fs/helpers/*} -
+\texttt{steppps/tools/steppps-tools.py} -
+\texttt{deploy/alpine/qa/*.sh},
+\texttt{deploy/alpine/qa/README\_OPTICS.md}
+
+\end{document}

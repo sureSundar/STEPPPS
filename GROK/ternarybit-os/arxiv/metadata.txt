@@ -1,0 +1,28 @@
+Title: TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems
+
+Authors:
+  Suresh Sundararajan (Independent Researcher)
+  Cascade (AI Assistant, Claude/Codex)
+
+Abstract:
+We present TBOS (TernaryBit OS), a reliability-first substrate that operationalizes the STEPPPS model—Space, Time, Event, Psychology, Pixel, Prompt, Script—into a practical, on-device, low-footprint operating environment with graceful offload. TBOS unifies constrained generation (GBNF) for LLM outputs, content-addressed compute over a path-encoded filesystem (PXFS), radio/optical signal file systems (RF2S, PF2S), and an adaptive shell persona model to enable predictable, inspectable autonomy on devices ranging from calculators to servers. We demonstrate an optics pipeline (PF2S) and STEPPPS-aware transforms, job queuing with peer offload, and a Micro LLM that writes valid STEPPPS frames to RF2S/PXFS. Results show that (1) constrained decoding dramatically improves JSON validity and downstream composability; (2) compute-on-read with caching transforms CPU-bound tasks into I/O-limited retrieval; and (3) persona-controlled UX enforces graceful degradation while preserving observability.
+
+Categories:
+  Primary: cs.OS (Operating Systems)
+  Secondary: cs.AI (Artificial Intelligence)
+  Additional: cs.DC (Distributed, Parallel, and Cluster Computing)
+
+Keywords:
+  Operating Systems, Edge Computing, STEPPPS Framework, Filesystem Abstractions,
+  Constrained LLM Generation, Content-Addressed Storage, Signal Processing,
+  Hindu Computing Paradigms, Multi-AI Collaboration, Phygital Systems
+
+Comments:
+  10 pages, implementation available at https://github.com/suresundar/ternarybit-os
+  Demonstrates novel filesystem-first autonomy approach and cultural computing integration
+
+License: MIT
+
+MSC-class: 68M01 (Computer system organization)
+
+ACM-class: D.4.0 (Operating Systems - General); I.2.1 (Applications and Expert Systems)
