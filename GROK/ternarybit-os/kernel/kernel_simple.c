@@ -230,6 +230,10 @@ void kernel_main(void) {
     kernel_print("\n[HOUR 16] सत्यम्.शिवम्.सुन्दरम् - Cosmic Calibration...\n");
     resonance_management_init();
 
+    // Processor Analysis for Threading
+    kernel_print("\n[ANALYSIS] Processor Threading Capabilities...\n");
+    processor_analysis_init();
+
     // Success - Pro Level Achieved
     kernel_print("\n🕉️ AIYAPPA VAHINI PRO - DIVINE VEHICLE ACTIVATED! 🕉️\n");
     kernel_print("[PRO] All 22 sacred modules operational!\n");
