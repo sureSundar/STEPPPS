@@ -26,16 +26,19 @@ void timer_init(uint32_t freq);
 void steppps_init(void);
 void steppps_status(void);
 void shell_command_loop(void);
+void shell_main(void);
 int pxfs_init(void);
 void pxfs_info(void);
 void pxfs_list_files(void);
 int pxfs_create_file(const char* name, const void* data, size_t size);
 void ternary_engine_init(void);
 void shell_init(void);
+void keyboard_init(void);
 void rf2s_init(void);
 void consciousness_init(void);
 void music_bridge_init(void);
 void networking_init(void);
+void streaming_management_init(void);
 
 // Process and scheduler functions
 void process_management_init(void);
@@ -125,6 +128,10 @@ void kernel_main(void) {
     // Initialize interrupts
     kernel_print("[KERNEL] Interrupt system...\n");
     interrupt_init();
+
+    // Initialize keyboard
+    kernel_print("[KERNEL] Keyboard driver...\n");
+    keyboard_init();
 
     // Initialize timer
     kernel_print("[KERNEL] Timer configuration...\n");
@@ -234,6 +241,10 @@ void kernel_main(void) {
     kernel_print("\n[ANALYSIS] Processor Threading Capabilities...\n");
     processor_analysis_init();
 
+    // TBOS Streaming System
+    kernel_print("\n[STREAMING] Initializing TBOS Device Streaming...\n");
+    streaming_management_init();
+
     // Success - Pro Level Achieved
     kernel_print("\n🕉️ AIYAPPA VAHINI PRO - DIVINE VEHICLE ACTIVATED! 🕉️\n");
     kernel_print("[PRO] All 22 sacred modules operational!\n");
@@ -242,5 +253,7 @@ void kernel_main(void) {
     kernel_print("[PRO] TBOS PRO - सत्यम्.शिवम्.सुन्दरम् - Divine Mastery!\n");
     kernel_print("[PRO] Ready for Professional Sacred Computing!\n");
     // Interactive shell loop
-    shell_command_loop();
+    kernel_print("\n[SHELL] Starting interactive shell...\n");
+    shell_init();
+    shell_main();
 }

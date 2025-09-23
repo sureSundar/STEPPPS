@@ -5,6 +5,7 @@
  */
 
 #include "kernel.h"
+#include "kernel_headers.h"
 
 // Forward declarations
 void memory_init(void);

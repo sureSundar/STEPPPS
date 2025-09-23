@@ -4,6 +4,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
+// String functions
+int strcmp(const char* s1, const char* s2) {
+    while (*s1 && *s2 && *s1 == *s2) {
+        s1++;
+        s2++;
+    }
+    return *s1 - *s2;
+}
+
 extern void kernel_print(const char* str);
 extern void kernel_print_hex(uint32_t value);
 extern uint8_t keyboard_read_char(void);
@@ -33,6 +42,11 @@ static void cmd_calc(const char* args);
 static void cmd_echo(const char* args);
 static void cmd_time(void);
 static void cmd_test(void);
+static void cmd_stream_devices(void);
+static void cmd_stream_list(void);
+static void cmd_stream_audio(const char* args);
+static void cmd_stream_video(const char* args);
+static void cmd_stream_stop(const char* args);
 
 // Print shell prompt
 void shell_print_prompt(void) {
@@ -74,6 +88,19 @@ void shell_process_command(char* cmd) {
         cmd_test();
     } else if (strcmp(cmd, "om") == 0) {
         kernel_print("\n🕉️ Swamiye Saranam Aiyappa 🕉️\n");
+    } else if (strcmp(cmd, "stream-devices") == 0) {
+        cmd_stream_devices();
+    } else if (strcmp(cmd, "stream-list") == 0) {
+        cmd_stream_list();
+    } else if (strcmp(cmd, "stream-audio") == 0) {
+        cmd_stream_audio(args);
+    } else if (strcmp(cmd, "stream-video") == 0) {
+        cmd_stream_video(args);
+    } else if (strcmp(cmd, "stream-stop") == 0) {
+        cmd_stream_stop(args);
+    } else if (strcmp(cmd, "discover") == 0) {
+        extern void tbos_discover_devices(void);
+        tbos_discover_devices();
     } else {
         kernel_print("Unknown command: ");
         kernel_print(cmd);
@@ -84,17 +111,24 @@ void shell_process_command(char* cmd) {
 // Built-in command implementations
 static void cmd_help(void) {
     kernel_print("\n=== TBOS Commands ===\n");
-    kernel_print("help     - Show this help\n");
-    kernel_print("clear    - Clear screen\n");
-    kernel_print("ps       - List processes\n");
-    kernel_print("mem      - Memory info\n");
-    kernel_print("steppps  - STEPPPS status\n");
-    kernel_print("calc     - Calculator (calc 2+2)\n");
-    kernel_print("echo     - Print text\n");
-    kernel_print("time     - System time\n");
-    kernel_print("test     - Run tests\n");
-    kernel_print("om       - Sacred mantra\n");
-    kernel_print("reboot   - Restart system\n");
+    kernel_print("help           - Show this help\n");
+    kernel_print("clear          - Clear screen\n");
+    kernel_print("ps             - List processes\n");
+    kernel_print("mem            - Memory info\n");
+    kernel_print("steppps        - STEPPPS status\n");
+    kernel_print("calc           - Calculator (calc 2+2)\n");
+    kernel_print("echo           - Print text\n");
+    kernel_print("time           - System time\n");
+    kernel_print("test           - Run tests\n");
+    kernel_print("om             - Sacred mantra\n");
+    kernel_print("reboot         - Restart system\n");
+    kernel_print("\n=== Streaming Commands ===\n");
+    kernel_print("discover       - Find TBOS devices\n");
+    kernel_print("stream-devices - List discovered devices\n");
+    kernel_print("stream-list    - List active streams\n");
+    kernel_print("stream-audio   - Start audio stream to device\n");
+    kernel_print("stream-video   - Start video stream to device\n");
+    kernel_print("stream-stop    - Stop stream by ID\n");
 }
 
 static void cmd_clear(void) {
@@ -208,14 +242,86 @@ static void cmd_reboot(void) {
     asm volatile("int $0x00");
 }
 
-// String comparison
-int strcmp(const char* s1, const char* s2) {
-    while (*s1 && *s2 && *s1 == *s2) {
-        s1++;
-        s2++;
-    }
-    return *s1 - *s2;
+// Streaming command implementations
+static void cmd_stream_devices(void) {
+    extern void tbos_list_devices(void);
+    tbos_list_devices();
 }
+
+static void cmd_stream_list(void) {
+    extern void tbos_list_streams(void);
+    tbos_list_streams();
+}
+
+static void cmd_stream_audio(const char* device_id_str) {
+    if (!device_id_str || !*device_id_str) {
+        kernel_print("Usage: stream-audio <device_id>\n");
+        kernel_print("Use 'stream-devices' to see available devices\n");
+        return;
+    }
+
+    // Parse device ID (simple hex)
+    uint32_t device_id = 0;
+    while (*device_id_str && *device_id_str >= '0' && *device_id_str <= '9') {
+        device_id = device_id * 10 + (*device_id_str - '0');
+        device_id_str++;
+    }
+
+    extern uint32_t tbos_start_audio_stream(uint32_t device_id);
+    uint32_t session_id = tbos_start_audio_stream(device_id);
+
+    if (session_id) {
+        kernel_print("Audio stream started, session ID: ");
+        kernel_print_hex(session_id);
+        kernel_print("\n");
+    } else {
+        kernel_print("Failed to start audio stream\n");
+    }
+}
+
+static void cmd_stream_video(const char* device_id_str) {
+    if (!device_id_str || !*device_id_str) {
+        kernel_print("Usage: stream-video <device_id>\n");
+        kernel_print("Use 'stream-devices' to see available devices\n");
+        return;
+    }
+
+    uint32_t device_id = 0;
+    while (*device_id_str && *device_id_str >= '0' && *device_id_str <= '9') {
+        device_id = device_id * 10 + (*device_id_str - '0');
+        device_id_str++;
+    }
+
+    extern uint32_t tbos_start_video_stream(uint32_t device_id);
+    uint32_t session_id = tbos_start_video_stream(device_id);
+
+    if (session_id) {
+        kernel_print("Video stream started, session ID: ");
+        kernel_print_hex(session_id);
+        kernel_print("\n");
+    } else {
+        kernel_print("Failed to start video stream\n");
+    }
+}
+
+static void cmd_stream_stop(const char* session_id_str) {
+    if (!session_id_str || !*session_id_str) {
+        kernel_print("Usage: stream-stop <session_id>\n");
+        kernel_print("Use 'stream-list' to see active streams\n");
+        return;
+    }
+
+    uint32_t session_id = 0;
+    while (*session_id_str && *session_id_str >= '0' && *session_id_str <= '9') {
+        session_id = session_id * 10 + (*session_id_str - '0');
+        session_id_str++;
+    }
+
+    extern void tbos_stop_stream(uint32_t session_id);
+    tbos_stop_stream(session_id);
+}
+
+// String comparison already defined above
 
 // Main shell loop
 void shell_main(void) {

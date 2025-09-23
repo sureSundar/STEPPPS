@@ -24,9 +24,10 @@ echo "[BUILD] Compiling kernel..."
 nasm -f elf32 kernel/kernel_sacred.asm -o build/kernel_entry.o
 
 # Compile C files
-gcc -m32 -c kernel/kernel.c -o build/kernel.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/kernel_simple.c -o build/kernel.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/shell.c -o build/shell.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c drivers/keyboard/keyboard.c -o build/keyboard.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
+gcc -m32 -c kernel/tbos_stream.c -o build/tbos_stream.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/memory.c -o build/memory.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/interrupt.c -o build/interrupt.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
 gcc -m32 -c kernel/timer.c -o build/timer.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
@@ -50,7 +51,7 @@ gcc -m32 -c kernel/processor_analysis.c -o build/processor_analysis.o -ffreestan
 
 # Link kernel
 echo "[BUILD] Linking kernel..."
-ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/shell.o build/keyboard.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o build/processor_analysis.o
+ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/shell.o build/keyboard.o build/tbos_stream.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o build/processor_analysis.o
 
 # Build Alpine GUI Integration
 echo "[BUILD] Building Alpine GUI integration..."

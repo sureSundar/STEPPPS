@@ -48,7 +48,7 @@ void default_handler(uint32_t int_no, uint32_t err_code) {
 void irq1_handler(void) {
     keyboard_interrupt_handler();
     // Send EOI to PIC
-    outb(0x20, 0x20);
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)0x20), "Nd"((uint16_t)0x20));
 }
 
 // I/O port functions
@@ -128,7 +128,7 @@ void interrupt_init(void) {
     idt_set_gate(33, (uint32_t)irq1_handler, 0x08, 0x8E);
 
     // Enable keyboard interrupt only (unmask IRQ1)
-    outb(0x21, 0xFD);  // 11111101 - enable IRQ1
+    __asm__ volatile("outb %0, %1" : : "a"((uint8_t)0xFD), "Nd"((uint16_t)0x21));
 
     // Enable interrupts
     __asm__ volatile("sti");

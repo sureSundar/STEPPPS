@@ -12,7 +12,8 @@
       "Bash(timeout:*)",
       "Bash(/dev/null)",
       "Bash(echo:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
