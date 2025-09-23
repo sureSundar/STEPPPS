@@ -82,7 +82,7 @@ typedef struct {
 
 static keyboard_data_t kbd_data = {0};
 
-int keyboard_init(void* device) {
+int keyboard_driver_init(void* device) {
     kernel_print("  [KEYBOARD] Initializing PS/2 keyboard...\n");
 
     // Clear buffer
@@ -136,7 +136,7 @@ void keyboard_cleanup(void* device) {
 }
 
 static device_ops_t keyboard_ops = {
-    .init = keyboard_init,
+    .init = keyboard_driver_init,
     .read = keyboard_read,
     .write = keyboard_write,
     .ioctl = keyboard_ioctl,

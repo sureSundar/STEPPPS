@@ -27,10 +27,13 @@ idt_ptr_t idtp;
 extern void kernel_print(const char* str);
 extern void kernel_print_hex(uint32_t value);
 
-// External ISR handlers (will be in assembly)
+// External ISR handlers
 extern void isr0(void);
 extern void isr1(void);
-// ... more ISRs
+extern void keyboard_interrupt_handler(void);
+
+// IRQ handlers
+void irq1_handler(void);
 
 // Default interrupt handler
 void default_handler(uint32_t int_no, uint32_t err_code) {
@@ -39,6 +42,24 @@ void default_handler(uint32_t int_no, uint32_t err_code) {
     kernel_print(" Error: ");
     kernel_print_hex(err_code);
     kernel_print("\n");
+}
+
+// IRQ1 - Keyboard handler
+void irq1_handler(void) {
+    keyboard_interrupt_handler();
+    // Send EOI to PIC
+    outb(0x20, 0x20);
+}
+
+// I/O port functions
+static inline void outb(uint16_t port, uint8_t data) {
+    asm volatile("outb %0, %1" : : "a"(data), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t result;
+    asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
+    return result;
 }
 
 // Set IDT gate
@@ -103,7 +124,14 @@ void interrupt_init(void) {
     idt_init();
     pic_init();
 
+    // Set up keyboard interrupt (IRQ1 = interrupt 33)
+    idt_set_gate(33, (uint32_t)irq1_handler, 0x08, 0x8E);
+
+    // Enable keyboard interrupt only (unmask IRQ1)
+    outb(0x21, 0xFD);  // 11111101 - enable IRQ1
+
     // Enable interrupts
     __asm__ volatile("sti");
     kernel_print("  Interrupts enabled\n");
+    kernel_print("  Keyboard interrupt registered (IRQ1)\n");
 }

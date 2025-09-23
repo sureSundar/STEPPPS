@@ -48,6 +48,10 @@ static process_t* ready_queue = NULL;
 static uint32_t next_pid = 1;
 static uint32_t process_count = 0;
 
+// Forward declarations
+void create_kernel_process(void);
+void process_set_ready(process_t* proc);
+
 // Initialize process management
 void process_init(void) {
     kernel_print("[PROCESS] Initializing process management...\n");

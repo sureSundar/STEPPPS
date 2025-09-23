@@ -260,18 +260,56 @@ void show_boot_descriptor_summary(void)
 static steppps_state_t steppps_state;
 
 // Kernel entry point (called from bootloader)
+// Forward declare shell
+void shell_init(void);
+void shell_main(void);
+
 void kernel_main(void) {
+    // Clear screen
     volatile uint16_t* video = (uint16_t*)0xB8000;
+    for (int i = 0; i < 80 * 25; i++) {
+        video[i] = 0x0F20;  // White on black space
+    }
+
+    // Display boot message
     const char* msg = "TBOS READY";
     for (size_t i = 0; msg[i] && i < 10; ++i) {
         video[i] = 0x1F00 | msg[i];
     }
 
-    // Initialize interrupts (IDT + PIC) early so faults/IRQs are handled
+    kernel_printf("\nTernaryBit OS v1.0 Booting...\n");
+    kernel_printf("Swamiye Saranam Aiyappa\n\n");
+
+    // Initialize core systems
+    kernel_printf("[INIT] Initializing interrupt system...\n");
     interrupt_init();
 
+    kernel_printf("[INIT] Initializing memory system...\n");
+    memory_init();
+
+    kernel_printf("[INIT] Initializing timer system...\n");
+    timer_init(1000);  // 1000 Hz timer
+
+    // Initialize STEPPPS framework
+    kernel_printf("[INIT] Initializing STEPPPS framework...\n");
+    init_steppps_framework();
+
+    // Initialize keyboard
+    kernel_printf("[INIT] Initializing keyboard driver...\n");
+    keyboard_init();
+
+    // Initialize shell
+    kernel_printf("[INIT] Initializing shell...\n");
+    shell_init();
+
+    kernel_printf("[INIT] Boot complete! Starting shell...\n");
+
+    // Start interactive shell
+    shell_main();
+
+    // Should never reach here
     for (;;) {
-        asm volatile ("nop");
+        asm volatile ("hlt");
     }
 }
 

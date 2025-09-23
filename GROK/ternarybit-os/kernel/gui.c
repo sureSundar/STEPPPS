@@ -42,7 +42,7 @@ typedef struct {
     uint16_t bpp;
     uint8_t* framebuffer;
     uint32_t pitch;
-    uint8_t mode;
+    uint16_t mode;
 } display_mode_t;
 
 typedef struct {

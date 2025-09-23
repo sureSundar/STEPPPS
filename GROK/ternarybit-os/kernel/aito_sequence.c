@@ -23,8 +23,8 @@ int str_compare(const char* str1, const char* str2) {
 //============================================
 // 1. INTERACTIVE SHELL
 //============================================
-void shell_init(void) {
-    kernel_print("  Shell commands loaded: ls, cat, help, steppps\n");
+void aito_shell_init(void) {
+    kernel_print("  AITO Shell commands loaded: ls, cat, help, steppps\n");
     kernel_print("  Command processor: Active\n");
     kernel_print("  Input buffer: 256 bytes\n");
 }
