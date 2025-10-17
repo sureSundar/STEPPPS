@@ -34,6 +34,8 @@
 static tbos_context_t* g_system_context = NULL;
 static tbos_factory_interface_t* g_factory = NULL;
 static tbos_logger_t* g_logger = NULL;
+// Global logger used by TBOS_LOG_* macros declared in tbos_base.h
+tbos_logger_t* g_tbos_logger = NULL;
 static tbos_config_t* g_config = NULL;
 static pthread_mutex_t g_init_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -446,6 +448,8 @@ tbos_result_t tbos_context_initialize(tbos_context_t* ctx) {
     if (!g_logger) {
         return tbos_create_error_result(ENOMEM, "Failed to create logger");
     }
+    // Wire global logger for macros
+    g_tbos_logger = g_logger;
 
     TBOS_LOG_INFO("Initializing TernaryBit OS Core...");
 

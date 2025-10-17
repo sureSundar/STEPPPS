@@ -1,0 +1,22 @@
+{
+  "name": "ternarybit-os",
+  "version": "1.0.0",
+  "description": "[Read the Full Documentation → README_FULL.md](README_FULL.md)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "claude:code": "node ./node_modules/@anthropic-ai/claude-code/cli.js",
+    "claude:watch": "node ./node_modules/@anthropic-ai/claude-code/cli.js --watch . --ignore '.*'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "^1.0.120"
+  }
+}

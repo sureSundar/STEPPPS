@@ -334,8 +334,8 @@ int security_check_access(uint32_t user_id, uint32_t resource_id) {
     }
 
     if (!acl_entry) {
-        // No specific ACL, use default rules
-        return (user->access_level > 0) ? 1 : 0;
+        // No specific ACL, default to deny (safer default)
+        return 0;
     }
 
     // Check all requirements
@@ -474,11 +474,7 @@ int sacred_firewall_check(uint32_t src_ip, uint32_t dest_port, const void* paylo
     kernel_print_hex(dest_port);
     kernel_print("\n");
 
-    // Sacred ports (always allowed)
-    if (dest_port == 108 || dest_port == 777 || dest_port == 1008) {
-        kernel_print("[FIREWALL] Sacred port - allowing\n");
-        return 1;
-    }
+    // Removed unconditional sacred port allowlist; all packets are evaluated uniformly
 
     // Check for malicious patterns
     int threats = security_scan_for_threats(payload, size);
@@ -545,11 +541,14 @@ void security_show_stats(void) {
 void security_show_audit_log(void) {
     kernel_print("\n=== SECURITY AUDIT LOG ===\n");
 
-    uint32_t start = (audit_count > 10) ? audit_count - 10 : 0;
-    uint32_t end = audit_count;
+    uint32_t total = (audit_count < MAX_AUDIT_ENTRIES) ? audit_count : MAX_AUDIT_ENTRIES;
+    // Show up to the last 10 entries
+    uint32_t to_show = (total > 10) ? 10 : total;
 
-    for (uint32_t i = start; i < end; i++) {
-        security_audit_entry_t* entry = &audit_log[i % MAX_AUDIT_ENTRIES];
+    for (uint32_t idx = 0; idx < to_show; idx++) {
+        // Compute the logical index of the last entries with wrap-around
+        uint32_t logical = (audit_count + MAX_AUDIT_ENTRIES - to_show + idx) % MAX_AUDIT_ENTRIES;
+        security_audit_entry_t* entry = &audit_log[logical];
 
         kernel_print("Time: ");
         kernel_print_hex(entry->timestamp);
