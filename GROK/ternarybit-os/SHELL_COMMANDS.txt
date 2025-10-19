@@ -1,0 +1,87 @@
+╔═══════════════════════════════════════════════════════════════╗
+║       TernaryBit OS - Shell Commands Quick Reference        ║
+║                  🕉️ Swamiye Saranam Aiyappa 🕉️                ║
+╚═══════════════════════════════════════════════════════════════╝
+
+START TBOS:
+  qemu-system-i386 -drive format=raw,file=build/tbos.img -m 128M -nographic
+
+EXIT QEMU:
+  Ctrl-A then X
+
+═══════════════════════════════════════════════════════════════
+
+AVAILABLE COMMANDS:
+
+┌───────────────────────────────────────────────────────────┐
+│ INFORMATION COMMANDS                                      │
+├───────────────────────────────────────────────────────────┤
+│ help         Show all available commands                  │
+│ about        Display system information                   │
+│ steppps      Show STEPPPS framework status                │
+│ ps           List running processes                       │
+│ mem          Display memory information                   │
+│ time         Show system uptime                           │
+└───────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────┐
+│ UTILITY COMMANDS                                          │
+├───────────────────────────────────────────────────────────┤
+│ calc <expr>  Calculator (e.g., calc 5+3)                  │
+│              Operators: + - * / %                         │
+│ echo <text>  Print text to screen                         │
+│ test         Run system tests                             │
+│ om           Display sacred mantra                        │
+└───────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────┐
+│ SCREEN CONTROL                                            │
+├───────────────────────────────────────────────────────────┤
+│ clear        Clear the screen                             │
+│ cls          Same as clear                                │
+└───────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────┐
+│ SYSTEM CONTROL                                            │
+├───────────────────────────────────────────────────────────┤
+│ reboot       Restart the system                           │
+└───────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+
+EXAMPLE SESSION:
+
+  TBOS> help                    # Show all commands
+  TBOS> about                   # System info
+  TBOS> steppps                 # Framework status
+  TBOS> calc 42+8               # Calculator: 42+8=50
+  TBOS> echo Hello TBOS!        # Print text
+  TBOS> test                    # Run tests
+  TBOS> om                      # Sacred mantra
+  TBOS> clear                   # Clear screen
+  TBOS> [Ctrl-A then X]         # Exit QEMU
+
+═══════════════════════════════════════════════════════════════
+
+CALCULATOR EXAMPLES:
+
+  calc 5+3         → Result: 8
+  calc 42-8        → Result: 34
+  calc 6*7         → Result: 42
+  calc 100/4       → Result: 25
+  calc 17%5        → Result: 2
+
+═══════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING:
+
+  No prompt?          Wait 5-10 seconds or press Enter
+  Can't exit?         Press Ctrl-A then X
+  Screen garbled?     Type: clear
+  Commands ignored?   Click QEMU window to focus
+
+═══════════════════════════════════════════════════════════════
+
+For complete documentation, see: SHELL_DEMO_GUIDE.md
+
+═══════════════════════════════════════════════════════════════
