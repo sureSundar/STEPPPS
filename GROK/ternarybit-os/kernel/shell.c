@@ -1,5 +1,13 @@
 // TBOS Interactive Shell
 // Real OS functionality - no more infinite loops!
+//
+// PXFS INTEGRATION ROADMAP:
+// - Phase 1: Command history stored as PXFS-encoded pixels
+// - Phase 2: Shell output buffering via PXFS compression
+// - Phase 3: File I/O through PXFS codec layer
+// - Phase 4: Network command data transferred as PXFS packets
+//
+// Current Status: Foundation layer (I/O) - PXFS hooks to be added in Sprint 2
 
 #include <stdint.h>
 #include <stddef.h>
@@ -18,6 +26,26 @@ extern void kernel_print_hex(uint32_t value);
 extern uint8_t keyboard_read_char(void);
 extern void clear_screen(void);
 
+// Serial port I/O (for -nographic mode)
+#define SERIAL_PORT 0x3F8
+#define SERIAL_LSR (SERIAL_PORT + 5)
+
+// Low-level I/O functions
+static inline uint8_t inb(uint16_t port) {
+    uint8_t result;
+    asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
+    return result;
+}
+
+// Read character from serial port
+static uint8_t serial_read_char(void) {
+    // Check if data is available (LSR bit 0)
+    if (!(inb(SERIAL_LSR) & 0x01)) {
+        return 0;  // No data available
+    }
+    return inb(SERIAL_PORT);
+}
+
 #define MAX_CMD_LENGTH 256
 #define MAX_HISTORY 10
 
@@ -30,6 +58,12 @@ typedef struct {
 static command_buffer_t cmd_buffer = {0};
 static char* command_history[MAX_HISTORY] = {0};
 static uint32_t history_index = 0;
+
+// PXFS INTEGRATION NOTE:
+// Command history will be stored using PXFS encoding to save memory.
+// Each command string can be compressed into pixel RGB values.
+// Expected compression: 256 bytes → ~85 pixels (~43% size reduction)
+// TODO (Sprint 2): Replace char* arrays with tbpx_encode/decode calls
 
 // Built-in commands
 static void cmd_help(void);
@@ -332,10 +366,16 @@ void shell_main(void) {
     shell_print_prompt();
 
     while (1) {
+        // Try reading from PS/2 keyboard first (graphical mode)
         uint8_t ch = keyboard_read_char();
 
+        // If no PS/2 input, try serial port (-nographic mode)
         if (ch == 0) {
-            // No key pressed - yield CPU
+            ch = serial_read_char();
+        }
+
+        if (ch == 0) {
+            // No input from either source - yield CPU
             asm volatile("hlt");
             continue;
         }

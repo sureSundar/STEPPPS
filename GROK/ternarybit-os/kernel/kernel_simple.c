@@ -10,9 +10,31 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
+// Serial port (for -nographic mode)
+#define SERIAL_PORT 0x3F8
+#define SERIAL_LSR (SERIAL_PORT + 5)
+
 static uint16_t* vga = (uint16_t*)VGA_BUFFER;
 static int cursor_x = 0;
 static int cursor_y = 0;
+
+// Low-level I/O
+static inline void outb(uint16_t port, uint8_t value) {
+    asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t result;
+    asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
+    return result;
+}
+
+// Write character to serial port
+static void serial_write_char(char c) {
+    // Wait for transmit buffer to be empty (LSR bit 5)
+    while ((inb(SERIAL_LSR) & 0x20) == 0);
+    outb(SERIAL_PORT, c);
+}
 
 // Print functions
 void kernel_print(const char* str);
@@ -66,9 +88,13 @@ void kernel_clear(void) {
     cursor_y = 0;
 }
 
-// Print string
+// Print string (to both VGA and serial)
 void kernel_print(const char* str) {
     while (*str) {
+        // Write to serial port (for -nographic mode)
+        serial_write_char(*str);
+
+        // Write to VGA (for graphical mode)
         if (*str == '\n') {
             cursor_x = 0;
             cursor_y++;
