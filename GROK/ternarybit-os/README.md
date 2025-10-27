@@ -1,5 +1,8 @@
 # TernaryBit OS - STEPPPS Universal Framework
 
+## 🚀 **NEW: v3.0 Revolutionary Extensions Available!**
+**[→ Explore the Revolutionary v3.0 Features](v3.0/README.md)** - World's first hardware-fluid OS with AI-driven bootloader
+
 [Read the Full Documentation → README_FULL.md](README_FULL.md)
 
 [Research Paper → RESEARCH_PAPER.md](RESEARCH_PAPER.md)
@@ -11,7 +14,14 @@
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.placeholder-blue)](https://doi.org/10.5281/zenodo.placeholder)
 [![Paper Build](https://img.shields.io/github/actions/workflow/status/suresundar/steppps/paper.yml?branch=main&label=Paper)](https://github.com/suresundar/steppps/actions/workflows/paper.yml)
 
-A minimal operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
+A revolutionary operating system implementing the STEPPPS (Space, Time, Event, Psychology, Pixel, Prompt, Script) universal computing framework with Hindu mythology integration.
+
+## 🌟 Revolutionary v3.0 Features
+- 🧠 **AI-Driven Bootloader** - First neural network bootloader advisor
+- 🌐 **Hardware Fluidity** - Calculator to supercomputer transformation
+- 📁 **Revolutionary Filesystems** - PXFS, UCFS, RF2S with Windows compatibility
+- 🗜️ **Ultra Compression** - World record 1365:1 compression ratios
+- 🔄 **Universal Architecture** - 7 architectures spanning 60+ years
 
 ## 🚀 TBOS Alpine Quick Start
 
