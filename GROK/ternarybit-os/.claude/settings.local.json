@@ -16,7 +16,8 @@
       "Bash(git commit:*)",
       "Bash(./tbos_steppps_complete_demo)",
       "Bash(rm:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(./build_universal.sh:*)"
     ],
     "deny": [],
     "ask": []

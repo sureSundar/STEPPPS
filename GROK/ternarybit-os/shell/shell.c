@@ -1144,30 +1144,30 @@ static void cmd_cp(const char* args) {
     normalize_path(src, src, sizeof(src));
     normalize_path(space, dest, sizeof(dest));
 
-    int fd_src = open(src, O_RDONLY);
-    if (fd_src < 0) {
+    FILE* f_src = fopen(src, "r");
+    if (!f_src) {
         kernel_print("cp: cannot open source file\n");
         return;
     }
 
-    int fd_dest = open(dest, O_WRONLY | O_CREAT | O_TRUNC);
-    if (fd_dest < 0) {
-        close(fd_src);
+    FILE* f_dest = fopen(dest, "w");
+    if (!f_dest) {
+        fclose(f_src);
         kernel_print("cp: cannot create destination file\n");
         return;
     }
 
     char buffer[512];
-    ssize_t bytes;
-    while ((bytes = read(fd_src, buffer, sizeof(buffer))) > 0) {
-        if (write(fd_dest, buffer, (size_t)bytes) != bytes) {
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), f_src)) > 0) {
+        if (fwrite(buffer, 1, bytes, f_dest) != bytes) {
             kernel_print("cp: write error\n");
             break;
         }
     }
 
-    close(fd_src);
-    close(fd_dest);
+    fclose(f_src);
+    fclose(f_dest);
     kernel_print("File copied\n");
 }
 
@@ -1196,7 +1196,7 @@ static void cmd_mv(const char* args) {
     /* Simple move: copy then delete */
     cmd_cp(args);
 
-    if (unlink(src) != 0) {
+    if (vfs_remove(src, 0) != 0) {
         kernel_print("mv: cannot remove source file\n");
     }
 }
@@ -1210,25 +1210,25 @@ static void cmd_head(const char* args) {
     char path[SHELL_MAX_PATH];
     normalize_path(args, path, sizeof(path));
 
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) {
+    FILE* f = fopen(path, "r");
+    if (!f) {
         kernel_print("head: cannot open file\n");
         return;
     }
 
     char buffer[512];
-    ssize_t bytes = read(fd, buffer, sizeof(buffer) - 1);
+    size_t bytes = fread(buffer, 1, sizeof(buffer) - 1, f);
     if (bytes > 0) {
         buffer[bytes] = '\0';
         /* Print first 10 lines or 512 bytes */
         int lines = 0;
-        for (ssize_t i = 0; i < bytes && lines < 10; i++) {
+        for (size_t i = 0; i < bytes && lines < 10; i++) {
             char c[2] = {buffer[i], '\0'};
             kernel_print(c);
             if (buffer[i] == '\n') lines++;
         }
     }
-    close(fd);
+    fclose(f);
 }
 
 static void cmd_tail(const char* args) {
@@ -1240,24 +1240,25 @@ static void cmd_tail(const char* args) {
     char path[SHELL_MAX_PATH];
     normalize_path(args, path, sizeof(path));
 
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        kernel_print("head: cannot open file\n");
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        kernel_print("tail: cannot open file\n");
         return;
     }
 
-    /* Simple tail: read last 512 bytes */
-    off_t size = lseek(fd, 0, SEEK_END);
-    off_t start = (size > 512) ? (size - 512) : 0;
-    lseek(fd, start, SEEK_SET);
+    /* Simple tail: seek to end - 512 bytes and read */
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    long start = (size > 512) ? (size - 512) : 0;
+    fseek(f, start, SEEK_SET);
 
     char buffer[512];
-    ssize_t bytes = read(fd, buffer, sizeof(buffer) - 1);
+    size_t bytes = fread(buffer, 1, sizeof(buffer) - 1, f);
     if (bytes > 0) {
         buffer[bytes] = '\0';
         kernel_print(buffer);
     }
-    close(fd);
+    fclose(f);
 }
 
 /* ========================================================================
