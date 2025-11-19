@@ -3,9 +3,16 @@
 #include "tbos/errno.h"
 #include "tbos/libc.h"
 
+#ifdef HOST_BUILD
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#else
+/* For kernel builds, FILE operations will use VFS instead */
+typedef struct FILE FILE;
+static inline FILE* fopen(const char* path, const char* mode) { (void)path; (void)mode; return NULL; }
+static inline int fclose(FILE* fp) { (void)fp; return 0; }
+static inline char* fgets(char* s, int size, FILE* stream) { (void)s; (void)size; (void)stream; return NULL; }
+static inline int fprintf(FILE* stream, const char* format, ...) { (void)stream; (void)format; return 0; }
+#endif
 
 void ucfs_config_init_defaults(ucfs_config_t* config) {
     if (!config) return;

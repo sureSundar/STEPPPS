@@ -345,7 +345,11 @@ fi
     if config_enabled "FS"; then
         compile_c "kernel/fs/ramfs.c"
         compile_c "kernel/fs/vfs.c"
+        compile_c "kernel/fs/ucfs_driver.c"
         compile_c "src/core/filesystem/blockdev.c"
+        compile_c "src/core/filesystem/ucfs_codec.c"
+        compile_c "src/core/filesystem/ucfs_overlay.c"
+        compile_c "src/core/filesystem/ucfs_config.c"
     else
         echo "    [skip] VFS/RAMFS disabled by profile"
     fi
