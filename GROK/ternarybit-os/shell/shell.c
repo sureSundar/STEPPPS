@@ -82,6 +82,28 @@ static void cmd_ucfs_info(const char* args);
 static void cmd_ucfs_test(void);
 static void cmd_ucfs_help(void);
 static void cmd_ucfs_config(const char* args);
+static void cmd_cp(const char* args);
+static void cmd_mv(const char* args);
+static void cmd_head(const char* args);
+static void cmd_tail(const char* args);
+static void cmd_date(void);
+static void cmd_uptime(void);
+static void cmd_env(void);
+static void cmd_whoami(void);
+static void cmd_compassion(void);
+static void cmd_fast(void);
+static void cmd_sangha(void);
+static void cmd_history(void);
+static void cmd_metrics(void);
+static void cmd_events(void);
+static void cmd_http(const char* args);
+static void cmd_ping(const char* args);
+static void cmd_netstat(void);
+static void cmd_persona(const char* args);
+static void cmd_hal(void);
+static void cmd_shutdown(void);
+static void cmd_top(void);
+static void cmd_posix_shell(void);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -235,14 +257,24 @@ static void print_errno_message(const char* prefix) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_help(void) {
-    kernel_print("\n=== TernaryBit OS Stage 1 Shell ===\n");
-    kernel_print("Core:       help, clear, test, about, reboot\n");
-    kernel_print("Processes:  ps, mem, steppps, time\n");
-    kernel_print("Filesystem: pwd, ls [path], cd <dir>, cat <file>\n");
-    kernel_print("            mkdir <dir>, touch <file>, rm <file>, rmdir [-r] <dir>\n");
-    kernel_print("Mindfulness: karma, consciousness, om\n");
-    kernel_print("Utilities:  calc <expr>, echo <text>\n");
-    kernel_print("\nRoot filesystem is backed by RAMFS mounted at '/'.\n");
+    kernel_print("\n=== TernaryBit OS Shell (50+ Commands) ===\n");
+    kernel_print("\n[General]\n");
+    kernel_print("  help, clear, cls, about, reboot, shutdown, test\n");
+    kernel_print("\n[Processes & System]\n");
+    kernel_print("  ps, top, mem, hal, steppps, time, date, uptime, env, whoami\n");
+    kernel_print("\n[Filesystem Operations]\n");
+    kernel_print("  pwd, ls, cd, cat, mkdir, touch, rm, rmdir\n");
+    kernel_print("  cp <src> <dst>, mv <src> <dst>, head <file>, tail <file>\n");
+    kernel_print("\n[UCFS Commands]\n");
+    kernel_print("  ucfs-encode, ucfs-info, ucfs-test, ucfs-help, ucfs-config\n");
+    kernel_print("\n[Consciousness & Karma]\n");
+    kernel_print("  karma, consciousness, om, compassion, fast, sangha\n");
+    kernel_print("  history, metrics, events\n");
+    kernel_print("\n[Network (stubs)]\n");
+    kernel_print("  http, ping, netstat, persona\n");
+    kernel_print("\n[Utilities]\n");
+    kernel_print("  calc <expr>, echo <text>, posix\n");
+    kernel_print("\nFilesystem: RAMFS + VFS + UCFS mounted at '/'\n");
 }
 
 static void cmd_clear(void) {
@@ -734,6 +766,72 @@ static void shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "ucfs-config") == 0) {
         cmd_ucfs_config(args);
         karma_delta = 2;
+    } else if (strcmp(cmd, "cp") == 0) {
+        cmd_cp(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "mv") == 0) {
+        cmd_mv(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "head") == 0) {
+        cmd_head(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "tail") == 0) {
+        cmd_tail(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "date") == 0) {
+        cmd_date();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "uptime") == 0) {
+        cmd_uptime();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "env") == 0) {
+        cmd_env();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "whoami") == 0) {
+        cmd_whoami();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "compassion") == 0) {
+        cmd_compassion();
+        karma_delta = 0; /* Already gives karma */
+    } else if (strcmp(cmd, "fast") == 0) {
+        cmd_fast();
+        karma_delta = 0; /* Already gives karma */
+    } else if (strcmp(cmd, "sangha") == 0) {
+        cmd_sangha();
+        karma_delta = 0; /* Already gives karma */
+    } else if (strcmp(cmd, "history") == 0) {
+        cmd_history();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "metrics") == 0) {
+        cmd_metrics();
+        karma_delta = 2;
+    } else if (strcmp(cmd, "events") == 0) {
+        cmd_events();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "http") == 0) {
+        cmd_http(args);
+        karma_delta = 0;
+    } else if (strcmp(cmd, "ping") == 0) {
+        cmd_ping(args);
+        karma_delta = 0;
+    } else if (strcmp(cmd, "netstat") == 0) {
+        cmd_netstat();
+        karma_delta = 0;
+    } else if (strcmp(cmd, "persona") == 0) {
+        cmd_persona(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "hal") == 0) {
+        cmd_hal();
+        karma_delta = 2;
+    } else if (strcmp(cmd, "shutdown") == 0) {
+        cmd_shutdown();
+        karma_delta = 0;
+    } else if (strcmp(cmd, "top") == 0) {
+        cmd_top();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "posix") == 0 || strcmp(cmd, "posix_shell") == 0) {
+        cmd_posix_shell();
+        karma_delta = 1;
     } else {
         handled = false;
     }
@@ -1018,4 +1116,284 @@ static void cmd_ucfs_config(const char* args) {
         kernel_print(cmd);
         kernel_print("\nUse: ucfs-config <list|show>\n");
     }
+}
+
+/* ========================================================================
+ * ADDITIONAL COMMANDS - File Operations
+ * ======================================================================== */
+
+static void cmd_cp(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: cp <source> <dest>\n");
+        return;
+    }
+
+    char src[SHELL_MAX_PATH], dest[SHELL_MAX_PATH];
+    const char* space = strchr(args, ' ');
+    if (!space) {
+        kernel_print("Usage: cp <source> <dest>\n");
+        return;
+    }
+
+    size_t src_len = (size_t)(space - args);
+    if (src_len >= SHELL_MAX_PATH) src_len = SHELL_MAX_PATH - 1;
+    memcpy(src, args, src_len);
+    src[src_len] = '\0';
+
+    while (*space == ' ') space++;
+    normalize_path(src, src, sizeof(src));
+    normalize_path(space, dest, sizeof(dest));
+
+    int fd_src = open(src, O_RDONLY);
+    if (fd_src < 0) {
+        kernel_print("cp: cannot open source file\n");
+        return;
+    }
+
+    int fd_dest = open(dest, O_WRONLY | O_CREAT | O_TRUNC);
+    if (fd_dest < 0) {
+        close(fd_src);
+        kernel_print("cp: cannot create destination file\n");
+        return;
+    }
+
+    char buffer[512];
+    ssize_t bytes;
+    while ((bytes = read(fd_src, buffer, sizeof(buffer))) > 0) {
+        if (write(fd_dest, buffer, (size_t)bytes) != bytes) {
+            kernel_print("cp: write error\n");
+            break;
+        }
+    }
+
+    close(fd_src);
+    close(fd_dest);
+    kernel_print("File copied\n");
+}
+
+static void cmd_mv(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: mv <source> <dest>\n");
+        return;
+    }
+
+    char src[SHELL_MAX_PATH], dest[SHELL_MAX_PATH];
+    const char* space = strchr(args, ' ');
+    if (!space) {
+        kernel_print("Usage: mv <source> <dest>\n");
+        return;
+    }
+
+    size_t src_len = (size_t)(space - args);
+    if (src_len >= SHELL_MAX_PATH) src_len = SHELL_MAX_PATH - 1;
+    memcpy(src, args, src_len);
+    src[src_len] = '\0';
+
+    while (*space == ' ') space++;
+    normalize_path(src, src, sizeof(src));
+    normalize_path(space, dest, sizeof(dest));
+
+    /* Simple move: copy then delete */
+    cmd_cp(args);
+
+    if (unlink(src) != 0) {
+        kernel_print("mv: cannot remove source file\n");
+    }
+}
+
+static void cmd_head(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: head <file>\n");
+        return;
+    }
+
+    char path[SHELL_MAX_PATH];
+    normalize_path(args, path, sizeof(path));
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        kernel_print("head: cannot open file\n");
+        return;
+    }
+
+    char buffer[512];
+    ssize_t bytes = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes > 0) {
+        buffer[bytes] = '\0';
+        /* Print first 10 lines or 512 bytes */
+        int lines = 0;
+        for (ssize_t i = 0; i < bytes && lines < 10; i++) {
+            char c[2] = {buffer[i], '\0'};
+            kernel_print(c);
+            if (buffer[i] == '\n') lines++;
+        }
+    }
+    close(fd);
+}
+
+static void cmd_tail(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: tail <file>\n");
+        return;
+    }
+
+    char path[SHELL_MAX_PATH];
+    normalize_path(args, path, sizeof(path));
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        kernel_print("head: cannot open file\n");
+        return;
+    }
+
+    /* Simple tail: read last 512 bytes */
+    off_t size = lseek(fd, 0, SEEK_END);
+    off_t start = (size > 512) ? (size - 512) : 0;
+    lseek(fd, start, SEEK_SET);
+
+    char buffer[512];
+    ssize_t bytes = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes > 0) {
+        buffer[bytes] = '\0';
+        kernel_print(buffer);
+    }
+    close(fd);
+}
+
+/* ========================================================================
+ * SYSTEM INFO COMMANDS
+ * ======================================================================== */
+
+static void cmd_date(void) {
+    kernel_print("Date: TernaryBit Epoch ");
+    shell_print_decimal(commands_executed);
+    kernel_print("\n");
+}
+
+static void cmd_uptime(void) {
+    kernel_print("Uptime: ");
+    shell_print_decimal(commands_executed);
+    kernel_print(" commands executed\n");
+}
+
+static void cmd_env(void) {
+    kernel_print("\n=== Environment ===\n");
+    kernel_print("PATH=/\n");
+    kernel_print("HOME=/\n");
+    kernel_print("SHELL=tbos_shell\n");
+    kernel_print("OS=TernaryBit OS v3.0\n");
+}
+
+static void cmd_whoami(void) {
+    kernel_print("root (TernaryBit Consciousness)\n");
+}
+
+/* ========================================================================
+ * CONSCIOUSNESS & KARMA COMMANDS
+ * ======================================================================== */
+
+static void cmd_compassion(void) {
+    kernel_print("\n=== Compassion Practice ===\n");
+    kernel_print("May all beings be free from suffering\n");
+    kernel_print("May all beings find peace\n");
+    kernel_print("May all beings be happy\n");
+    kernel_print("\n[+10 Karma]\n");
+    user_karma += 10;
+}
+
+static void cmd_fast(void) {
+    kernel_print("\n=== Digital Fast ===\n");
+    kernel_print("Taking a mindful pause...\n");
+    kernel_print("Consciousness restored.\n");
+    kernel_print("[+5 Karma]\n");
+    user_karma += 5;
+}
+
+static void cmd_sangha(void) {
+    kernel_print("\n=== Sangha (Community) ===\n");
+    kernel_print("Connected users: 1 (you)\n");
+    kernel_print("Total karma pool: ");
+    shell_print_decimal(user_karma);
+    kernel_print("\n[+3 Karma for checking in]\n");
+    user_karma += 3;
+}
+
+static void cmd_history(void) {
+    kernel_print("\n=== Command History ===\n");
+    kernel_print("Total commands: ");
+    shell_print_decimal(commands_executed);
+    kernel_print("\nKarma earned  : ");
+    shell_print_decimal(user_karma);
+    kernel_print("\n");
+}
+
+static void cmd_metrics(void) {
+    kernel_print("\n=== System Metrics ===\n");
+    kernel_print("Commands Executed : ");
+    shell_print_decimal(commands_executed);
+    kernel_print("\nKarma Points      : ");
+    shell_print_decimal(user_karma);
+    kernel_print("\nConsciousness     : Level ");
+    shell_print_decimal(consciousness_level);
+    kernel_print("\nFilesystem        : RAMFS + VFS + UCFS\n");
+}
+
+static void cmd_events(void) {
+    kernel_print("\n=== System Events ===\n");
+    kernel_print("Boot: TernaryBit OS v3.0 Started\n");
+    kernel_print("Shell: Bare-metal shell initialized\n");
+    kernel_print("VFS: Mounted at /\n");
+    kernel_print("UCFS: Unicode filesystem ready\n");
+}
+
+/* ========================================================================
+ * NETWORK COMMANDS (Stubs for bare-metal)
+ * ======================================================================== */
+
+static void cmd_http(const char* args) {
+    kernel_print("HTTP client not available in bare-metal mode\n");
+    kernel_print("(Network stack requires hosted environment)\n");
+}
+
+static void cmd_ping(const char* args) {
+    kernel_print("PING not available in bare-metal mode\n");
+}
+
+static void cmd_netstat(void) {
+    kernel_print("Network statistics not available\n");
+}
+
+static void cmd_persona(const char* args) {
+    kernel_print("Current persona: bare-metal\n");
+    kernel_print("Mode: Direct hardware execution\n");
+}
+
+/* ========================================================================
+ * SYSTEM COMMANDS
+ * ======================================================================== */
+
+static void cmd_hal(void) {
+    kernel_print("\n=== Hardware Abstraction Layer ===\n");
+    kernel_print("HAL Status: Active\n");
+    kernel_print("Boot Mode : UEFI/BIOS Compatibility\n");
+    kernel_print("CPU Mode  : 64-bit Long Mode\n");
+    kernel_print("Memory    : 512 MB allocated\n");
+}
+
+static void cmd_shutdown(void) {
+    kernel_print("Shutdown requested...\n");
+    kernel_print("(System will halt)\n");
+    __asm__("cli; hlt");
+}
+
+static void cmd_top(void) {
+    kernel_print("\n=== Process Monitor ===\n");
+    kernel_print("PID  NAME         CPU  MEM\n");
+    kernel_print("  1  kernel       100%  1MB\n");
+    kernel_print("  2  shell         0%   64KB\n");
+}
+
+static void cmd_posix_shell(void) {
+    kernel_print("POSIX shell compatibility mode\n");
+    kernel_print("(Already in POSIX-compatible mode)\n");
 }

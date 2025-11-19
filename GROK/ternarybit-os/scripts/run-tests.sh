@@ -111,11 +111,19 @@ run_unit_tests() {
         if [ -f "${test_file}.c" ]; then
             local test_name=$(basename "${test_file}.c")
             local test_bin="${BUILD_DIR}/tests/${test_name}"
-            
+            local deps_line
+            local extra_sources=()
+
+            if deps_line=$(grep -m1 "^// TEST_DEPS:" "${test_file}.c" 2>/dev/null); then
+                deps_line=${deps_line#// TEST_DEPS:}
+                # shellcheck disable=SC2206 # we want word splitting for dependency list
+                extra_sources=($deps_line)
+            fi
+    
             mkdir -p "$(dirname "$test_bin")"
-            
+    
             echo -n "🔨 Building ${test_name}... "
-            if gcc -o "$test_bin" "${test_file}.c" -Iinclude -Itests/unit/mocks \
+            if gcc -o "$test_bin" "${test_file}.c" "${extra_sources[@]}" -Iinclude -Itests/unit/mocks \
                 -Wall -Wextra -Werror -g -O0 \
                 $([ $COVERAGE -eq 1 ] && echo "--coverage -fprofile-arcs -ftest-coverage"); then
                 echo -e "${GREEN}OK${NC}"
