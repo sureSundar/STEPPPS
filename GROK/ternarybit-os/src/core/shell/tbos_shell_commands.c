@@ -1334,6 +1334,7 @@ int tbos_cmd_ucfs_help(int argc, char** argv) {
     printf("  ucfs-encode <path>  - Show canonical path for UCFS path\n");
     printf("  ucfs-info <path>    - Display detailed path information\n");
     printf("  ucfs-test           - Run UCFS functionality tests\n");
+    printf("  ucfs-config <cmd>   - Manage configuration (list/show/save)\n");
     printf("  ucfs-help           - Show this help\n\n");
 
     printf("Regular Commands Work Too:\n");
