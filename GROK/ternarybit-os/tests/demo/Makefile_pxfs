@@ -1,0 +1,36 @@
+# Makefile for PXFS Compression Demo
+# US-7.1: Compression Commands
+# US-7.2: Sacred Pixel Visualization
+
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -I../../src
+LDFLAGS = -lm
+
+DEMO = demo_pxfs_compression
+OBJS = demo_pxfs_compression.o \
+       ../../src/core/compression/pxfs_codec.o \
+       ../../src/core/steppps/tbos_steppps.o
+
+all: $(DEMO)
+
+$(DEMO): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(DEMO)
+
+demo_pxfs_compression.o: demo_pxfs_compression.c
+	$(CC) $(CFLAGS) -c demo_pxfs_compression.c
+
+../../src/core/compression/pxfs_codec.o: ../../src/core/compression/pxfs_codec.c
+	$(CC) $(CFLAGS) -c ../../src/core/compression/pxfs_codec.c \
+		-o ../../src/core/compression/pxfs_codec.o
+
+../../src/core/steppps/tbos_steppps.o: ../../src/core/steppps/tbos_steppps.c
+	$(CC) $(CFLAGS) -c ../../src/core/steppps/tbos_steppps.c \
+		-o ../../src/core/steppps/tbos_steppps.o
+
+run: $(DEMO)
+	./$(DEMO)
+
+clean:
+	rm -f $(OBJS) $(DEMO)
+
+.PHONY: all run clean

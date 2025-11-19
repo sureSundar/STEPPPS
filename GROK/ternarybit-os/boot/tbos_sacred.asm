@@ -2,6 +2,10 @@
 ; 🕉️ Swamiye Saranam Aiyappa 🕉️
 ; Minimal working boot sector
 
+%ifndef STAGE2_SECTOR_COUNT
+%define STAGE2_SECTOR_COUNT 8
+%endif
+
 [BITS 16]
 [ORG 0x7C00]
 
@@ -15,8 +19,9 @@ start:
     mov sp, 0x7C00         ; Stack grows down from boot sector
     sti                     ; Re-enable interrupts
 
-    ; Save boot drive
-    mov [boot_drive], dl
+    ; Save boot drive to known location for stage2
+    mov [0x0500], dl       ; Save to 0x0500 where stage2 expects it
+    mov [boot_drive], dl   ; Also save locally
 
     ; Clear screen (PIXEL dimension initialization)
     mov ax, 0x0003         ; Text mode 80x25, 16 colors
@@ -51,7 +56,7 @@ load_stage2:
 
     ; Setup for INT 13h disk read
     mov ah, 0x02           ; Read sectors function
-    mov al, 8              ; Read 8 sectors (4KB)
+    mov al, STAGE2_SECTOR_COUNT
     mov ch, 0              ; Cylinder 0
     mov cl, 2              ; Start from sector 2
     mov dh, 0              ; Head 0
@@ -106,7 +111,6 @@ boot_drive:     db 0
 
 msg_sacred:     db '=====================================', 13, 10
                 db '     TBOS x STEPPPS Framework', 13, 10
-                db '   Swamiye Saranam Aiyappa', 13, 10
                 db '=====================================', 13, 10, 0
 
 msg_boot:       db '[BOOT] Initializing Sacred System...', 13, 10, 0

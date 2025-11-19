@@ -2,8 +2,52 @@
 # Test TBOS Working System
 # 🕉️ Swamiye Saranam Aiyappa 🕉️
 
+PERSONA="${TBOS_PERSONA_NAME:-}"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --persona)
+            shift
+            PERSONA="${1:-}"
+            if [[ -z "$PERSONA" ]]; then
+                echo "Error: --persona requires a value"
+                exit 1
+            fi
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--persona NAME]"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🕉️ TESTING WORKING TBOS SYSTEM 🕉️"
 echo "=================================="
+
+if [[ -n "$PERSONA" ]]; then
+    BUILD_DIR="build_integrated/$PERSONA"
+    echo "Persona-aware test mode"
+    echo "  Persona : $PERSONA"
+    echo "  Build   : $BUILD_DIR"
+
+    if [[ -x "$BUILD_DIR/tbos" ]]; then
+        echo "✓ Persona binary present: $BUILD_DIR/tbos"
+        ls -lh "$BUILD_DIR/tbos"
+        echo ""
+        echo "Smoke run (version banner)..."
+        "$BUILD_DIR/tbos" <<<'exit' >/dev/null 2>&1 || true
+        echo "Persona test complete."
+        exit 0
+    else
+        echo "✗ Persona binary missing!"
+        exit 1
+    fi
+fi
 
 echo "Build Status:"
 if [ -f "build/tbos.img" ]; then

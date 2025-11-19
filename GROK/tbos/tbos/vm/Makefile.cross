@@ -1,0 +1,81 @@
+# TernaryBit Lean VM - Cross-Platform Build
+# Demonstrates "write once, compile anywhere"
+
+# ========================================================================
+# COMPILERS
+# ========================================================================
+
+CC_X86 = gcc
+CC_ARM64 = aarch64-linux-gnu-gcc
+CC_RISCV = riscv64-linux-gnu-gcc
+
+CFLAGS = -Os -Wall -Wextra -std=c99 -ffunction-sections -fdata-sections
+LDFLAGS = -Wl,--gc-sections
+
+# ========================================================================
+# SOURCE FILES (same for all platforms!)
+# ========================================================================
+
+VM_SRC = tblvm_nano_optimized.c
+VM_HDR = tblvm_nano.h
+TEST_SRC = test_vm.c
+RUN_SRC = tblvm_run.c
+
+# ========================================================================
+# TARGETS
+# ========================================================================
+
+.PHONY: all x86 arm64 riscv clean check
+
+all: check
+	@echo "=== Building for all architectures ==="
+	@$(MAKE) --no-print-directory x86
+	@$(MAKE) --no-print-directory arm64 || echo "ARM64: Cross-compiler not installed"
+	@$(MAKE) --no-print-directory riscv || echo "RISC-V: Cross-compiler not installed"
+	@echo ""
+	@echo "=== Build Summary ==="
+	@ls -lh tblvm_* test_vm_* 2>/dev/null || true
+
+# x86 / x86_64 (native)
+x86:
+	@echo "Building for x86_64..."
+	$(CC_X86) $(CFLAGS) $(LDFLAGS) -o tblvm_x86 $(VM_SRC) $(RUN_SRC)
+	$(CC_X86) $(CFLAGS) $(LDFLAGS) -o test_vm_x86 $(VM_SRC) $(TEST_SRC)
+	@size tblvm_x86 | tail -1
+
+# ARM64 (Raspberry Pi, etc.)
+arm64:
+	@echo "Building for ARM64..."
+	$(CC_ARM64) $(CFLAGS) $(LDFLAGS) -o tblvm_arm64 $(VM_SRC) $(RUN_SRC)
+	$(CC_ARM64) $(CFLAGS) $(LDFLAGS) -o test_vm_arm64 $(VM_SRC) $(TEST_SRC)
+	@file tblvm_arm64
+	@$(CC_ARM64) -Os -c $(VM_SRC) -o vm_arm64.o
+	@size vm_arm64.o | tail -1
+
+# RISC-V
+riscv:
+	@echo "Building for RISC-V..."
+	$(CC_RISCV) $(CFLAGS) $(LDFLAGS) -o tblvm_riscv $(VM_SRC) $(RUN_SRC)
+	$(CC_RISCV) $(CFLAGS) $(LDFLAGS) -o test_vm_riscv $(VM_SRC) $(TEST_SRC)
+	@file tblvm_riscv
+	@$(CC_RISCV) -Os -c $(VM_SRC) -o vm_riscv.o
+	@size vm_riscv.o | tail -1
+
+# Test x86 build
+test-x86: x86
+	@echo "=== Testing x86 VM ==="
+	./test_vm_x86
+
+# Check which cross-compilers are available
+check:
+	@echo "=== Cross-Compiler Status ==="
+	@which $(CC_X86) > /dev/null && echo "✅ x86_64: $(CC_X86)" || echo "❌ x86_64: not found"
+	@which $(CC_ARM64) > /dev/null && echo "✅ ARM64: $(CC_ARM64)" || echo "❌ ARM64: not installed (sudo apt install gcc-aarch64-linux-gnu)"
+	@which $(CC_RISCV) > /dev/null && echo "✅ RISC-V: $(CC_RISCV)" || echo "❌ RISC-V: not installed (sudo apt install gcc-riscv64-linux-gnu)"
+	@echo ""
+
+# Clean
+clean:
+	rm -f tblvm_* test_vm_* vm_*.o
+
+.PHONY: all x86 arm64 riscv test-x86 check clean

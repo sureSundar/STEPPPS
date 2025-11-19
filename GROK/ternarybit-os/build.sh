@@ -10,18 +10,15 @@ echo "======================================"
 # Create build directory
 mkdir -p build
 
-# Assemble boot sector
-echo "[BUILD] Assembling boot sector..."
-nasm -f bin boot/tbos_sacred.asm -o build/boot.bin
-
-# Assemble stage 2
-echo "[BUILD] Using stable stage2..."
-cp build/stage2_linux.bin build/stage2.bin
+# Build bootloader components using dedicated script
+echo "[BUILD] Building bootloader components..."
+cd boot && ./build_bootloader.sh && cd ..
 
 # Compile kernel
 echo "[BUILD] Compiling kernel..."
-# Assemble kernel entry
+# Assemble kernel entry and ISR stubs
 nasm -f elf32 kernel/kernel_sacred.asm -o build/kernel_entry.o
+nasm -f elf32 kernel/isr.asm -o build/isr.o
 
 # Compile C files
 gcc -m32 -c kernel/kernel_simple.c -o build/kernel.o -ffreestanding -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -O2
@@ -51,7 +48,13 @@ gcc -m32 -c kernel/processor_analysis.c -o build/processor_analysis.o -ffreestan
 
 # Link kernel
 echo "[BUILD] Linking kernel..."
-ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin build/kernel_entry.o build/kernel.o build/shell.o build/keyboard.o build/tbos_stream.o build/memory.o build/interrupt.o build/timer.o build/steppps.o build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o build/pxfs_advanced.o build/security.o build/performance.o build/testing.o build/resonance.o build/processor_analysis.o
+ld -m elf_i386 -T kernel/linker_sacred.ld -o build/kernel.bin \
+    build/kernel_entry.o build/isr.o build/kernel.o build/shell.o build/keyboard.o \
+    build/tbos_stream.o build/memory.o build/interrupt.o build/timer.o build/steppps.o \
+    build/pxfs.o build/ternary.o build/aito.o build/process.o build/scheduler.o \
+    build/drivers.o build/integration.o build/gui.o build/network.o build/audio.o \
+    build/pxfs_advanced.o build/security.o build/performance.o build/testing.o \
+    build/resonance.o build/processor_analysis.o
 
 # Build Alpine GUI Integration
 echo "[BUILD] Building Alpine GUI integration..."

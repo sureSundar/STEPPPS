@@ -1,0 +1,31 @@
+# Makefile for Minimal Integrated Shell
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -I../../src -D_POSIX_C_SOURCE=200809L
+LDFLAGS = -lrt
+
+DEMO = tbos_minimal_shell
+OBJS = tbos_minimal_shell.o \
+       ../../src/boot/tbos_minimal_boot.o \
+       ../../src/hal/tbos_hal.o
+
+all: $(DEMO)
+
+$(DEMO): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(DEMO)
+
+tbos_minimal_shell.o: tbos_minimal_shell.c
+	$(CC) $(CFLAGS) -c tbos_minimal_shell.c
+
+../../src/boot/tbos_minimal_boot.o: ../../src/boot/tbos_minimal_boot.c
+	$(CC) $(CFLAGS) -c ../../src/boot/tbos_minimal_boot.c -o ../../src/boot/tbos_minimal_boot.o
+
+../../src/hal/tbos_hal.o: ../../src/hal/tbos_hal.c
+	$(CC) $(CFLAGS) -c ../../src/hal/tbos_hal.c -o ../../src/hal/tbos_hal.o
+
+run: $(DEMO)
+	./$(DEMO)
+
+clean:
+	rm -f $(OBJS) $(DEMO)
+
+.PHONY: all run clean

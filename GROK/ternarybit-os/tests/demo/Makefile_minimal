@@ -1,0 +1,40 @@
+# Makefile for Minimal Bootloader Demo
+# US-1.1: Minimal Hardware Bootstrap
+# Epic 1: Calculator + Radio Universal Computer
+
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -I../../src
+LDFLAGS =
+
+DEMO = demo_minimal_boot
+OBJS = demo_minimal_boot.o ../../src/boot/tbos_minimal_boot.o
+
+all: $(DEMO)
+
+$(DEMO): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(DEMO)
+
+demo_minimal_boot.o: demo_minimal_boot.c
+	$(CC) $(CFLAGS) -c demo_minimal_boot.c
+
+../../src/boot/tbos_minimal_boot.o: ../../src/boot/tbos_minimal_boot.c
+	$(CC) $(CFLAGS) -c ../../src/boot/tbos_minimal_boot.c \
+		-o ../../src/boot/tbos_minimal_boot.o
+
+run: $(DEMO)
+	./$(DEMO)
+
+clean:
+	rm -f $(OBJS) $(DEMO)
+
+# Build for actual embedded target (example: Arduino AVR)
+embedded:
+	@echo "Building for embedded target..."
+	avr-gcc -mmcu=atmega328p -DF_CPU=16000000UL -DEMBEDDED_BUILD -DRAM_SIZE=2048 \
+		-Os -o tbos_minimal.elf ../../src/boot/tbos_minimal_boot.c
+	avr-objcopy -O ihex -R .eeprom tbos_minimal.elf tbos_minimal.hex
+	@echo "Hex file created: tbos_minimal.hex"
+	@echo "Flash size:"
+	@avr-size tbos_minimal.elf
+
+.PHONY: all run clean embedded

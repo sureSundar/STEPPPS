@@ -1,0 +1,15 @@
+// Count from 1 to 5
+
+void main() {
+    i = 1
+    // Manual unrolled loop for now
+    println(i)
+    i = i + 1
+    println(i)
+    i = i + 1
+    println(i)
+    i = i + 1
+    println(i)
+    i = i + 1
+    println(i)
+}

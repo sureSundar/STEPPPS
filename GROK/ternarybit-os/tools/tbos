@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+"""
+tbos CLI - cross-platform persona/package front-end for TernaryBit OS.
+
+This tool normalizes builds/tests/runs across Linux/macOS/Windows by invoking
+the existing scripts with the right environment variables. On Windows, it
+expects a Bash-compatible shell (Git Bash, MSYS2, or WSL) to be available.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import platform
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Iterable, List, Tuple
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PKG_DIR = REPO_ROOT / "config" / "packages"
+
+
+class CLIError(RuntimeError):
+    pass
+
+
+def debug(msg: str) -> None:
+    print(f"[tbos] {msg}")
+
+
+def _ensure_bash_command(cmd: List[str]) -> List[str]:
+    if os.name == "nt":
+        bash = shutil.which("bash")
+        if not bash:
+            raise CLIError("Bash not found. Install Git Bash / MSYS2 / WSL to run TBOS scripts on Windows.")
+        quoted = " ".join(shlex.quote(part) for part in cmd)
+        return [bash, "-lc", quoted]
+    return cmd
+
+
+def run_process(cmd: List[str], env=None) -> None:
+    debug(f"running: {' '.join(cmd)}")
+    subprocess.run(cmd, cwd=REPO_ROOT, check=True, env=env)
+
+
+def run_script(script: str, args: Iterable[str], env=None) -> None:
+    script_path = REPO_ROOT / script
+    if not script_path.exists():
+        raise CLIError(f"Script missing: {script}")
+    cmd = [str(script_path), *args]
+    run_process(_ensure_bash_command(cmd), env=env)
+
+
+def parse_packages(packages: List[str]) -> Tuple[str, str]:
+    if not packages:
+        return "", ""
+    defines: List[str] = []
+    notes: List[str] = []
+    for pkg in packages:
+        pkg_file = PKG_DIR / f"{pkg}.mk"
+        if not pkg_file.exists():
+            raise CLIError(f"Unknown package '{pkg}'. Expected {pkg_file}")
+        with pkg_file.open("r", encoding="utf-8") as fh:
+            for raw in fh:
+                line = raw.strip("\n")
+                if line.startswith("TBOS_PACKAGE_DEFINES"):
+                    defines.append(line.split("+=", 1)[1])
+                elif line.startswith("TBOS_PACKAGE_NOTES"):
+                    notes.append(line.split("+=", 1)[1])
+    defines_str = " ".join(part.strip() for part in defines if part.strip())
+    notes_str = "".join(notes)
+    return defines_str, notes_str
+
+
+def build_env(persona: str, packages: List[str]) -> dict:
+    env = os.environ.copy()
+    env["PERSONA"] = persona
+    if packages:
+        env["PACKAGES"] = " ".join(packages)
+    defines, notes = parse_packages(packages)
+    if defines:
+        env["TBOS_PACKAGE_DEFINES"] = defines
+    if notes:
+        env["TBOS_PACKAGE_NOTES"] = notes
+    return env
+
+
+def cmd_list_personas(_args) -> None:
+    run_script("build_tbos_system.sh", ["--list-personas"], env=os.environ.copy())
+
+
+def _format_pkg_note(note: str) -> str:
+    if not note:
+        return ""
+    return note.replace("\\n", "\n")
+
+
+def cmd_list_packages(_args) -> None:
+    if not PKG_DIR.exists():
+        print("No packages defined yet.")
+        return
+    entries = sorted(pkg.stem for pkg in PKG_DIR.glob("*.mk"))
+    if not entries:
+        print("No packages defined yet.")
+        return
+    print("Available packages:")
+    for entry in entries:
+        _, notes = parse_packages([entry])
+        summary = _format_pkg_note(notes).strip()
+        summary_line = summary.splitlines()[0] if summary else ""
+        print(f"  - {entry}" + (f": {summary_line}" if summary_line else ""))
+
+
+def cmd_build(args) -> None:
+    env = build_env(args.persona, args.packages)
+    run_script("build_tbos_system.sh", ["--persona", args.persona], env=env)
+
+
+def cmd_test(args) -> None:
+    env = build_env(args.persona, args.packages)
+    run_script("test_tbos.sh", ["--persona", args.persona], env=env)
+
+
+def cmd_run(args) -> None:
+    env = build_env(args.persona, args.packages)
+    cmd_args = ["--persona", args.persona]
+    if args.disk:
+        cmd_args += ["--disk", args.disk]
+    if args.serial_log:
+        cmd_args += ["--serial-log", args.serial_log]
+    if args.qemu_bin:
+        cmd_args += ["--qemu-bin", args.qemu_bin]
+    if args.dry_run:
+        cmd_args.append("--dry-run")
+    if args.extra:
+        cmd_args.append("--")
+        cmd_args.extend(args.extra)
+    run_script("scripts/run_persona_qemu.sh", cmd_args, env=env)
+
+
+def cmd_ci(args) -> None:
+    env = build_env(args.persona, args.packages)
+    cmd = ["scripts/tbos_persona_ci.sh"]
+    if args.personas:
+        cmd.extend(args.personas)
+    run_script(cmd[0], cmd[1:], env=env)
+
+
+def cmd_supershell_list(_args) -> None:
+    cmd_list_personas(_args)
+
+
+def cmd_supershell_morph(args) -> None:
+    binary = Path(args.binary) if args.binary else REPO_ROOT / "build_integrated" / args.persona / "tbos"
+    if not binary.exists():
+        raise CLIError(f"Supershell binary not found: {binary}. Build the persona first.")
+    env = os.environ.copy()
+    env["TBOS_PERSONA_NAME"] = args.persona
+    run_process(_ensure_bash_command([str(binary)]), env=env)
+
+
+def add_persona_option(p: argparse.ArgumentParser, default="desktop_512m"):
+    p.add_argument("-p", "--persona", default=default, help="Persona profile (default: %(default)s)")
+
+
+def add_packages_option(p: argparse.ArgumentParser):
+    p.add_argument("-P", "--packages", nargs="+", default=[], help="Package overlays to apply (space separated)")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="tbos", description="TBOS cross-platform CLI")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    personas = sub.add_parser("list-personas", help="Show available personas")
+    personas.set_defaults(func=cmd_list_personas)
+
+    packages = sub.add_parser("list-packages", help="Show available packages")
+    packages.set_defaults(func=cmd_list_packages)
+
+    build_cmd = sub.add_parser("build", help="Build persona binary")
+    add_persona_option(build_cmd)
+    add_packages_option(build_cmd)
+    build_cmd.set_defaults(func=cmd_build)
+
+    test_cmd = sub.add_parser("test", help="Run persona smoke tests")
+    add_persona_option(test_cmd)
+    add_packages_option(test_cmd)
+    test_cmd.set_defaults(func=cmd_test)
+
+    run_cmd = sub.add_parser("run", help="Launch persona in QEMU")
+    add_persona_option(run_cmd)
+    add_packages_option(run_cmd)
+    run_cmd.add_argument("--disk", help="Disk image to boot (default: auto-detect)")
+    run_cmd.add_argument("--serial-log", help="Capture serial output to file")
+    run_cmd.add_argument("--qemu-bin", help="Override QEMU binary")
+    run_cmd.add_argument("--dry-run", action="store_true", help="Print command without launching QEMU")
+    run_cmd.add_argument("extra", nargs=argparse.REMAINDER, help="Extra QEMU args after '--'")
+    run_cmd.set_defaults(func=cmd_run)
+
+    ci_cmd = sub.add_parser("ci", help="Run persona CI matrix")
+    add_persona_option(ci_cmd)
+    add_packages_option(ci_cmd)
+    ci_cmd.add_argument("--personas", nargs="+", default=[], help="Subset of personas (default: all)")
+    ci_cmd.set_defaults(func=cmd_ci)
+
+    supershell = sub.add_parser("supershell", help="Supershell operations")
+    supershell_sub = supershell.add_subparsers(dest="supershell_cmd", required=True)
+
+    ss_list = supershell_sub.add_parser("list", help="List registered supershell personas")
+    ss_list.set_defaults(func=cmd_supershell_list)
+
+    ss_morph = supershell_sub.add_parser("morph", help="Launch an existing build in a specific persona mode")
+    ss_morph.add_argument("--persona", required=True, help="Persona id to morph into")
+    ss_morph.add_argument("--binary", help="Path to TBOS executable (defaults to build_integrated/<persona>/tbos)")
+    ss_morph.set_defaults(func=cmd_supershell_morph)
+
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        args.func(args)
+    except CLIError as exc:
+        parser.error(str(exc))
+    except subprocess.CalledProcessError as exc:
+        sys.exit(exc.returncode)
+
+
+if __name__ == "__main__":
+    main()

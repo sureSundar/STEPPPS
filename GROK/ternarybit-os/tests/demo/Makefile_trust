@@ -1,0 +1,26 @@
+# Makefile for Karma Trust Demo
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -I../../src -D_POSIX_C_SOURCE=200809L
+LDFLAGS = -lrt
+
+DEMO = demo_karma_trust
+OBJS = demo_karma_trust.o ../../src/network/sangha/tbos_sangha.o
+
+all: $(DEMO)
+
+$(DEMO): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(DEMO)
+
+demo_karma_trust.o: demo_karma_trust.c
+	$(CC) $(CFLAGS) -c demo_karma_trust.c
+
+../../src/network/sangha/tbos_sangha.o: ../../src/network/sangha/tbos_sangha.c
+	$(CC) $(CFLAGS) -c ../../src/network/sangha/tbos_sangha.c -o ../../src/network/sangha/tbos_sangha.o
+
+run: $(DEMO)
+	./$(DEMO)
+
+clean:
+	rm -f $(OBJS) $(DEMO)
+
+.PHONY: all run clean

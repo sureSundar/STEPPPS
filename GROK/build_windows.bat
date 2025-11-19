@@ -1,0 +1,42 @@
+@echo off
+echo ╔══════════════════════════════════════════════════════════╗
+echo ║  TBOS Universal Detector - Windows Build                ║
+echo ║     🕉 Swamiye Saranam Aiyappa 🕉                       ║
+echo ╚══════════════════════════════════════════════════════════╝
+echo.
+
+echo [BUILD] Compiling TBOS detector for Windows...
+echo.
+
+REM Try MinGW first
+where gcc >nul 2>nul
+if %ERRORLEVEL% == 0 (
+    echo Using MinGW GCC...
+    gcc -o tbos_detector.exe src\main.c src\device_classifier.c src\print_utils.c src\hardware_windows.c -ladvapi32
+    goto :test
+)
+
+REM Try MSVC
+where cl >nul 2>nul
+if %ERRORLEVEL% == 0 (
+    echo Using Microsoft Visual C++...
+    cl /O2 src\main.c src\device_classifier.c src\print_utils.c src\hardware_windows.c /Fe:tbos_detector.exe advapi32.lib
+    goto :test
+)
+
+echo [ERROR] No compiler found!
+echo Please install MinGW or Visual Studio
+pause
+exit /b 1
+
+:test
+echo.
+echo [BUILD] ✅ Build successful!
+echo.
+echo [TEST] Running hardware detection...
+echo.
+tbos_detector.exe --detect
+echo.
+echo [TEST] ✅ Test complete!
+echo.
+pause

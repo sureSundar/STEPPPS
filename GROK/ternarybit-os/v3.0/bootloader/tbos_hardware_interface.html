@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBOS v3.0 Hardware Interface - Real System Control</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .hardware-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 3000;
+        }
+
+        .connection-status {
+            color: #ff5757;
+        }
+
+        .connection-status.connected {
+            color: #4caf50;
+        }
+
+        .tbos-header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .tbos-logo {
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hardware-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .hardware-button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .hardware-button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .real-time-display {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+
+        .hardware-metric {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .metric-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 4px 0;
+        }
+
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336);
+            transition: width 0.3s ease;
+        }
+
+        .desktop-main {
+            height: calc(100vh - 120px);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            gap: 20px;
+            align-content: start;
+        }
+
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .desktop-icon.hardware-active::after {
+            content: '🔧';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+            background: #4caf50;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-emoji {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .icon-label {
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .hardware-terminal {
+            position: fixed;
+            bottom: 60px;
+            left: 20px;
+            right: 20px;
+            height: 200px;
+            background: rgba(0,0,0,0.9);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            color: #0f0;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .hardware-terminal.show {
+            display: block;
+        }
+
+        .terminal-output {
+            height: 150px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .terminal-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hardware-stats-taskbar {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .persona-indicator {
+            position: fixed;
+            top: 20px;
+            right: 220px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .quantum-mode {
+            background: linear-gradient(135deg, #1a0033 0%, #2d1b69 100%) !important;
+        }
+
+        .quantum-mode .desktop-icon {
+            background: rgba(138, 43, 226, 0.2);
+        }
+
+        .notification {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.3s ease;
+            z-index: 2000;
+            max-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .hardware-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.2);
+            display: none;
+            min-width: 400px;
+            z-index: 4000;
+        }
+
+        .hardware-panel.show {
+            display: block;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .close-panel {
+            background: #ff5757;
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .hardware-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .hardware-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .hardware-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hardware Connection Status -->
+    <div class="hardware-status">
+        <div>🔧 TBOS Hardware Bridge</div>
+        <div class="connection-status" id="connection-status">⚫ Disconnected</div>
+        <div id="hardware-info">Initializing...</div>
+    </div>
+
+    <!-- Real-time Hardware Display -->
+    <div class="real-time-display">
+        <div class="hardware-metric">
+            <div>🔥 CPU: <span id="cpu-percent">--</span>%</div>
+            <div class="metric-bar">
+                <div class="metric-fill" id="cpu-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="hardware-metric">
+            <div>💾 RAM: <span id="ram-percent">--</span>%</div>
+            <div class="metric-bar">
+                <div class="metric-fill" id="ram-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="hardware-metric">
+            <div>🌡️ Temp: <span id="temp-value">--</span>°C</div>
+        </div>
+        <div class="hardware-metric">
+            <div>🌐 Net: ↓<span id="net-rx">--</span> ↑<span id="net-tx">--</span></div>
+        </div>
+    </div>
+
+    <header class="tbos-header">
+        <div class="tbos-logo">
+            🚀 <span>TBOS v3.0</span> <span style="color: #4caf50;">● HARDWARE</span>
+        </div>
+        <div class="hardware-controls">
+            <button class="hardware-button" onclick="requestHardwareInfo()">📊 Refresh</button>
+            <button class="hardware-button" onclick="toggleHardwareTerminal()">💻 Terminal</button>
+            <button class="hardware-button" onclick="showHardwarePanel()">🔧 Hardware</button>
+            <button class="hardware-button" onclick="switchHardwarePersona('desktop')">💻 Desktop</button>
+            <button class="hardware-button" onclick="switchHardwarePersona('mobile')">📱 Mobile</button>
+            <button class="hardware-button" onclick="switchHardwarePersona('chemos')">⚛️ Quantum</button>
+        </div>
+        <div id="current-time"></div>
+    </header>
+
+    <main class="desktop-main">
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('sysinfo')">
+            <div class="icon-emoji">🖥️</div>
+            <div class="icon-label">System Info</div>
+        </div>
+        <div class="desktop-icon" onclick="executeHardwareCommand('htop')">
+            <div class="icon-emoji">📊</div>
+            <div class="icon-label">Task Manager</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('lscpu')">
+            <div class="icon-emoji">🔥</div>
+            <div class="icon-label">CPU Info</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('free -h')">
+            <div class="icon-emoji">💾</div>
+            <div class="icon-label">Memory Info</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('lsusb')">
+            <div class="icon-emoji">🔌</div>
+            <div class="icon-label">USB Devices</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('lspci')">
+            <div class="icon-emoji">💳</div>
+            <div class="icon-label">PCI Devices</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('df -h')">
+            <div class="icon-emoji">💿</div>
+            <div class="icon-label">Disk Usage</div>
+        </div>
+        <div class="desktop-icon hardware-active" onclick="executeHardwareCommand('ip addr')">
+            <div class="icon-emoji">🌐</div>
+            <div class="icon-label">Network</div>
+        </div>
+    </main>
+
+    <!-- Hardware Terminal -->
+    <div class="hardware-terminal" id="hardware-terminal">
+        <div class="terminal-output" id="terminal-output">
+            <div>TBOS v3.0 Hardware Interface Terminal</div>
+            <div>Connected to real system hardware layers</div>
+            <div>Type commands to interact with actual hardware</div>
+            <div></div>
+            <div>tbos-hardware:~$ <span class="pulse">_</span></div>
+        </div>
+        <input type="text" class="terminal-input" id="terminal-input" placeholder="Enter hardware commands..." onkeypress="handleHardwareTerminalInput(event)">
+    </div>
+
+    <!-- Hardware Control Panel -->
+    <div class="hardware-panel" id="hardware-panel">
+        <div class="panel-header">
+            <h3>🔧 Real Hardware Control</h3>
+            <button class="close-panel" onclick="closeHardwarePanel()">&times;</button>
+        </div>
+        <div class="hardware-grid">
+            <div class="hardware-card">
+                <div>🔥 CPU Cores</div>
+                <div class="hardware-value" id="cpu-cores">--</div>
+                <button onclick="executeHardwareCommand('nproc')" style="background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 4px;">Query</button>
+            </div>
+            <div class="hardware-card">
+                <div>💾 Total RAM</div>
+                <div class="hardware-value" id="total-ram">--</div>
+                <button onclick="executeHardwareCommand('cat /proc/meminfo | head -1')" style="background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 4px;">Query</button>
+            </div>
+            <div class="hardware-card">
+                <div>🌡️ CPU Temp</div>
+                <div class="hardware-value" id="cpu-temp">--</div>
+                <button onclick="executeHardwareCommand('sensors')" style="background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 4px;">Query</button>
+            </div>
+            <div class="hardware-card">
+                <div>💿 Storage</div>
+                <div class="hardware-value" id="storage-info">--</div>
+                <button onclick="executeHardwareCommand('lsblk')" style="background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 4px;">Query</button>
+            </div>
+        </div>
+        <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+            <h4>🚀 Hardware Actions</h4>
+            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                <button onclick="executeHardwareCommand('sudo reboot')" style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 4px;">🔄 Reboot</button>
+                <button onclick="executeHardwareCommand('sudo shutdown -h now')" style="background: #9e9e9e; color: white; border: none; padding: 8px 12px; border-radius: 4px;">⚡ Shutdown</button>
+                <button onclick="executeHardwareCommand('sudo systemctl restart network')" style="background: #2196f3; color: white; border: none; padding: 8px 12px; border-radius: 4px;">🌐 Restart Network</button>
+                <button onclick="executeHardwareCommand('uptime')" style="background: #4caf50; color: white; border: none; padding: 8px 12px; border-radius: 4px;">⏰ Uptime</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="taskbar">
+        <div class="hardware-stats-taskbar">
+            <div class="stat-item">
+                <span>🔥</span>
+                <span>CPU: <span id="taskbar-cpu">--</span>%</span>
+            </div>
+            <div class="stat-item">
+                <span>💾</span>
+                <span>RAM: <span id="taskbar-ram">--</span>%</span>
+            </div>
+            <div class="stat-item">
+                <span>🌡️</span>
+                <span><span id="taskbar-temp">--</span>°C</span>
+            </div>
+            <div class="stat-item">
+                <span>⚡</span>
+                <span>TBOS Hardware Bridge Active</span>
+            </div>
+        </div>
+    </footer>
+
+    <div class="persona-indicator" id="persona-indicator">🎭 Desktop Mode</div>
+
+    <script>
+        let hardwareSocket = null;
+        let isConnectedToHardware = false;
+
+        // Initialize hardware connection
+        function initHardwareConnection() {
+            try {
+                hardwareSocket = new WebSocket('ws://localhost:9001');
+
+                hardwareSocket.onopen = function(event) {
+                    console.log('🔗 Connected to TBOS Hardware Bridge');
+                    isConnectedToHardware = true;
+                    updateConnectionStatus(true);
+                    requestHardwareInfo();
+                };
+
+                hardwareSocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleHardwareMessage(data);
+                    } catch (e) {
+                        console.log('📟 Hardware response:', event.data);
+                        addTerminalOutput(event.data);
+                    }
+                };
+
+                hardwareSocket.onclose = function(event) {
+                    console.log('🔌 Disconnected from hardware bridge');
+                    isConnectedToHardware = false;
+                    updateConnectionStatus(false);
+
+                    // Try to reconnect after 3 seconds
+                    setTimeout(initHardwareConnection, 3000);
+                };
+
+                hardwareSocket.onerror = function(error) {
+                    console.log('❌ Hardware bridge connection error:', error);
+                    updateConnectionStatus(false);
+                };
+
+            } catch (e) {
+                console.log('❌ Failed to connect to hardware bridge:', e);
+                updateConnectionStatus(false);
+
+                // Try to reconnect after 5 seconds
+                setTimeout(initHardwareConnection, 5000);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connection-status');
+            const infoEl = document.getElementById('hardware-info');
+
+            if (connected) {
+                statusEl.textContent = '🟢 Connected';
+                statusEl.className = 'connection-status connected';
+                infoEl.textContent = 'Real hardware control active';
+                showNotification('🔧 Connected to TBOS Hardware Bridge - Real system control enabled!');
+            } else {
+                statusEl.textContent = '🔴 Disconnected';
+                statusEl.className = 'connection-status';
+                infoEl.textContent = 'Hardware bridge offline';
+            }
+        }
+
+        function handleHardwareMessage(data) {
+            switch (data.type) {
+                case 'hardware_update':
+                    updateCPUDisplay(data.cpu_usage, data.temperature);
+                    break;
+                case 'memory_update':
+                    updateMemoryDisplay(data.memory_usage);
+                    updateNetworkDisplay(data.network_rx, data.network_tx);
+                    break;
+                case 'command_response':
+                    addTerminalOutput(`Exit code: ${data.result}`);
+                    addTerminalOutput(data.output);
+                    addTerminalOutput('');
+                    break;
+                case 'persona_switched':
+                    showNotification(`🔄 Hardware persona switched to: ${data.persona_name}`);
+                    updatePersonaIndicator(data.persona_name);
+                    break;
+                case 'hardware_info':
+                    updateHardwareInfo(data);
+                    break;
+            }
+        }
+
+        function updateCPUDisplay(usage, temperature) {
+            document.getElementById('cpu-percent').textContent = usage.toFixed(1);
+            document.getElementById('taskbar-cpu').textContent = usage.toFixed(1);
+            document.getElementById('cpu-bar').style.width = usage + '%';
+
+            if (temperature > 0) {
+                document.getElementById('temp-value').textContent = temperature.toFixed(1);
+                document.getElementById('taskbar-temp').textContent = temperature.toFixed(1);
+            }
+        }
+
+        function updateMemoryDisplay(usage) {
+            document.getElementById('ram-percent').textContent = usage.toFixed(1);
+            document.getElementById('taskbar-ram').textContent = usage.toFixed(1);
+            document.getElementById('ram-bar').style.width = usage + '%';
+        }
+
+        function updateNetworkDisplay(rx, tx) {
+            const formatBytes = (bytes) => {
+                if (bytes < 1024) return bytes + 'B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+                if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+                return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+            };
+
+            document.getElementById('net-rx').textContent = formatBytes(rx);
+            document.getElementById('net-tx').textContent = formatBytes(tx);
+        }
+
+        function updateHardwareInfo(data) {
+            if (data.cpu) {
+                document.getElementById('cpu-cores').textContent = data.cpu.cores || '--';
+            }
+        }
+
+        function executeHardwareCommand(command) {
+            if (!isConnectedToHardware) {
+                showNotification('❌ Not connected to hardware bridge');
+                return;
+            }
+
+            console.log('🔧 Executing hardware command:', command);
+            addTerminalOutput(`tbos-hardware:~$ ${command}`);
+
+            const message = JSON.stringify({
+                type: 'execute_command',
+                command: command
+            });
+
+            hardwareSocket.send(message);
+            showNotification(`⚡ Executing: ${command}`);
+        }
+
+        function switchHardwarePersona(persona) {
+            if (!isConnectedToHardware) {
+                showNotification('❌ Not connected to hardware bridge');
+                return;
+            }
+
+            const personaMap = {
+                'desktop': 0,
+                'mobile': 3,
+                'chemos': 4
+            };
+
+            const personaId = personaMap[persona];
+            if (personaId === undefined) return;
+
+            const message = JSON.stringify({
+                type: 'switch_persona',
+                persona: personaId
+            });
+
+            hardwareSocket.send(message);
+            showNotification(`🔄 Switching hardware to ${persona} persona...`);
+        }
+
+        function requestHardwareInfo() {
+            if (!isConnectedToHardware) {
+                showNotification('❌ Not connected to hardware bridge');
+                return;
+            }
+
+            const message = JSON.stringify({
+                type: 'get_hardware_info'
+            });
+
+            hardwareSocket.send(message);
+        }
+
+        function toggleHardwareTerminal() {
+            const terminal = document.getElementById('hardware-terminal');
+            terminal.classList.toggle('show');
+
+            if (terminal.classList.contains('show')) {
+                document.getElementById('terminal-input').focus();
+            }
+        }
+
+        function handleHardwareTerminalInput(event) {
+            if (event.key === 'Enter') {
+                const input = event.target.value.trim();
+                if (input) {
+                    executeHardwareCommand(input);
+                    event.target.value = '';
+                }
+            }
+        }
+
+        function addTerminalOutput(text) {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.textContent = text;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function showHardwarePanel() {
+            document.getElementById('hardware-panel').classList.add('show');
+        }
+
+        function closeHardwarePanel() {
+            document.getElementById('hardware-panel').classList.remove('show');
+        }
+
+        function updatePersonaIndicator(personaName) {
+            document.getElementById('persona-indicator').textContent = `🎭 ${personaName}`;
+
+            // Update visual theme based on persona
+            const body = document.body;
+            body.className = '';
+
+            if (personaName === 'ChemOS Quantum') {
+                body.className = 'quantum-mode';
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 TBOS Hardware Interface initializing...');
+
+            // Start time updates
+            setInterval(updateTime, 1000);
+            updateTime();
+
+            // Initialize hardware connection
+            initHardwareConnection();
+
+            // Show welcome message
+            setTimeout(() => {
+                showNotification('🌟 TBOS v3.0 Hardware Interface - Real system control via browser!');
+            }, 1000);
+
+            console.log('✅ TBOS Hardware Interface ready');
+            console.log('🔧 This interface connects to real hardware through TBOS bridge');
+            console.log('💡 All commands execute on actual system hardware');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'h') {
+                e.preventDefault();
+                toggleHardwareTerminal();
+            } else if (e.ctrlKey && e.key === 'i') {
+                e.preventDefault();
+                requestHardwareInfo();
+            }
+        });
+
+        console.log('🚀 TBOS v3.0 Hardware Interface loaded');
+        console.log('🔧 Revolutionary browser-to-hardware bridge active');
+        console.log('⌨️ Keyboard shortcuts: Ctrl+H (Terminal), Ctrl+I (Hardware Info)');
+    </script>
+</body>
+</html>

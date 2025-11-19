@@ -16,6 +16,24 @@ include config/flags.mk
 include config/targets.mk
 include config/tools.mk
 
+# Persona & package-driven build orchestration
+PERSONA ?= desktop_512m
+PERSONAS ?=
+PACKAGES ?=
+TBOS_PACKAGE_DIR := config/packages
+TBOS_PACKAGE_DEFINES :=
+TBOS_PACKAGE_NOTES :=
+
+ifneq ($(strip $(PACKAGES)),)
+PKG_FILES := $(foreach pkg,$(PACKAGES),$(TBOS_PACKAGE_DIR)/$(pkg).mk)
+$(foreach file,$(PKG_FILES),$(if $(wildcard $(file)),$(eval include $(file)),$(error Unknown package '$(basename $(notdir $(file)))' (missing $(file)))))
+endif
+
+export PERSONA
+export PACKAGES
+export TBOS_PACKAGE_DEFINES
+export TBOS_PACKAGE_NOTES
+
 # Source directories
 SRC_DIR = src
 TEST_DIR = tests
@@ -29,6 +47,8 @@ SHELL2_DIR = shell
 
 # Source files
 CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c) \
+            $(wildcard $(SRC_DIR)/core/compression/*.c) \
+            $(wildcard $(SRC_DIR)/core/filesystem/*.c) \
             $(wildcard $(ARCH_DIR)/*.c)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.c)
 SHELL_SRCS = $(wildcard $(SRC_DIR)/shell/*.c)
@@ -83,6 +103,50 @@ drivers-host:
 	@echo "🔧 Building scaffolding (drivers/fs/net/shell) with host GCC..."
 	@$(MAKE) --no-print-directory $(HOST_DRV_OBJS) $(HOST_FS_OBJS) $(HOST_NET_OBJS) $(HOST_SHELL2_OBJS)
 	@echo "✅ Host scaffolding objects built under $(HOST_BUILD_DIR)/"
+
+.PHONY: hosted hosted-test
+hosted:
+	@echo "🌐 Building hosted universal shell..."
+	@./hosted/build_hosted.sh
+
+hosted-test: hosted
+	@echo "🧪 Running hosted universal shell smoke test..."
+	@./hosted/test_hosted.sh
+
+.PHONY: test-fat32-host
+test-fat32-host:
+	@echo "🧪 Building FAT32 host test..."
+	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_fat32.c \
+		src/core/filesystem/blockdev.c \
+		src/core/filesystem/fat32.c \
+		kernel/fs/vfs.c \
+		-o build/host_fat32_test
+	@echo "🏃 Running FAT32 host test..."
+	@./build/host_fat32_test
+
+.PHONY: test-ucfs-host
+test-ucfs-host:
+	@echo "🧪 Building UCFS codec host test..."
+	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_ucfs_codec.c \
+		src/core/filesystem/ucfs_codec.c \
+		-o build/host_ucfs_codec_test
+	@echo "🏃 Running UCFS codec host test..."
+	@./build/host_ucfs_codec_test
+
+.PHONY: test-ucfs-overlay-host
+test-ucfs-overlay-host:
+	@echo "🧪 Building UCFS overlay host test..."
+	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_ucfs_overlay.c \
+		src/core/filesystem/ucfs_codec.c \
+		src/core/filesystem/ucfs_overlay.c \
+		kernel/fs/vfs.c \
+		kernel/fs/ramfs.c \
+		-o build/host_ucfs_overlay_test
+	@echo "🏃 Running UCFS overlay host test..."
+	@./build/host_ucfs_overlay_test
 
 # Kernel target
 $(KERNEL_BIN): $(CORE_OBJS) $(SHELL_OBJS) | $(BUILD_DIR)
@@ -350,3 +414,55 @@ help:
 	@echo "help         - Show this help"
 
 .PHONY: all test test-hardware test-boot test-steppps test-memory shell clean dev install help directories
+.PHONY: test-pxfs-host
+test-pxfs-host:
+	@echo "🧪 Building PXFS codec host test..."
+	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_pxfs_codec.c \
+		src/core/filesystem/pxfs_codec.c \
+		-o build/host_pxfs_codec_test
+	@echo "🏃 Running PXFS codec host test..."
+	@./build/host_pxfs_codec_test
+
+.PHONY: test-pxfs-overlay-host
+test-pxfs-overlay-host:
+	@echo "🧪 Building PXFS overlay host test..."
+	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_pxfs_overlay.c \
+		src/core/filesystem/pxfs_codec.c \
+		src/core/filesystem/pxfs_overlay.c \
+		kernel/fs/vfs.c \
+		kernel/fs/ramfs.c \
+		-o build/host_pxfs_overlay_test
+	@echo "🏃 Running PXFS overlay host test..."
+	@./build/host_pxfs_overlay_test
+
+.PHONY: persona-help list-personas list-packages persona-build persona-test persona-run persona-ci
+
+persona-help:
+	@echo "Persona-aware workflow"
+	@echo "  make list-personas                 # show available persona configs"
+	@echo "  make persona-build PERSONA=name    # build persona binary"
+	@echo "  make persona-test PERSONA=name     # run persona smoke tests"
+	@echo "  make persona-run PERSONA=name      # launch persona in QEMU"
+	@echo "  make persona-ci [PERSONAS=\"...\"]  # run persona CI matrix (defaults to all)"
+	@echo ""
+	@echo "Optional: PACKAGES=\"pkg1 pkg2\" to include config/packages overlays"
+
+list-personas:
+	@./build_tbos_system.sh --list-personas
+
+list-packages:
+	@ls $(TBOS_PACKAGE_DIR)/*.mk 2>/dev/null | sed 's#$(TBOS_PACKAGE_DIR)/##;s#.mk##'
+
+persona-build:
+	@./build_tbos_system.sh --persona $(PERSONA)
+
+persona-test:
+	@./test_tbos.sh --persona $(PERSONA)
+
+persona-run:
+	@./scripts/run_persona_qemu.sh --persona $(PERSONA)
+
+persona-ci:
+	@PACKAGES="$(PACKAGES)" ./scripts/tbos_persona_ci.sh $(PERSONAS)

@@ -25,6 +25,13 @@ extern void kernel_print(const char* str);
 extern void kernel_print_hex(uint32_t value);
 extern uint8_t keyboard_read_char(void);
 extern void clear_screen(void);
+extern void process_list(void);
+extern void tbos_discover_devices(void);
+extern void tbos_list_devices(void);
+extern void tbos_list_streams(void);
+extern uint32_t tbos_start_audio_stream(uint32_t device_id);
+extern uint32_t tbos_start_video_stream(uint32_t device_id);
+extern void tbos_stop_stream(uint32_t session_id);
 
 // Serial port I/O (for -nographic mode)
 #define SERIAL_PORT 0x3F8
@@ -59,6 +66,11 @@ static command_buffer_t cmd_buffer = {0};
 static char* command_history[MAX_HISTORY] = {0};
 static uint32_t history_index = 0;
 
+// Day 1: Karma and Consciousness tracking
+static int32_t user_karma = 100;
+static uint8_t consciousness_level = 1; // AWAKENING
+static uint32_t commands_executed = 0;
+
 // PXFS INTEGRATION NOTE:
 // Command history will be stored using PXFS encoding to save memory.
 // Each command string can be compressed into pixel RGB values.
@@ -82,14 +94,19 @@ static void cmd_stream_audio(const char* args);
 static void cmd_stream_video(const char* args);
 static void cmd_stream_stop(const char* args);
 
-// Print shell prompt
+// Print shell prompt with karma
 void shell_print_prompt(void) {
-    kernel_print("\nTBOS> ");
+    kernel_print("\n[K:");
+    kernel_print_hex(user_karma);
+    kernel_print("] TBOS> ");
 }
 
 // Process a command
 void shell_process_command(char* cmd) {
     if (!cmd || !cmd[0]) return;
+
+    // Track command execution
+    commands_executed++;
 
     // Parse command and arguments
     char* args = cmd;
@@ -99,9 +116,13 @@ void shell_process_command(char* cmd) {
         args++;
     }
 
+    // Update karma for command
+    user_karma += 1; // Reward for using shell
+
     // Execute built-in commands
     if (strcmp(cmd, "help") == 0) {
         cmd_help();
+        user_karma += 2; // Extra karma for learning
     } else if (strcmp(cmd, "clear") == 0 || strcmp(cmd, "cls") == 0) {
         cmd_clear();
     } else if (strcmp(cmd, "ps") == 0) {
@@ -122,6 +143,23 @@ void shell_process_command(char* cmd) {
         cmd_test();
     } else if (strcmp(cmd, "om") == 0) {
         kernel_print("\n🕉️ Swamiye Saranam Aiyappa 🕉️\n");
+    } else if (strcmp(cmd, "karma") == 0) {
+        kernel_print("\n=== Karma Status ===\n");
+        kernel_print("Current Karma: ");
+        kernel_print_hex(user_karma);
+        kernel_print("\nCommands Executed: ");
+        kernel_print_hex(commands_executed);
+        kernel_print("\n");
+        user_karma += 5;
+    } else if (strcmp(cmd, "consciousness") == 0) {
+        kernel_print("\n=== Consciousness Level ===\n");
+        const char* levels[] = {"NONE", "AWAKENING", "AWARE", "COMPASSIONATE", "ENLIGHTENED"};
+        kernel_print("Level: ");
+        kernel_print(levels[consciousness_level]);
+        kernel_print("\nCommands: ");
+        kernel_print_hex(commands_executed);
+        kernel_print("\n");
+        user_karma += 5;
     } else if (strcmp(cmd, "stream-devices") == 0) {
         cmd_stream_devices();
     } else if (strcmp(cmd, "stream-list") == 0) {
@@ -144,7 +182,7 @@ void shell_process_command(char* cmd) {
 
 // Built-in command implementations
 static void cmd_help(void) {
-    kernel_print("\n=== TBOS Commands ===\n");
+    kernel_print("\n=== TBOS Commands - Day 1 Edition ===\n");
     kernel_print("help           - Show this help\n");
     kernel_print("clear          - Clear screen\n");
     kernel_print("ps             - List processes\n");
@@ -156,6 +194,9 @@ static void cmd_help(void) {
     kernel_print("test           - Run tests\n");
     kernel_print("om             - Sacred mantra\n");
     kernel_print("reboot         - Restart system\n");
+    kernel_print("\n=== Consciousness Commands (Day 1) ===\n");
+    kernel_print("karma          - Show karma status\n");
+    kernel_print("consciousness  - Show consciousness level\n");
     kernel_print("\n=== Streaming Commands ===\n");
     kernel_print("discover       - Find TBOS devices\n");
     kernel_print("stream-devices - List discovered devices\n");
@@ -419,4 +460,9 @@ void shell_init(void) {
     cmd_buffer.cursor = 0;
 
     kernel_print("[SHELL] Shell ready\n");
+}
+
+// Alias for compatibility
+void shell_loop(void) {
+    shell_main();
 }

@@ -152,11 +152,24 @@ struct tbds_entry {
 ```
 
 ### Entry Types
-- `0x01`: Memory map
-- `0x02`: ACPI tables
-- `0x03`: SMBIOS information
-- `0x04`: Boot parameters
-- `0x05`: Device tree (ARM/RISC-V)
+- `0x01`: Architecture information (CPU mode, paging capabilities)
+- `0x02`: Firmware information (BIOS/UEFI vendor, version)
+- `0x03`: Physical memory map
+- `0x04`: Boot device descriptor (drive number, LBA span, flags)
+- `0x05`: Primary video information / framebuffer hints
+- `0x06`: Console capability report (text/serial availability via Boot HAL)
+- `0x07`: STEPPPS telemetry frame
+- `0x08`: Security attestation block
+- `0x7F`: Vendor/custom payload
+
+The Stage‑1/Stage‑2 boot flow now sources console and storage details from the shared
+Boot HAL (`boot/boot_hal.inc`). Every INT 13h request routes through the Boot HAL’s
+EDD dispatcher, guaranteeing LBA addressing and consistent error handling. The HAL
+also annotates TBDS entries so that the protected-mode kernel knows exactly which
+console and disk features were available before it begins its own HAL bring-up.
+Stage 2 now emits descriptors for the boot device (`TBDS_TYPE_BOOT_DEVICE`) and the
+text console (`TBDS_TYPE_CONSOLE_INFO`), and the kernel verifies these descriptors
+before finalising the runtime HAL state.
 
 ### Debugging TBDS
 To verify TBDS is being passed correctly:

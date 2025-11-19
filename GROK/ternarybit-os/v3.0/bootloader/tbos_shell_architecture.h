@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // Forward declarations
 typedef struct tbos_shell_manager tbos_shell_manager_t;
@@ -53,7 +54,7 @@ typedef enum {
 // SHELL LAYER STRUCTURE
 //=============================================================================
 
-typedef struct {
+struct tbos_shell_layer {
     shell_layer_type_t layer_type;
     shell_interface_type_t interface_type;
     shell_privilege_level_t min_privilege;
@@ -77,55 +78,39 @@ typedef struct {
     size_t layer_data_size;
 
     // Function pointers for layer operations
-    int (*init_layer)(tbos_shell_layer_t* layer);
-    int (*cleanup_layer)(tbos_shell_layer_t* layer);
-    int (*process_command)(tbos_shell_layer_t* layer, const char* command, char* response, size_t response_size);
-    int (*handle_event)(tbos_shell_layer_t* layer, uint32_t event_type, void* event_data);
+    int (*init_layer)(struct tbos_shell_layer* layer);
+    int (*cleanup_layer)(struct tbos_shell_layer* layer);
+    int (*process_command)(struct tbos_shell_layer* layer, const char* command, char* response, size_t response_size);
+    int (*handle_event)(struct tbos_shell_layer* layer, uint32_t event_type, void* event_data);
 
-} tbos_shell_layer_t;
+};
 
 //=============================================================================
 // SHELL PLUGIN SYSTEM
 //=============================================================================
 
-typedef enum {
-    PLUGIN_TYPE_COMMAND = 0,       // Command handler plugin
-    PLUGIN_TYPE_FILTER = 1,        // Input/output filter
-    PLUGIN_TYPE_EXTENSION = 2,     // Shell extension
-    PLUGIN_TYPE_INTEGRATION = 3,   // External system integration
-    PLUGIN_TYPE_AI = 4,            // AI enhancement plugin
-    PLUGIN_TYPE_SECURITY = 5,      // Security plugin
-    PLUGIN_TYPE_COUNT = 6
-} shell_plugin_type_t;
+// Plugin types defined in tbos_shell_plugins.h to avoid duplication
 
-typedef struct {
+// Shell plugin structure - lightweight version for architecture.h
+// Full definition in tbos_shell_plugins.h
+struct tbos_shell_plugin {
     char name[64];
     char version[16];
-    shell_plugin_type_t type;
-    uint32_t layer_mask;           // Which layers this plugin supports
-    uint32_t persona_mask;         // Which personas this plugin supports
-
-    // Plugin state
+    uint32_t type;                 // Use uint32_t to avoid circular dependency
+    uint32_t layer_mask;
+    uint32_t persona_mask;
     bool loaded;
     bool active;
     shell_privilege_level_t required_privilege;
-
-    // Plugin metadata
     char description[256];
     char author[64];
     uint32_t api_version;
-
-    // Plugin functions
-    int (*plugin_init)(tbos_shell_plugin_t* plugin);
-    int (*plugin_cleanup)(tbos_shell_plugin_t* plugin);
-    int (*plugin_execute)(tbos_shell_plugin_t* plugin, const char* input, char* output, size_t output_size);
-    int (*plugin_configure)(tbos_shell_plugin_t* plugin, const char* config);
-
-    // Plugin data
+    int (*plugin_init)(struct tbos_shell_plugin* plugin);
+    int (*plugin_cleanup)(struct tbos_shell_plugin* plugin);
+    int (*plugin_execute)(struct tbos_shell_plugin* plugin, void* context);
     void* plugin_data;
     size_t plugin_data_size;
-
-} tbos_shell_plugin_t;
+};
 
 //=============================================================================
 // SHELL COMMAND ROUTING
@@ -302,6 +287,59 @@ const char* tbos_shell_privilege_name(shell_privilege_level_t privilege);
 void tbos_shell_print_status(tbos_shell_manager_t* manager);
 void tbos_shell_print_layer_info(tbos_shell_layer_t* layer);
 void tbos_shell_print_plugin_info(tbos_shell_plugin_t* plugin);
+
+// Additional utility functions from implementation
+uint64_t tbos_get_time_us(void);
+uint64_t tbos_get_timestamp_us(void);
+const char* tbos_get_persona_name(uint8_t persona);
+uint8_t tbos_get_persona_id_by_name(const char* name);
+void tbos_shell_parse_command(const char* command, char* cmd_name, char* cmd_args);
+shell_command_entry_t* tbos_shell_find_command(tbos_shell_manager_t* manager, const char* cmd_name);
+
+// Layer initialization functions
+int tbos_shell_init_kernel_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_system_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_persona_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_application_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_user_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_quantum_layer(tbos_shell_layer_t* layer);
+int tbos_shell_init_bridge_layer(tbos_shell_layer_t* layer);
+
+// Layer command processors
+int tbos_shell_process_kernel_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_system_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_persona_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_application_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_user_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_quantum_command(tbos_shell_layer_t* layer, const char* cmd);
+int tbos_shell_process_bridge_command(tbos_shell_layer_t* layer, const char* cmd);
+
+// Plugin initialization functions
+int tbos_plugin_ai_init(tbos_shell_plugin_t* plugin);
+int tbos_plugin_ai_execute(tbos_shell_plugin_t* plugin, void* context);
+int tbos_plugin_security_init(tbos_shell_plugin_t* plugin);
+int tbos_plugin_security_execute(tbos_shell_plugin_t* plugin, void* context);
+int tbos_plugin_chemos_init(tbos_shell_plugin_t* plugin);
+int tbos_plugin_chemos_execute(tbos_shell_plugin_t* plugin, void* context);
+int tbos_plugin_gui_init(tbos_shell_plugin_t* plugin);
+int tbos_plugin_gui_execute(tbos_shell_plugin_t* plugin, void* context);
+
+// Command handlers
+int tbos_cmd_help(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_persona(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_gui(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_quantum(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_bridge(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_shell(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_status(const char* args, char* response, size_t response_size, shell_session_t* session);
+int tbos_cmd_exit(const char* args, char* response, size_t response_size, shell_session_t* session);
+
+// Internal functions
+void tbos_shell_save_persona_state(tbos_shell_manager_t* manager, uint8_t persona);
+void tbos_shell_restore_persona_state(tbos_shell_manager_t* manager, uint8_t persona);
+void tbos_shell_update_persona_theme(tbos_shell_manager_t* manager, uint8_t persona);
+void tbos_shell_activate_session_layers(shell_session_t* session);
+void tbos_shell_start_background_services(tbos_shell_manager_t* manager);
 
 // Error codes
 #define TBOS_SHELL_SUCCESS                 0

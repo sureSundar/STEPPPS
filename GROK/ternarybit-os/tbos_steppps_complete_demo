@@ -1,0 +1,155 @@
+#!/bin/bash
+# TernaryBit OS Complete Bootloader to Shell Demo
+# 🕉️ Swamiye Saranam Aiyappa 🕉️
+
+set -euo pipefail
+
+echo "=============================================="
+echo "  TernaryBit OS - Bootloader to Shell Demo"
+echo "  STEPPPS Framework Complete Implementation"
+echo "=============================================="
+echo ""
+
+cd "$(dirname "$0")"
+
+# Check if build exists
+if [ ! -f "build/tbos_universal.img" ]; then
+    echo "⚠️  Build not found. Building now..."
+    echo ""
+    ./build_universal.sh
+    echo ""
+fi
+
+echo "✅ Build complete!"
+echo ""
+echo "📊 Build Statistics:"
+echo "-------------------"
+ls -lh build/boot.bin build/stage2.bin build/kernel.bin 2>/dev/null | awk '{print "  " $9 ": " $5}'
+echo ""
+
+echo "🔍 Verifying Boot Sector Signature..."
+BOOT_SIG=$(xxd -s 510 -l 2 -p build/boot.bin)
+if [ "$BOOT_SIG" = "55aa" ]; then
+    echo "  ✅ Boot signature valid (0x55AA)"
+else
+    echo "  ❌ Boot signature invalid: $BOOT_SIG"
+    exit 1
+fi
+echo ""
+
+echo "📋 System Architecture:"
+echo "----------------------"
+echo "  • Real Mode Boot (BIOS)"
+echo "  • Stage 1: MBR (512 bytes)"
+echo "  • Stage 2: Long Mode Transition (16→32→64 bit)"
+echo "  • Kernel: 64-bit Long Mode"
+echo "  • Shell: Interactive command processor"
+echo ""
+
+echo "🎯 Boot Flow:"
+echo "-------------"
+echo "  BIOS → Stage 1 (MBR) → Stage 2 (Long Mode)"
+echo "    ↓"
+echo "  64-bit Kernel → IDT → Interrupts → Keyboard"
+echo "    ↓"
+echo "  Interactive Shell → Commands → READY!"
+echo ""
+
+echo "💻 Available Shell Commands:"
+echo "---------------------------"
+echo "  • help      - Show all commands"
+echo "  • calc      - Calculator (e.g., calc 2+2)"
+echo "  • steppps   - STEPPPS framework status"
+echo "  • about     - OS information"
+echo "  • echo      - Print text"
+echo "  • clear/cls - Clear screen"
+echo "  • test      - Run system tests"
+echo "  • om        - Sacred mantra"
+echo "  • reboot    - Restart system"
+echo ""
+
+echo "🚀 Boot Options:"
+echo "---------------"
+echo "  [1] Boot in QEMU with GUI"
+echo "  [2] Boot in QEMU headless (serial output)"
+echo "  [3] Show disk image info"
+echo "  [4] Exit"
+echo ""
+
+read -p "Select option [1-4]: " choice
+
+case $choice in
+    1)
+        echo ""
+        echo "🎮 Starting QEMU with GUI..."
+        echo ""
+        echo "Instructions:"
+        echo "  • Type commands in the QEMU window"
+        echo "  • Press Ctrl+Alt+2 for QEMU monitor"
+        echo "  • Press Ctrl+Alt+Q to quit"
+        echo ""
+        sleep 2
+
+        qemu-system-x86_64 \
+            -drive file=build/tbos_universal.img,format=raw \
+            -m 512 \
+            -name "TernaryBit OS"
+        ;;
+
+    2)
+        echo ""
+        echo "📡 Starting QEMU in headless mode..."
+        echo "    (Serial output to console)"
+        echo ""
+
+        timeout 5 qemu-system-x86_64 \
+            -drive file=build/tbos_universal.img,format=raw \
+            -m 512 \
+            -nographic \
+            -serial mon:stdio || echo ""
+
+        echo ""
+        echo "⏱️  Demo timed out (5 seconds)"
+        ;;
+
+    3)
+        echo ""
+        echo "💾 Disk Image Information:"
+        echo "-------------------------"
+        file build/tbos_universal.img
+        echo ""
+        echo "Sector Layout:"
+        echo "  Sector 0:      Boot sector (512 bytes)"
+        echo "  Sectors 1-9:   Stage 2 bootloader"
+        echo "  Sectors 10+:   Kernel binary"
+        echo ""
+        echo "First 32 bytes of boot sector:"
+        xxd -l 32 build/tbos_universal.img
+        echo ""
+        echo "Last 2 bytes (boot signature):"
+        xxd -s 510 -l 2 build/tbos_universal.img
+        ;;
+
+    4)
+        echo ""
+        echo "👋 Exiting..."
+        exit 0
+        ;;
+
+    *)
+        echo ""
+        echo "❌ Invalid option"
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "✅ Demo complete!"
+echo ""
+echo "📚 Documentation:"
+echo "----------------"
+echo "  • README_BOOT_TO_SHELL.md - Quick start guide"
+echo "  • BOOT_TO_SHELL_GUIDE.md  - Technical deep-dive"
+echo "  • TESTING_GUIDE.md        - Testing & troubleshooting"
+echo ""
+echo "🕉️ Swamiye Saranam Aiyappa 🕉️"

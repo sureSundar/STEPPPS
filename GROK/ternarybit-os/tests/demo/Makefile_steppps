@@ -1,0 +1,28 @@
+# Makefile for STEPPPS Demo
+# US-8.1: STEPPPS Shell Commands
+
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -I../../src
+LDFLAGS = -lm
+
+DEMO = demo_steppps
+OBJS = demo_steppps.o ../../src/core/steppps/tbos_steppps.o
+
+all: $(DEMO)
+
+$(DEMO): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(DEMO)
+
+demo_steppps.o: demo_steppps.c
+	$(CC) $(CFLAGS) -c demo_steppps.c
+
+../../src/core/steppps/tbos_steppps.o: ../../src/core/steppps/tbos_steppps.c
+	$(CC) $(CFLAGS) -c ../../src/core/steppps/tbos_steppps.c -o ../../src/core/steppps/tbos_steppps.o
+
+run: $(DEMO)
+	./$(DEMO)
+
+clean:
+	rm -f $(OBJS) $(DEMO)
+
+.PHONY: all run clean

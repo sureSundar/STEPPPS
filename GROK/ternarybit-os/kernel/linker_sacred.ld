@@ -7,11 +7,11 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* Kernel loads at 1MB */
-    . = 0x100000;
+    /* Kernel loads at 64KB (0x10000) - matches stage2_long_mode.asm */
+    . = 0x10000;
 
-    /* Code section */
-    .text ALIGN(4K) :
+    /* Code section - no alignment to avoid file padding */
+    .text :
     {
         *(.multiboot)
         *(.text)
@@ -19,21 +19,21 @@ SECTIONS
     }
 
     /* Read-only data */
-    .rodata ALIGN(4K) :
+    .rodata :
     {
         *(.rodata)
         *(.rodata.*)
     }
 
     /* Initialized data */
-    .data ALIGN(4K) :
+    .data :
     {
         *(.data)
         *(.data.*)
     }
 
     /* Uninitialized data */
-    .bss ALIGN(4K) :
+    .bss :
     {
         __bss_start = .;
         *(COMMON)

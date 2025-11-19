@@ -1,0 +1,17 @@
+{
+  "magic": "TBOS",
+  "version": "1.0",
+  "source": "application",
+  "platform": "linux",
+  "hardware": {
+    "cpu_vendor": "AuthenticAMD",
+    "cpu_cores": 4,
+    "cpu_mhz": 2096,
+    "memory_kb": 10192464,
+    "memory_mb": 9953,
+    "architecture": "x86_64",
+    "os_name": "Linux 5.15.0-46-generic",
+    "device_class": 3,
+    "device_class_name": "DESKTOP (4MB-16MB)"
+  }
+}

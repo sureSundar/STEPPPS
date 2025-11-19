@@ -1,0 +1,5 @@
+// Hello World in TBScript
+
+void main() {
+    println("Hello, TernaryBit!");
+}

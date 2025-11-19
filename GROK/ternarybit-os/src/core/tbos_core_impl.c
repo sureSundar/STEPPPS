@@ -21,7 +21,7 @@
 
 #include "tbos_interfaces.h"
 #include "tbos_base.h"
-#include "tbos_filesystem_v2.h"
+#include "tbos_filesystem.h"
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -213,7 +213,7 @@ static tbos_memory_interface_t* create_memory_manager(const char* type) {
 
 static tbos_filesystem_interface_t* create_filesystem(const char* type) {
     if (strcmp(type, "tbos_v2") == 0) {
-        tbos_filesystem_v2_t* fs = tbos_create_simple_filesystem("/dev/tbos_disk");
+        tbos_filesystem_t* fs = tbos_create_simple_filesystem("/dev/tbos_disk");
         if (!fs) {
             TBOS_LOG_ERROR("Failed to create TBOS v2 filesystem");
             return NULL;

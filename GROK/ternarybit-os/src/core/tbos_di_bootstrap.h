@@ -24,8 +24,8 @@
 #include "tbos_ioc_container.h"
 #include "tbos_interfaces.h"
 #include "tbos_base.h"
-#include "tbos_filesystem_v2.h"
-#include "tbos_process_v2.h"
+#include "tbos_filesystem.h"
+#include "tbos_process.h"
 
 /**
  * @brief TBOS Service Names (centralized configuration)
@@ -99,7 +99,7 @@ typedef struct tbos_filesystem_di {
     tbos_block_allocator_interface_t* block_allocator;
 
     // Implementation data
-    tbos_superblock_v2_t* superblock;
+    tbos_superblock_t* superblock;
     tbos_file_cache_interface_t* cache;
     bool mounted;
 
@@ -118,7 +118,7 @@ typedef struct tbos_process_manager_di {
     tbos_observer_interface_t* event_bus;       // @Inject(TBOS_SERVICE_EVENT_BUS)
 
     // Process management data
-    tbos_process_v2_t** process_table;
+    tbos_process_t** process_table;
     size_t process_count;
     pid_t next_pid;
 
@@ -139,8 +139,8 @@ typedef struct tbos_scheduler_di {
     tbos_scheduling_strategy_t* strategy;       // @Inject(configured strategy)
 
     // Scheduling data
-    tbos_process_v2_t* current_process;
-    tbos_process_v2_t** ready_queues[10];
+    tbos_process_t* current_process;
+    tbos_process_t** ready_queues[10];
 
 } tbos_scheduler_di_t;
 

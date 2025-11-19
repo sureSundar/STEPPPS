@@ -1,0 +1,11 @@
+// TernaryBit OS Boot Program
+void main() {
+    println("TernaryBit OS v1.0")
+    println("Universal Computing System")
+    println("")
+    println("Bootloader: OK")
+    println("VM: OK")
+    println("System: Ready")
+    println("")
+    println("Welcome to TernaryBit OS!")
+}

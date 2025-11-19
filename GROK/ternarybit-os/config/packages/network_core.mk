@@ -1,0 +1,2 @@
+TBOS_PACKAGE_DEFINES += -DTBOS_PACKAGE_NETWORK_CORE -DTBOS_ENABLE_CONSCIOUS_NETWORK
+TBOS_PACKAGE_NOTES += \n  • network_core: Enables conscious TCP/IP, HTTP, and Sangha components.

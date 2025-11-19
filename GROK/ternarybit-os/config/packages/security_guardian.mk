@@ -1,0 +1,2 @@
+TBOS_PACKAGE_DEFINES += -DTBOS_PACKAGE_SECURITY_GUARDIAN -DTBOS_ENABLE_DHARMA_SECURITY -DTBOS_ENABLE_KARMIC_AUDIT
+TBOS_PACKAGE_NOTES += \n  • security_guardian: Activates dharmic security guards and karmic auditing.

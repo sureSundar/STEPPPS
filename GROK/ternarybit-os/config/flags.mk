@@ -20,13 +20,13 @@ OPTIMIZE_FLAGS = -O2 -flto -fno-omit-frame-pointer
 STD_FLAGS = -std=gnu99
 
 # Include paths
-INCLUDE_FLAGS = -Isrc -Isrc/core -Isrc/boot -Isrc/shell
+INCLUDE_FLAGS = -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell
 
 # Common C flags
-CFLAGS = $(WARN_FLAGS) $(DEBUG_FLAGS) $(OPTIMIZE_FLAGS) $(STD_FLAGS) $(INCLUDE_FLAGS)
+CFLAGS = $(WARN_FLAGS) $(DEBUG_FLAGS) $(OPTIMIZE_FLAGS) $(STD_FLAGS) $(INCLUDE_FLAGS) $(EXTRA_CFLAGS)
 
 # Linker flags
-LDFLAGS = $(OPTIMIZE_FLAGS) -Wl,--gc-sections
+LDFLAGS = $(OPTIMIZE_FLAGS) -Wl,--gc-sections $(EXTRA_LDFLAGS)
 
 # Test flags
 TEST_CFLAGS = $(CFLAGS) -DTESTING

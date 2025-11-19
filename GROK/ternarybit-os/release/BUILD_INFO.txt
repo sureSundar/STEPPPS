@@ -1,0 +1,14 @@
+TernaryBit OS Build Information
+================================
+Build Date: $(date)
+Build Host: $(hostname)
+Kernel Size: $(stat -c%s build/kernel.bin) bytes
+Image Size: $(stat -c%s build/tbos_universal.img) bytes
+Bootloader: 2-stage (MBR + long mode)
+Architecture: x86-64
+
+Components:
+- boot/tbos_sacred.asm (Stage 1 MBR)
+- boot/stage2_long_mode.asm (Stage 2)
+- kernel/kernel_sacred.asm (Entry point)
+- kernel/kernel_main.c (Main kernel)

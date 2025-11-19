@@ -23,7 +23,8 @@
       "Bash(./demo_tbos_interactive)",
       "Bash(timeout:*)",
       "Bash(java:*)",
-      "Bash(ld:*)"
+      "Bash(ld:*)",
+      "Bash(./build_interactive_shell.sh:*)"
     ],
     "deny": [],
     "ask": []

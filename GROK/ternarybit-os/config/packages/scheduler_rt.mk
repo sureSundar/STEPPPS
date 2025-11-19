@@ -1,0 +1,2 @@
+TBOS_PACKAGE_DEFINES += -DTBOS_PACKAGE_SCHEDULER_RT -DTBOS_ENABLE_REALTIME_SCHEDULER -DTBOS_ENABLE_SCHED_STATS
+TBOS_PACKAGE_NOTES += \n  • scheduler_rt: Enables real-time scheduler queues, stats, and tracing.

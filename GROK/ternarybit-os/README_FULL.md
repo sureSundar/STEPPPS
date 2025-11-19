@@ -104,3 +104,4 @@ Roadmap
 - Better display profiles and calibrated models
 - Peer discovery and signed offload envelopes
 - Multi-device STEPPPS orchestration
+- Near-term execution milestones are tracked explicitly (see `docs/MILESTONE_WEEK1.md` for the Week‑1 shell deliverable, `tests/smoke/shell_week1.sh` for the hosted smoke test, and `scripts/test_boot_image.sh` for the bootable-image check).

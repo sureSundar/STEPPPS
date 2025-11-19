@@ -1,0 +1,2 @@
+TBOS_PACKAGE_DEFINES += -DTBOS_PACKAGE_DRIVERS_IO -DTBOS_ENABLE_DRIVER_FRAMEWORK -DTBOS_ENABLE_IO_SUBSYSTEM
+TBOS_PACKAGE_NOTES += \n  • drivers_io: Builds the conscious driver framework plus base I/O drivers.

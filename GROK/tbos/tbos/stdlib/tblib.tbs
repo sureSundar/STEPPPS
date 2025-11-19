@@ -1,0 +1,99 @@
+// TernaryBit Standard Library
+// Core functions for TBLVM programs
+
+// ========================================================================
+// String Operations
+// ========================================================================
+
+void print_string(str) {
+    // Print null-terminated string
+    // Implementation: compile to character-by-character output
+}
+
+void println(str) {
+    print_string(str)
+    print_char('\n')
+}
+
+// ========================================================================
+// Math Operations
+// ========================================================================
+
+int abs(x) {
+    if (x < 0)
+        return -x
+    return x
+}
+
+int min(a, b) {
+    if (a < b)
+        return a
+    return b
+}
+
+int max(a, b) {
+    if (a > b)
+        return a
+    return b
+}
+
+int pow(base, exp) {
+    result = 1
+    i = 0
+    // Manual loop unrolling or while loop when supported
+    return result
+}
+
+// ========================================================================
+// STEPPPS Framework API
+// ========================================================================
+
+// SPACE Dimension
+int get_free_memory() {
+    // Returns available heap space
+    // Maps to OP_SPACE_INFO
+}
+
+// TIME Dimension
+int get_time() {
+    // Returns current time/ticks
+    // Maps to OP_TIME_GET
+}
+
+// EVENT Dimension
+void wait_event() {
+    // Wait for next event
+    // Maps to OP_EVENT_WAIT
+}
+
+// PIXEL Dimension
+void set_pixel(x, y, color) {
+    // Set pixel at (x,y) to color
+    // Maps to OP_PIXEL_SET
+}
+
+// PROMPT Dimension
+int read_int() {
+    // Read integer from user
+    // Maps to OP_READ
+}
+
+char read_char() {
+    // Read character from user
+    // Maps to OP_READ_CHAR
+}
+
+// ========================================================================
+// Utility Functions
+// ========================================================================
+
+void clear_screen() {
+    // Clear screen (platform specific)
+    i = 0
+    // Print 25 newlines
+}
+
+void delay(ms) {
+    // Busy-wait delay
+    // Calibrated per platform
+}
