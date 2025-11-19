@@ -6,6 +6,9 @@
 #include "tbos/stdio.h"
 #include "tbos/vfs.h"
 #include "tbos/errno.h"
+#include "fs/ucfs_codec.h"
+#include "fs/ucfs_overlay.h"
+#include "fs/ucfs_config.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -74,6 +77,11 @@ static void cmd_rm(const char* args);
 static void cmd_rmdir(const char* args);
 static void cmd_karma(void);
 static void cmd_consciousness(void);
+static void cmd_ucfs_encode(const char* args);
+static void cmd_ucfs_info(const char* args);
+static void cmd_ucfs_test(void);
+static void cmd_ucfs_help(void);
+static void cmd_ucfs_config(const char* args);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -711,6 +719,21 @@ static void shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "om") == 0) {
         kernel_print("\n🕉️  Swamiye Saranam Aiyappa 🕉️\n");
         karma_delta = 3;
+    } else if (strcmp(cmd, "ucfs-encode") == 0) {
+        cmd_ucfs_encode(args);
+        karma_delta = 2;
+    } else if (strcmp(cmd, "ucfs-info") == 0) {
+        cmd_ucfs_info(args);
+        karma_delta = 2;
+    } else if (strcmp(cmd, "ucfs-test") == 0) {
+        cmd_ucfs_test();
+        karma_delta = 5;
+    } else if (strcmp(cmd, "ucfs-help") == 0) {
+        cmd_ucfs_help();
+        karma_delta = 1;
+    } else if (strcmp(cmd, "ucfs-config") == 0) {
+        cmd_ucfs_config(args);
+        karma_delta = 2;
     } else {
         handled = false;
     }
@@ -777,5 +800,222 @@ void shell_loop(void) {
                 kernel_print(str);
             }
         }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * UCFS Commands
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static void cmd_ucfs_encode(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: ucfs-encode <ucfs-path>\n");
+        return;
+    }
+
+    char* path = trim_spaces((char*)args);
+    if (path[0] != '[') {
+        kernel_print("Error: Not a UCFS path (must start with '[')\n");
+        return;
+    }
+
+    char canonical[512];
+    int result = ucfs_resolve_path(path, canonical, sizeof(canonical));
+    if (result != 0) {
+        kernel_print("Error: Failed to parse UCFS path\n");
+        return;
+    }
+
+    kernel_print("UCFS Path    : ");
+    kernel_print(path);
+    kernel_print("\nCanonical    : ");
+    kernel_print(canonical);
+    kernel_print("\n");
+}
+
+static void cmd_ucfs_info(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: ucfs-info <ucfs-path>\n");
+        return;
+    }
+
+    char* path = trim_spaces((char*)args);
+    if (path[0] != '[') {
+        kernel_print("Error: Not a UCFS path (must start with '[')\n");
+        return;
+    }
+
+    ucfs_path_t parsed;
+    int result = ucfs_parse(path, &parsed);
+    if (result != 0) {
+        kernel_print("Error: Failed to parse UCFS path\n");
+        return;
+    }
+
+    kernel_print("\n=== UCFS Path Information ===\n");
+    kernel_print("Original Path  : ");
+    kernel_print(path);
+    kernel_print("\nDelimiter      : U+");
+    kernel_print_hex(parsed.delimiter);
+    kernel_print(" (");
+    for (size_t i = 0; i < parsed.delimiter_len && i < sizeof(parsed.delimiter_utf8); i++) {
+        kernel_putchar(parsed.delimiter_utf8[i]);
+    }
+    kernel_print(")\nComponents     : ");
+    shell_print_decimal((int)parsed.component_count);
+    kernel_print("\n");
+
+    for (size_t i = 0; i < parsed.component_count; i++) {
+        kernel_print("  [");
+        shell_print_decimal((int)i);
+        kernel_print("] ");
+        kernel_print(parsed.components[i]);
+        kernel_print("\n");
+    }
+
+    char canonical[512];
+    if (ucfs_to_canonical(&parsed, canonical, sizeof(canonical)) == 0) {
+        kernel_print("Canonical Path : ");
+        kernel_print(canonical);
+        kernel_print("\n");
+    }
+
+    ucfs_free(&parsed);
+    kernel_print("=============================\n\n");
+}
+
+static void cmd_ucfs_test(void) {
+    kernel_print("\n=== UCFS Functionality Test ===\n");
+
+    const char* test_path1 = "[🕉️]test[🕉️]demo.txt";
+    const char* test_data1 = "Om Namah Shivaya - UCFS Test";
+
+    kernel_print("Test 1: Writing to UCFS path with 🕉️ delimiter...\n");
+    kernel_print("  Path: ");
+    kernel_print(test_path1);
+    kernel_print("\n");
+
+    if (ucfs_write_file_uc(test_path1, test_data1, strlen(test_data1)) == 0) {
+        kernel_print("  Write successful\n");
+
+        char buffer[256];
+        size_t size = 0;
+        if (ucfs_read_file_uc(test_path1, buffer, sizeof(buffer), &size) == 0) {
+            buffer[size] = '\0';
+            kernel_print("  Read successful: \"");
+            kernel_print(buffer);
+            kernel_print("\"\n");
+        } else {
+            kernel_print("  Read failed\n");
+        }
+    } else {
+        kernel_print("  Write failed\n");
+    }
+
+    const char* test_path2 = "[📁]projects[📁]tbos[📁]readme.txt";
+    const char* test_data2 = "TernaryBit OS - Unicode Filesystem";
+
+    kernel_print("\nTest 2: Writing to UCFS path with 📁 delimiter...\n");
+    kernel_print("  Path: ");
+    kernel_print(test_path2);
+    kernel_print("\n");
+
+    if (ucfs_write_file_uc(test_path2, test_data2, strlen(test_data2)) == 0) {
+        kernel_print("  Write successful\n");
+
+        char buffer[256];
+        size_t size = 0;
+        if (ucfs_read_file_uc(test_path2, buffer, sizeof(buffer), &size) == 0) {
+            buffer[size] = '\0';
+            kernel_print("  Read successful: \"");
+            kernel_print(buffer);
+            kernel_print("\"\n");
+        } else {
+            kernel_print("  Read failed\n");
+        }
+    } else {
+        kernel_print("  Write failed\n");
+    }
+
+    kernel_print("\n===============================\n");
+    kernel_print("UCFS test complete!\n\n");
+}
+
+static void cmd_ucfs_help(void) {
+    kernel_print("\n=== UCFS (Unicode Character Filesystem) Help ===\n\n");
+    kernel_print("UCFS allows you to use Unicode characters (emojis, symbols, etc.)\n");
+    kernel_print("as path delimiters instead of '/'.\n\n");
+    kernel_print("Path Format:\n");
+    kernel_print("  [delimiter]component[delimiter]component[delimiter]file\n\n");
+    kernel_print("Examples:\n");
+    kernel_print("  [🕉️]music[🕉️]chants[🕉️]108.mp3\n");
+    kernel_print("  [📁]projects[📁]tbos[📁]kernel.c\n");
+    kernel_print("  [🌍]home[🌍]user[🌍]documents[🌍]resume.pdf\n\n");
+    kernel_print("UCFS Commands:\n");
+    kernel_print("  ucfs-encode <path>  - Show canonical path for UCFS path\n");
+    kernel_print("  ucfs-info <path>    - Display detailed path information\n");
+    kernel_print("  ucfs-test           - Run UCFS functionality tests\n");
+    kernel_print("  ucfs-config <cmd>   - Manage configuration (list/show/save)\n");
+    kernel_print("  ucfs-help           - Show this help\n\n");
+    kernel_print("Regular Commands Work Too:\n");
+    kernel_print("  cat [🕉️]music[🕉️]song.mp3\n");
+    kernel_print("  ls [📁]projects\n");
+    kernel_print("  mkdir [🌍]home[🌍]newdir\n\n");
+    kernel_print("================================================\n\n");
+}
+
+static void cmd_ucfs_config(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Usage: ucfs-config <list|show|save>\n");
+        return;
+    }
+
+    char* cmd = trim_spaces((char*)args);
+    ucfs_config_t config;
+
+    if (strcmp(cmd, "list") == 0) {
+        ucfs_config_init_defaults(&config);
+
+        kernel_print("\n=== UCFS Delimiter Mappings ===\n");
+        kernel_print("Default Backing: ");
+        kernel_print(config.default_backing);
+        kernel_print("\n\n");
+
+        if (config.delimiter_count == 0) {
+            kernel_print("No delimiter mappings configured.\n");
+        } else {
+            for (size_t i = 0; i < config.delimiter_count; i++) {
+                const ucfs_delimiter_config_t* d = &config.delimiters[i];
+                if (d->active) {
+                    for (size_t j = 0; j < d->delimiter_len && j < sizeof(d->delimiter_utf8); j++) {
+                        kernel_putchar(d->delimiter_utf8[j]);
+                    }
+                    kernel_print(" U+");
+                    kernel_print_hex(d->delimiter);
+                    kernel_print(" - ");
+                    kernel_print(d->description);
+                    kernel_print("\n");
+                }
+            }
+            kernel_print("\nTotal: ");
+            shell_print_decimal((int)config.delimiter_count);
+            kernel_print(" delimiters\n");
+        }
+        kernel_print("===============================\n\n");
+
+    } else if (strcmp(cmd, "show") == 0) {
+        ucfs_config_init_defaults(&config);
+
+        kernel_print("\n=== UCFS Configuration ===\n");
+        kernel_print("Default Backing: ");
+        kernel_print(config.default_backing);
+        kernel_print("\nDelimiters     : ");
+        shell_print_decimal((int)config.delimiter_count);
+        kernel_print("\n==========================\n\n");
+
+    } else {
+        kernel_print("Unknown action: ");
+        kernel_print(cmd);
+        kernel_print("\nUse: ucfs-config <list|show>\n");
     }
 }
