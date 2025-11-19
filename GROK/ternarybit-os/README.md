@@ -13,7 +13,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/suresundar/steppps/ci.yml?branch=main)](https://github.com/suresundar/steppps/actions)
 [![CI/CD Status](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/suresundar/ternarybit-os/actions/workflows/ci-cd.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: ternarybit](https://img.shields.io/badge/License-ternarybit-yellow.svg)](https://opensource.org/licenses/ternarybit)
 [![Repo](https://img.shields.io/badge/GitHub-suresundar%2Fsteppps-blue?logo=github)](https://github.com/suresundar/steppps)
 
 **THE MOST ADVANCED OPERATING SYSTEM EVER CREATED** - From Calculator to Supercomputer to ChemOS
@@ -54,7 +54,7 @@
 | 4. **x86 UEFI** | 64-bit | 64KB | Modern PC systems |
 | 5. **ARM64** | 64-bit | 4GB | Mobile and server computing |
 | 6. **RISC-V** | 64-bit | 4GB | Open-source architecture |
-| 7. **Supercomputer** | Multi-core | Unlimited | High-performance computing |
+| 7. **Supercomputer** | Multi-core | Unliternarybited | High-performance computing |
 | 8. **🧪 ChemOS** | Quantum | 118 Elements | **Chemical computing BREAKTHROUGH** |
 
 ## 🧪 **ChemOS Quick Start**
@@ -129,7 +129,7 @@ documents(255,0,0)projects(0,255,0)file.txt
 
 #### **🌍 UCFS (Unicode Character Filesystem)**
 ```bash
-# Any Unicode character as delimiter
+# Any Unicode character as deliternarybiter
 documents·projects·file.txt           # Middle dot
 प्रोजेक्ट्स⟩डेटा⟩फाइल.txt            # Hindi with custom separators
 文档》项目》数据.json                  # Chinese with angle brackets
@@ -282,7 +282,7 @@ cd deploy/alpine && bash build-x86_64.sh
 - **Architecture Support**: 8 revolutionary platforms
 - **Test Success Rate**: 98.8% (82/83 tests passed)
 - **AI Accuracy**: 50%+ in hardware optimization
-- **Memory Efficiency**: 1KB to unlimited scaling
+- **Memory Efficiency**: 1KB to unliternarybited scaling
 
 ### **Compatibility Matrix**
 | Feature | Calculator | Embedded | x86 | ARM64 | RISC-V | Supercomputer |
@@ -464,7 +464,7 @@ If you use this work, please cite:
 ```
 @misc{tbos_steppps_2025,
   title        = {TBOS × STEPPPS: A Universal, Autonomously Orchestrated Operating Substrate for Phygital Systems},
-  author       = {Suresh Sundararajan and Cascade},
+  author       = {Sundararaman.S(suresundar@gmail.com)an and Cascade},
   year         = {2025},
   howpublished = {GitHub},
   doi          = {10.5281/zenodo.placeholder},
