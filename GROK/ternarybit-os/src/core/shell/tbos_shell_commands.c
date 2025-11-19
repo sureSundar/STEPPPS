@@ -3,6 +3,11 @@
  * @brief TernaryBit OS - Built-in Shell Commands Implementation
  */
 
+/* For bare-metal builds, include compatibility layer first */
+#ifndef HOST_BUILD
+#include "tbos/baremetal_compat.h"
+#endif
+
 #include "tbos_shell.h"
 #include "../karma/tbos_karma_ledger.h"
 #include "tbos_supershell.h"
@@ -12,6 +17,8 @@
 #include "fs/pxfs_overlay.h"
 #include "../../hal/tbos_hal.h"
 #include "../steppps/tbos_steppps.h"
+
+#ifdef HOST_BUILD
 #include <time.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -22,8 +29,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <stdbool.h>
+#else
+/* Bare-metal stubs for POSIX functions */
+static inline int getpid(void) { return 1; }
+static inline int fork(void) { return -1; }
+static inline int execvp(const char* file, char* const argv[]) { (void)file; (void)argv; return -1; }
+static inline int waitpid(int pid, int* status, int options) { (void)pid; (void)status; (void)options; return -1; }
+static inline char* getenv(const char* name) { (void)name; return NULL; }
+static inline int uname(void* buf) { (void)buf; return -1; }
+static inline int gettimeofday(void* tv, void* tz) { (void)tv; (void)tz; return -1; }
+#ifndef ENOENT
+#define ENOENT 2
+#endif
+#ifndef errno
+extern int errno;
+#endif
+#endif
 
 static const char* resolve_shell_path(const char* path, char* buffer, size_t buffer_len) {
     if (!path || !*path) {

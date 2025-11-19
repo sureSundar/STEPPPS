@@ -187,7 +187,7 @@ compile_c() {
     local obj_name="${rel//\//_}"
     obj_name="${obj_name%.c}.o"
     local out="$BUILD_DIR/$obj_name"
-    local include_flags=(-I"$GENERATED_INCLUDE_DIR" -I"$TBOS_ROOT/include")
+    local include_flags=(-I"$GENERATED_INCLUDE_DIR" -I"$TBOS_ROOT/include" -I"$TBOS_ROOT/src")
 
     # Compile as 64-bit
     # Use -O0 for kernel_main.c to prevent loop optimization issues with VGA writes
@@ -342,6 +342,7 @@ fi
         echo "    [skip] Interrupt controller disabled by profile"
     fi
     compile_c "kernel/libc.c"
+    compile_c "kernel/tbos_baremetal_stubs.c"
     if config_enabled "FS"; then
         compile_c "kernel/fs/ramfs.c"
         compile_c "kernel/fs/vfs.c"

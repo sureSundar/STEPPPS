@@ -3,14 +3,23 @@
  * @brief TernaryBit OS - Conscious Command Shell Implementation
  */
 
+/* For bare-metal builds, include compatibility layer first */
+#ifndef HOST_BUILD
+#include "tbos/baremetal_compat.h"
+#endif
+
 #include "tbos_shell.h"
 #include "../lifecycle/tbos_lifecycle.h"
 #include "../karma/tbos_karma_ledger.h"
+
+#ifdef HOST_BUILD
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#endif
+
 #include "fs/ucfs_overlay.h"
 #include "fs/pxfs_overlay.h"
 
