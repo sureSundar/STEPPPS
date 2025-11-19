@@ -1,0 +1,51 @@
+# UCFS (Unicode Character Filesystem) Configuration
+# TernaryBit OS - Example Configuration File
+#
+# This file defines delimiter mappings for the Unicode Character Filesystem.
+# Each delimiter can have its own backing storage path and cultural context.
+
+# Default backing storage path for unmapped delimiters
+default_backing=/ucfs
+
+# Delimiter mappings
+# Format: delimiter=CODEPOINT,backing_path,culture,description
+
+# Spiritual/Religious Symbols
+delimiter=1F549,/ucfs/U+1F549,Sanskrit/Hindu,Om symbol - spiritual/sacred content
+delimiter=0950,/ucfs/U+0950,Devanagari/Sanskrit,Devanagari Om - Sanskrit content
+delimiter=262F,/ucfs/U+262F,Chinese/Taoist,Yin Yang symbol - balance and harmony
+delimiter=2721,/ucfs/U+2721,Jewish,Star of David - Jewish content
+delimiter=262A,/ucfs/U+262A,Islamic,Star and Crescent - Islamic content
+delimiter=271D,/ucfs/U+271D,Christian,Latin Cross - Christian content
+delimiter=2638,/ucfs/U+2638,Buddhist,Wheel of Dharma - Buddhist teachings
+
+# Emoji Delimiters
+delimiter=1F4C1,/ucfs/U+1F4C1,Universal,Folder emoji - general files
+delimiter=1F30D,/ucfs/U+1F30D,Universal,Earth emoji - global content
+delimiter=1F3E0,/ucfs/U+1F3E0,Universal,House emoji - home directory
+delimiter=1F464,/ucfs/U+1F464,Universal,User silhouette - user files
+delimiter=1F4DA,/ucfs/U+1F4DA,Universal,Books emoji - documentation
+delimiter=1F3B5,/ucfs/U+1F3B5,Universal,Musical note - audio files
+delimiter=1F4F7,/ucfs/U+1F4F7,Universal,Camera emoji - photos
+delimiter=1F3A8,/ucfs/U+1F3A8,Universal,Artist palette - creative work
+
+# Script-specific Delimiters
+delimiter=0061,/ucfs/U+0061,ASCII,Letter 'a' - simple ASCII delimiter
+delimiter=4E2D,/ucfs/U+4E2D,Chinese,Chinese character - CJK content
+delimiter=3042,/ucfs/U+3042,Japanese,Hiragana 'a' - Japanese content
+delimiter=AC00,/ucfs/U+AC00,Korean,Hangul character - Korean content
+delimiter=0623,/ucfs/U+0623,Arabic,Arabic letter - Arabic content
+delimiter=05D0,/ucfs/U+05D0,Hebrew,Hebrew letter Alef - Hebrew content
+delimiter=0E01,/ucfs/U+0E01,Thai,Thai character - Thai content
+
+# Nature & Elements
+delimiter=1F332,/ucfs/U+1F332,Universal,Evergreen tree - nature/environment
+delimiter=1F4A7,/ucfs/U+1F4A7,Universal,Water droplet - water element
+delimiter=1F525,/ucfs/U+1F525,Universal,Fire - fire element
+delimiter=1F32C,/ucfs/U+1F32C,Universal,Wind - air element
+
+# Special Purpose
+delimiter=1F512,/ucfs/U+1F512,Universal,Lock - encrypted/secure files
+delimiter=1F511,/ucfs/U+1F511,Universal,Key - authentication/keys
+delimiter=2B50,/ucfs/U+2B50,Universal,Star - favorites/important
+delimiter=1F4CC,/ucfs/U+1F4CC,Universal,Pushpin - pinned items

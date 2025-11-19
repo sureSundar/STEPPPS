@@ -14,7 +14,9 @@
       "Bash(echo:*)",
       "Bash(xargs:*)",
       "Bash(git commit:*)",
-      "Bash(./tbos_steppps_complete_demo)"
+      "Bash(./tbos_steppps_complete_demo)",
+      "Bash(rm:*)",
+      "Bash(make:*)"
     ],
     "deny": [],
     "ask": []

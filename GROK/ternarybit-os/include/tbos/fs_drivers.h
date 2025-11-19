@@ -4,5 +4,6 @@
 #include "tbos/vfs.h"
 
 extern const vfs_driver_t ramfs_driver;
+extern const vfs_driver_t ucfs_driver;
 
 #endif /* TBOS_FS_DRIVERS_H */

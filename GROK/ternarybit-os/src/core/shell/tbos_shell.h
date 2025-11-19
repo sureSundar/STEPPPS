@@ -252,6 +252,13 @@ int tbos_cmd_top(int argc, char** argv);
 int tbos_cmd_shutdown(int argc, char** argv);
 int tbos_cmd_hal(int argc, char** argv);
 
+/* UCFS commands */
+int tbos_cmd_ucfs_encode(int argc, char** argv);
+int tbos_cmd_ucfs_info(int argc, char** argv);
+int tbos_cmd_ucfs_test(int argc, char** argv);
+int tbos_cmd_ucfs_help(int argc, char** argv);
+int tbos_cmd_ucfs_config(int argc, char** argv);
+
 #ifdef __cplusplus
 }
 #endif

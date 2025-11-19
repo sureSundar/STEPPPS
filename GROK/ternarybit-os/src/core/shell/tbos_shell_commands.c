@@ -7,6 +7,8 @@
 #include "../karma/tbos_karma_ledger.h"
 #include "tbos_supershell.h"
 #include "fs/ucfs_overlay.h"
+#include "fs/ucfs_codec.h"
+#include "fs/ucfs_config.h"
 #include "fs/pxfs_overlay.h"
 #include "../../hal/tbos_hal.h"
 #include "../steppps/tbos_steppps.h"
@@ -1136,6 +1138,280 @@ int tbos_cmd_steppps(int argc, char** argv) {
     } else {
         printf("Usage: steppps [dimension|action]\n");
         printf("Use 'steppps help' for more information\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    return TBOS_SHELL_SUCCESS;
+}
+
+/* ========================================================================= */
+/* UCFS (Unicode Character Filesystem) COMMANDS                             */
+/* ========================================================================= */
+
+int tbos_cmd_ucfs_encode(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: ucfs-encode <ucfs-path>\n");
+        printf("Example: ucfs-encode \"[🕉️]music[🕉️]chants[🕉️]108.mp3\"\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    const char* ucfs_path = argv[1];
+
+    /* Check if it's a UCFS path */
+    if (ucfs_path[0] != '[') {
+        printf("❌ Not a UCFS path (must start with '[')\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    /* Resolve to canonical path */
+    char canonical[512];
+    int result = ucfs_resolve_path(ucfs_path, canonical, sizeof(canonical));
+    if (result != 0) {
+        printf("❌ Failed to parse UCFS path: %s\n", ucfs_path);
+        return TBOS_SHELL_ERROR;
+    }
+
+    printf("UCFS Path    : %s\n", ucfs_path);
+    printf("Canonical    : %s\n", canonical);
+    printf("✅ Path encoded successfully\n");
+
+    return TBOS_SHELL_SUCCESS;
+}
+
+int tbos_cmd_ucfs_info(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: ucfs-info <ucfs-path>\n");
+        printf("Example: ucfs-info \"[🕉️]music[🕉️]chants[🕉️]108.mp3\"\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    const char* ucfs_path = argv[1];
+
+    /* Check if it's a UCFS path */
+    if (ucfs_path[0] != '[') {
+        printf("❌ Not a UCFS path (must start with '[')\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    /* Parse the path */
+    ucfs_path_t parsed;
+    int result = ucfs_parse(ucfs_path, &parsed);
+    if (result != 0) {
+        printf("❌ Failed to parse UCFS path: %s\n", ucfs_path);
+        return TBOS_SHELL_ERROR;
+    }
+
+    printf("\n📊 UCFS Path Information\n");
+    printf("══════════════════════════════════════\n");
+    printf("Original Path  : %s\n", ucfs_path);
+    printf("Delimiter      : U+%04X (", parsed.delimiter);
+
+    /* Print the delimiter UTF-8 bytes */
+    for (size_t i = 0; i < parsed.delimiter_len; i++) {
+        printf("%s", parsed.delimiter_utf8 + i);
+    }
+    printf(")\n");
+
+    printf("Components     : %zu\n", parsed.component_count);
+
+    for (size_t i = 0; i < parsed.component_count; i++) {
+        printf("  [%zu] %s\n", i, parsed.components[i]);
+    }
+
+    /* Get canonical path */
+    char canonical[512];
+    if (ucfs_to_canonical(&parsed, canonical, sizeof(canonical)) == 0) {
+        printf("Canonical Path : %s\n", canonical);
+    }
+
+    ucfs_free(&parsed);
+    printf("══════════════════════════════════════\n\n");
+
+    return TBOS_SHELL_SUCCESS;
+}
+
+int tbos_cmd_ucfs_test(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
+    printf("\n🧪 UCFS Functionality Test\n");
+    printf("══════════════════════════════════════\n");
+
+    /* Test 1: Write a file with emoji delimiter */
+    const char* test_path1 = "[🕉️]test[🕉️]demo.txt";
+    const char* test_data1 = "Om Namah Shivaya - UCFS Test";
+
+    printf("Test 1: Writing to UCFS path with 🕉️ delimiter...\n");
+    printf("  Path: %s\n", test_path1);
+
+    if (ucfs_write_file_uc(test_path1, test_data1, strlen(test_data1)) == 0) {
+        printf("  ✅ Write successful\n");
+
+        /* Read it back */
+        char buffer[256];
+        size_t size = 0;
+        if (ucfs_read_file_uc(test_path1, buffer, sizeof(buffer), &size) == 0) {
+            buffer[size] = '\0';
+            printf("  ✅ Read successful: \"%s\"\n", buffer);
+        } else {
+            printf("  ❌ Read failed\n");
+        }
+    } else {
+        printf("  ❌ Write failed\n");
+    }
+
+    /* Test 2: Different delimiter */
+    const char* test_path2 = "[📁]projects[📁]tbos[📁]readme.txt";
+    const char* test_data2 = "TernaryBit OS - Unicode Filesystem";
+
+    printf("\nTest 2: Writing to UCFS path with 📁 delimiter...\n");
+    printf("  Path: %s\n", test_path2);
+
+    if (ucfs_write_file_uc(test_path2, test_data2, strlen(test_data2)) == 0) {
+        printf("  ✅ Write successful\n");
+
+        char buffer[256];
+        size_t size = 0;
+        if (ucfs_read_file_uc(test_path2, buffer, sizeof(buffer), &size) == 0) {
+            buffer[size] = '\0';
+            printf("  ✅ Read successful: \"%s\"\n", buffer);
+        } else {
+            printf("  ❌ Read failed\n");
+        }
+    } else {
+        printf("  ❌ Write failed\n");
+    }
+
+    /* Test 3: Devanagari delimiter */
+    const char* test_path3 = "[ॐ]संस्कृत[ॐ]परीक्षण.txt";
+    const char* test_data3 = "Sanskrit UCFS Test - ॐ";
+
+    printf("\nTest 3: Writing to UCFS path with Devanagari ॐ delimiter...\n");
+    printf("  Path: %s\n", test_path3);
+
+    if (ucfs_write_file_uc(test_path3, test_data3, strlen(test_data3)) == 0) {
+        printf("  ✅ Write successful\n");
+
+        char buffer[256];
+        size_t size = 0;
+        if (ucfs_read_file_uc(test_path3, buffer, sizeof(buffer), &size) == 0) {
+            buffer[size] = '\0';
+            printf("  ✅ Read successful: \"%s\"\n", buffer);
+        } else {
+            printf("  ❌ Read failed\n");
+        }
+    } else {
+        printf("  ❌ Write failed\n");
+    }
+
+    printf("\n══════════════════════════════════════\n");
+    printf("✅ UCFS test complete!\n\n");
+
+    return TBOS_SHELL_SUCCESS;
+}
+
+int tbos_cmd_ucfs_help(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
+    printf("\n📖 UCFS (Unicode Character Filesystem) Help\n");
+    printf("══════════════════════════════════════════════════════════\n\n");
+
+    printf("UCFS allows you to use Unicode characters (emojis, symbols, etc.)\n");
+    printf("as path delimiters instead of '/'.\n\n");
+
+    printf("Path Format:\n");
+    printf("  [delimiter]component[delimiter]component[delimiter]file\n\n");
+
+    printf("Examples:\n");
+    printf("  [🕉️]music[🕉️]chants[🕉️]108.mp3\n");
+    printf("  [📁]projects[📁]tbos[📁]kernel.c\n");
+    printf("  [🌍]home[🌍]user[🌍]documents[🌍]resume.pdf\n");
+    printf("  [ॐ]संस्कृत[ॐ]फ़ाइल.txt  (Devanagari)\n");
+    printf("  [a]simple[a]ascii[a]path.txt\n\n");
+
+    printf("UCFS Commands:\n");
+    printf("  ucfs-encode <path>  - Show canonical path for UCFS path\n");
+    printf("  ucfs-info <path>    - Display detailed path information\n");
+    printf("  ucfs-test           - Run UCFS functionality tests\n");
+    printf("  ucfs-help           - Show this help\n\n");
+
+    printf("Regular Commands Work Too:\n");
+    printf("  cat \"[🕉️]music[🕉️]song.mp3\"\n");
+    printf("  ls \"[📁]projects\"\n");
+    printf("  mkdir \"[🌍]home[🌍]newdir\"\n\n");
+
+    printf("══════════════════════════════════════════════════════════\n\n");
+
+    return TBOS_SHELL_SUCCESS;
+}
+
+int tbos_cmd_ucfs_config(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: ucfs-config <list|show|save>\n");
+        printf("  list  - List all delimiter mappings\n");
+        printf("  show  - Show current configuration\n");
+        printf("  save  - Save configuration to /etc/tbos/ucfs.conf\n");
+        return TBOS_SHELL_ERROR;
+    }
+
+    ucfs_config_t config;
+    const char* config_file = "/etc/tbos/ucfs.conf";
+
+    if (strcmp(argv[1], "list") == 0) {
+        ucfs_config_load(config_file, &config);
+
+        printf("\n📋 UCFS Delimiter Mappings\n");
+        printf("══════════════════════════════════════════════════════════\n");
+        printf("Default Backing: %s\n\n", config.default_backing);
+
+        if (config.delimiter_count == 0) {
+            printf("No delimiter mappings configured.\n");
+        } else {
+            printf("%-10s %-8s %-20s %-15s %s\n",
+                   "Delimiter", "Code", "Backing Path", "Culture", "Description");
+            printf("──────────────────────────────────────────────────────────\n");
+
+            for (size_t i = 0; i < config.delimiter_count; i++) {
+                const ucfs_delimiter_config_t* d = &config.delimiters[i];
+                if (d->active) {
+                    printf("%-10s U+%04X  %-20s %-15s %s\n",
+                           d->delimiter_utf8,
+                           d->delimiter,
+                           d->backing_path,
+                           d->culture,
+                           d->description);
+                }
+            }
+
+            printf("\nTotal: %zu active delimiters\n", config.delimiter_count);
+        }
+        printf("══════════════════════════════════════════════════════════\n\n");
+
+    } else if (strcmp(argv[1], "show") == 0) {
+        ucfs_config_load(config_file, &config);
+
+        printf("\n⚙️  UCFS Configuration\n");
+        printf("══════════════════════════════════════════════════════════\n");
+        printf("Config File    : %s\n", config_file);
+        printf("Default Backing: %s\n", config.default_backing);
+        printf("Delimiters     : %zu\n", config.delimiter_count);
+        printf("══════════════════════════════════════════════════════════\n\n");
+
+    } else if (strcmp(argv[1], "save") == 0) {
+        ucfs_config_init_defaults(&config);
+
+        int result = ucfs_config_save(config_file, &config);
+        if (result == 0) {
+            printf("✅ Configuration saved to %s\n", config_file);
+        } else {
+            printf("❌ Failed to save configuration (error %d)\n", result);
+            return TBOS_SHELL_ERROR;
+        }
+
+    } else {
+        printf("Unknown action: %s\n", argv[1]);
+        printf("Use: ucfs-config <list|show|save>\n");
         return TBOS_SHELL_ERROR;
     }
 

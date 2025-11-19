@@ -382,6 +382,30 @@ void kernel_main(void) {
     kernel_print("[INFO] Populating root filesystem...\n");
     populate_root_fs();
     kernel_print("[OK] Filesystem initialized\n");
+
+    // Mount UCFS overlay at /ucfs
+    kernel_print("[INFO] Mounting UCFS overlay at /ucfs...\n");
+    extern const vfs_driver_t ucfs_driver;
+    extern int ucfs_set_backing_driver(void*, const vfs_driver_t*, void*, const char*);
+
+    // Get ramfs context from root mount to use as backing store
+    void* ucfs_ctx = ucfs_driver.init();
+    if (ucfs_ctx) {
+        // Configure UCFS to use ramfs as backing
+        void* ramfs_ctx = ramfs_driver.init();
+        if (ramfs_ctx && ucfs_set_backing_driver(ucfs_ctx, &ramfs_driver, ramfs_ctx, "/ucfs") == 0) {
+            int ucfs_mount_result = vfs_mount_with_context("/ucfs", &ucfs_driver, ucfs_ctx);
+            if (ucfs_mount_result == 0) {
+                kernel_print("[OK] UCFS mounted at /ucfs\n");
+            } else {
+                kernel_print("[ERROR] Failed to mount UCFS!\n");
+            }
+        } else {
+            kernel_print("[ERROR] Failed to configure UCFS backing!\n");
+        }
+    } else {
+        kernel_print("[ERROR] Failed to initialize UCFS context!\n");
+    }
 #else
     kernel_print("[DEBUG] CONFIG_FS is disabled!\n");
 #endif

@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
+
+/* For host builds, use system libc instead of our own */
+#ifndef HOST_BUILD
 #include "tbos/errno.h"
 
 void libc_init(void);
@@ -66,5 +69,14 @@ const char* strerror(int errnum);
 void perror(const char* s);
 
 extern int errno;
+
+#else /* HOST_BUILD */
+/* For host builds, just include standard headers */
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#define libc_init() ((void)0)
+#endif /* HOST_BUILD */
 
 #endif /* TBOS_LIBC_H */

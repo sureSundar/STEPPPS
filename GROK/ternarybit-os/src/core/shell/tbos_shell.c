@@ -510,6 +510,57 @@ int tbos_shell_init(void) {
         .karma_reward = 3
     });
 
+    /* UCFS Commands */
+    tbos_shell_register_command(&(tbos_shell_command_t){
+        .name = "ucfs-encode",
+        .description = "Show canonical path for UCFS path",
+        .usage = "ucfs-encode <ucfs-path>",
+        .handler = tbos_cmd_ucfs_encode,
+        .requires_right_speech = false,
+        .karma_cost = 0,
+        .karma_reward = 2
+    });
+
+    tbos_shell_register_command(&(tbos_shell_command_t){
+        .name = "ucfs-info",
+        .description = "Display detailed UCFS path information",
+        .usage = "ucfs-info <ucfs-path>",
+        .handler = tbos_cmd_ucfs_info,
+        .requires_right_speech = false,
+        .karma_cost = 0,
+        .karma_reward = 2
+    });
+
+    tbos_shell_register_command(&(tbos_shell_command_t){
+        .name = "ucfs-test",
+        .description = "Run UCFS functionality tests",
+        .usage = "ucfs-test",
+        .handler = tbos_cmd_ucfs_test,
+        .requires_right_speech = false,
+        .karma_cost = 0,
+        .karma_reward = 5
+    });
+
+    tbos_shell_register_command(&(tbos_shell_command_t){
+        .name = "ucfs-help",
+        .description = "Show UCFS help and examples",
+        .usage = "ucfs-help",
+        .handler = tbos_cmd_ucfs_help,
+        .requires_right_speech = false,
+        .karma_cost = 0,
+        .karma_reward = 1
+    });
+
+    tbos_shell_register_command(&(tbos_shell_command_t){
+        .name = "ucfs-config",
+        .description = "Manage UCFS configuration",
+        .usage = "ucfs-config <list|show|save>",
+        .handler = tbos_cmd_ucfs_config,
+        .requires_right_speech = false,
+        .karma_cost = 0,
+        .karma_reward = 2
+    });
+
     printf("✅ Registered %u commands\n", g_command_count);
     printf("✅ Shell initialized with consciousness level: %s\n",
            get_consciousness_name(g_session.user_awareness));

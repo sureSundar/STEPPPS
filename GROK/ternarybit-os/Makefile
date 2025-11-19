@@ -128,7 +128,7 @@ test-fat32-host:
 .PHONY: test-ucfs-host
 test-ucfs-host:
 	@echo "🧪 Building UCFS codec host test..."
-	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
 		tests/unit/test_ucfs_codec.c \
 		src/core/filesystem/ucfs_codec.c \
 		-o build/host_ucfs_codec_test
@@ -138,7 +138,7 @@ test-ucfs-host:
 .PHONY: test-ucfs-overlay-host
 test-ucfs-overlay-host:
 	@echo "🧪 Building UCFS overlay host test..."
-	@gcc -Wall -Wextra -g -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
 		tests/unit/test_ucfs_overlay.c \
 		src/core/filesystem/ucfs_codec.c \
 		src/core/filesystem/ucfs_overlay.c \
