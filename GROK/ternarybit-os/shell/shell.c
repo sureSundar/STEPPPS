@@ -907,13 +907,18 @@ void shell_loop(void) {
 
 static void cmd_ucfs_encode(const char* args) {
     if (!args || !*args) {
-        kernel_print("Usage: ucfs-encode <ucfs-path>\n");
+        kernel_print("Usage: ucfs-encode <unicode-path>\n");
+        kernel_print("Example: ucfs-encode 🕉️/sacred/mantras.txt\n");
         return;
     }
 
     char* path = trim_spaces((char*)args);
-    if (path[0] != '[') {
-        kernel_print("Error: Not a UCFS path (must start with '[')\n");
+
+    /* Check if it starts with a Unicode character (non-ASCII) */
+    unsigned char first_byte = (unsigned char)path[0];
+    if (first_byte == '/' || first_byte == '\\' || first_byte < 0x80) {
+        kernel_print("Error: Not a UCFS path (must start with Unicode character)\n");
+        kernel_print("Examples: 🕉️/path, 📁/docs, 🌍/data\n");
         return;
     }
 
@@ -983,12 +988,13 @@ static void cmd_ucfs_info(const char* args) {
 }
 
 static void cmd_ucfs_test(void) {
-    kernel_print("\n=== UCFS Functionality Test ===\n");
+    kernel_print("\n=== UCFS Unicode Root Test ===\n");
+    kernel_print("Each Unicode character acts as an independent filesystem root!\n\n");
 
-    const char* test_path1 = "[🕉️]test[🕉️]demo.txt";
-    const char* test_data1 = "Om Namah Shivaya - UCFS Test";
+    const char* test_path1 = "🕉️/sacred/mantras.txt";
+    const char* test_data1 = "Om Namah Shivaya";
 
-    kernel_print("Test 1: Writing to UCFS path with 🕉️ delimiter...\n");
+    kernel_print("Test 1: 🕉️ (Om) root filesystem\n");
     kernel_print("  Path: ");
     kernel_print(test_path1);
     kernel_print("\n");
@@ -1041,25 +1047,39 @@ static void cmd_ucfs_test(void) {
 
 static void cmd_ucfs_help(void) {
     kernel_print("\n=== UCFS (Unicode Character Filesystem) Help ===\n\n");
-    kernel_print("UCFS allows you to use Unicode characters (emojis, symbols, etc.)\n");
-    kernel_print("as path delimiters instead of '/'.\n\n");
+    kernel_print("REVOLUTIONARY CONCEPT:\n");
+    kernel_print("Each Unicode character acts as an INDEPENDENT FILESYSTEM ROOT!\n\n");
+    kernel_print("Traditional:\n");
+    kernel_print("  /          - POSIX absolute root\n");
+    kernel_print("  \\          - Windows root\n\n");
+    kernel_print("UCFS Unicode Roots:\n");
+    kernel_print("  🕉️          - Om symbol root (spiritual/sacred files)\n");
+    kernel_print("  📁          - Folder emoji root (general documents)\n");
+    kernel_print("  🌍          - Earth emoji root (global/public data)\n");
+    kernel_print("  🔒          - Lock emoji root (encrypted/secure files)\n");
+    kernel_print("  ॐ           - Devanagari Om root (Sanskrit content)\n\n");
     kernel_print("Path Format:\n");
-    kernel_print("  [delimiter]component[delimiter]component[delimiter]file\n\n");
+    kernel_print("  <unicode-root>/<path>/<to>/<file>\n\n");
     kernel_print("Examples:\n");
-    kernel_print("  [🕉️]music[🕉️]chants[🕉️]108.mp3\n");
-    kernel_print("  [📁]projects[📁]tbos[📁]kernel.c\n");
-    kernel_print("  [🌍]home[🌍]user[🌍]documents[🌍]resume.pdf\n\n");
+    kernel_print("  🕉️/sacred/mantras.txt\n");
+    kernel_print("  📁/projects/tbos/kernel.c\n");
+    kernel_print("  🌍/public/data/report.pdf\n");
+    kernel_print("  🔒/secrets/passwords.db\n\n");
+    kernel_print("Backing Paths (automatic mapping):\n");
+    kernel_print("  🕉️/path -> /ucfs/U+1F549/path\n");
+    kernel_print("  📁/path -> /ucfs/U+1F4C1/path\n");
+    kernel_print("  🌍/path -> /ucfs/U+1F30D/path\n\n");
     kernel_print("UCFS Commands:\n");
-    kernel_print("  ucfs-encode <path>  - Show canonical path for UCFS path\n");
+    kernel_print("  ucfs-encode <path>  - Show canonical backing path\n");
     kernel_print("  ucfs-info <path>    - Display detailed path information\n");
-    kernel_print("  ucfs-test           - Run UCFS functionality tests\n");
-    kernel_print("  ucfs-config <cmd>   - Manage configuration (list/show/save)\n");
+    kernel_print("  ucfs-test           - Test Unicode roots in action\n");
+    kernel_print("  ucfs-config <cmd>   - Manage configuration\n");
     kernel_print("  ucfs-help           - Show this help\n\n");
-    kernel_print("Regular Commands Work Too:\n");
-    kernel_print("  cat [🕉️]music[🕉️]song.mp3\n");
-    kernel_print("  ls [📁]projects\n");
-    kernel_print("  mkdir [🌍]home[🌍]newdir\n\n");
-    kernel_print("================================================\n\n");
+    kernel_print("Regular Commands Support UCFS:\n");
+    kernel_print("  cat 🕉️/mantras/om.txt\n");
+    kernel_print("  ls 📁/projects\n");
+    kernel_print("  mkdir 🌍/public/newdir\n\n");
+    kernel_print("=================================================\n\n");
 }
 
 static void cmd_ucfs_config(const char* args) {

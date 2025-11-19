@@ -66,48 +66,43 @@ int ucfs_parse(const char* utf8_path, ucfs_path_t* out_path) {
     }
     memset(out_path, 0, sizeof(*out_path));
 
-    if (utf8_path[0] != '[') {
-        return -EINVAL;
+    /* Check if path starts with a Unicode character (not ASCII / or \) */
+    unsigned char first_byte = (unsigned char)utf8_path[0];
+
+    /* If it's ASCII '/' or '\', it's a regular POSIX path, not UCFS */
+    if (first_byte == '/' || first_byte == '\\' || first_byte < 0x80) {
+        return -EINVAL;  /* Not a UCFS path */
     }
-    const char* cursor = utf8_path + 1;
-    utf8_decode_t first = decode_utf8(cursor);
+
+    /* Decode the first Unicode character - this is the root delimiter */
+    utf8_decode_t first = decode_utf8(utf8_path);
     if (first.bytes == 0) {
         return -EINVAL;
     }
+
     out_path->delimiter = first.codepoint;
     out_path->delimiter_len = first.bytes;
     if (out_path->delimiter_len >= sizeof(out_path->delimiter_utf8)) {
         return -EINVAL;
     }
-    memcpy(out_path->delimiter_utf8, cursor, first.bytes);
-    cursor += first.bytes;
+    /* Copy the Unicode root character */
+    memcpy(out_path->delimiter_utf8, utf8_path, first.bytes);
+    out_path->delimiter_utf8[first.bytes] = '\0';
 
-    while (*cursor) {
-        if ((unsigned char)*cursor == ']') {
-            out_path->delimiter_utf8[out_path->delimiter_len] = '\0';
-            cursor++;
-            break;
-        }
-        utf8_decode_t variation = decode_utf8(cursor);
-        if (variation.bytes == 0) {
-            return -EINVAL;
-        }
-        if (variation.codepoint == 0xFE0Fu || variation.codepoint == 0xFE0Eu) {
-            if (out_path->delimiter_len + variation.bytes >= sizeof(out_path->delimiter_utf8)) {
-                return -EINVAL;
-            }
-            memcpy(out_path->delimiter_utf8 + out_path->delimiter_len, cursor, variation.bytes);
-            out_path->delimiter_len += variation.bytes;
-            cursor += variation.bytes;
-        } else {
-            return -EINVAL;
-        }
+    /* Move cursor past the Unicode root */
+    const char* cursor = utf8_path + first.bytes;
+
+    /* Expect '/' after the Unicode root (or end of string for just the root) */
+    if (*cursor != '\0' && *cursor != '/') {
+        return -EINVAL;  /* Invalid format - must be emoji/ or emoji */
     }
 
-    if (out_path->delimiter_utf8[0] == '\0') {
-        return -EINVAL;
+    /* Skip the '/' if present */
+    if (*cursor == '/') {
+        cursor++;
     }
 
+    /* Now parse the rest as a standard POSIX-style path */
     const char* segment_start = cursor;
 
     size_t capacity = 4;
@@ -116,12 +111,15 @@ int ucfs_parse(const char* utf8_path, ucfs_path_t* out_path) {
         return -ENOMEM;
     }
 
+    /* Parse path components separated by '/' */
     while (*cursor) {
-        if (matches_delimiter_sequence(out_path, cursor)) {
+        if (*cursor == '/') {
             size_t seg_len = (size_t)(cursor - segment_start);
             if (seg_len == 0) {
-                ucfs_free(out_path);
-                return -EINVAL; /* empty component */
+                /* Skip empty components (e.g., from //) */
+                cursor++;
+                segment_start = cursor;
+                continue;
             }
             if (out_path->component_count == capacity) {
                 capacity *= 2;
@@ -138,16 +136,12 @@ int ucfs_parse(const char* utf8_path, ucfs_path_t* out_path) {
                 return -ENOMEM;
             }
             out_path->components[out_path->component_count++] = dup;
-            cursor += out_path->delimiter_len + 2; /* skip [ + delimiter + ] */
+            cursor++;  /* skip the '/' */
             segment_start = cursor;
             continue;
         }
-        utf8_decode_t d = decode_utf8(cursor);
-        if (d.bytes == 0) {
-            ucfs_free(out_path);
-            return -EINVAL;
-        }
-        cursor += d.bytes;
+        /* Not a separator, just advance */
+        cursor++;
     }
 
     if (cursor != segment_start) {
