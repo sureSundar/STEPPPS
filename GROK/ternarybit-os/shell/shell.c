@@ -693,19 +693,76 @@ static void cmd_cat(const char* args) {
 }
 
 static void cmd_mkdir(const char* args) {
-    if (!args || !*args) {
-        kernel_print("Usage: mkdir <directory>\n");
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'p', "parents", false, "Create parent directories as needed"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("mkdir", "Create directories", "[OPTIONS] DIRECTORY...", specs, 2);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool parents = argparse_has_flag(&parsed, "p") || argparse_has_flag(&parsed, "parents");
+
+    /* Get directory argument */
+    const char* dir_arg = argparse_get_positional(&parsed, 0);
+    if (!dir_arg) {
+        kernel_print("Usage: mkdir [OPTIONS] DIRECTORY...\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     char path[SHELL_MAX_PATH];
-    normalize_path(args, path, sizeof(path));
+    normalize_path(dir_arg, path, sizeof(path));
 
-    int rc = vfs_mkdir(path);
-    if (rc != 0) {
-        errno = -rc;
-        print_errno_message("mkdir: unable to create directory");
+    if (parents) {
+        /* Create parent directories as needed */
+        char temp[SHELL_MAX_PATH];
+        strncpy(temp, path, sizeof(temp) - 1);
+        temp[sizeof(temp) - 1] = '\0';
+
+        /* Walk through path and create each component */
+        char* p = temp;
+        if (*p == '/') p++;  /* Skip leading slash */
+
+        while (*p) {
+            /* Find next slash */
+            while (*p && *p != '/') p++;
+
+            char saved = *p;
+            *p = '\0';
+
+            /* Try to create this directory */
+            struct stat st;
+            if (stat(temp, &st) != 0) {
+                int rc = vfs_mkdir(temp);
+                if (rc != 0 && rc != -EEXIST) {
+                    errno = -rc;
+                    print_errno_message("mkdir: cannot create directory");
+                    argparse_cleanup(&parsed);
+                    return;
+                }
+            }
+
+            *p = saved;
+            if (*p) p++;  /* Skip past the slash */
+        }
+    } else {
+        int rc = vfs_mkdir(path);
+        if (rc != 0) {
+            errno = -rc;
+            print_errno_message("mkdir: cannot create directory");
+        }
     }
+
+    argparse_cleanup(&parsed);
 }
 
 static void cmd_touch(const char* args) {
@@ -727,30 +784,64 @@ static void cmd_touch(const char* args) {
 }
 
 static void cmd_rm(const char* args) {
-    if (!args || !*args) {
-        kernel_print("Usage: rm <file>\n");
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'r', "recursive", false, "Remove directories and their contents recursively"},
+            {'f', "force", false, "Ignore nonexistent files, never prompt"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("rm", "Remove files or directories", "[OPTIONS] FILE...", specs, 3);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool recursive = argparse_has_flag(&parsed, "r") || argparse_has_flag(&parsed, "recursive");
+    bool force = argparse_has_flag(&parsed, "f") || argparse_has_flag(&parsed, "force");
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: rm [OPTIONS] FILE...\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     char path[SHELL_MAX_PATH];
-    normalize_path(args, path, sizeof(path));
+    normalize_path(file_arg, path, sizeof(path));
 
     struct stat st;
     errno = 0;
     if (stat(path, &st) != 0) {
-        print_errno_message("rm: path not found");
-        return;
-    }
-    if (st.st_mode != VFS_NODE_FILE) {
-        kernel_print("rm: not a file (use rmdir for directories)\n");
+        if (!force) {
+            print_errno_message("rm: cannot remove");
+        }
+        argparse_cleanup(&parsed);
         return;
     }
 
-    int rc = vfs_remove(path, false);
-    if (rc != 0) {
-        errno = -rc;
-        print_errno_message("rm: unable to remove file");
+    if (st.st_mode == VFS_NODE_DIR) {
+        if (!recursive) {
+            kernel_print("rm: cannot remove '");
+            kernel_print(path);
+            kernel_print("': Is a directory (use -r)\n");
+            argparse_cleanup(&parsed);
+            return;
+        }
     }
+
+    int rc = vfs_remove(path, recursive);
+    if (rc != 0 && !force) {
+        errno = -rc;
+        print_errno_message("rm: unable to remove");
+    }
+
+    argparse_cleanup(&parsed);
 }
 
 static void cmd_rmdir(const char* args) {
@@ -1352,37 +1443,54 @@ static void cmd_ucfs_config(const char* args) {
  * ======================================================================== */
 
 static void cmd_cp(const char* args) {
-    if (!args || !*args) {
-        kernel_print("Usage: cp <source> <dest>\n");
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'v', "verbose", false, "Explain what is being done"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("cp", "Copy files", "[OPTIONS] SOURCE DEST", specs, 2);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool verbose = argparse_has_flag(&parsed, "v") || argparse_has_flag(&parsed, "verbose");
+
+    /* Get source and dest arguments */
+    const char* src_arg = argparse_get_positional(&parsed, 0);
+    const char* dest_arg = argparse_get_positional(&parsed, 1);
+
+    if (!src_arg || !dest_arg) {
+        kernel_print("Usage: cp [OPTIONS] SOURCE DEST\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     char src[SHELL_MAX_PATH], dest[SHELL_MAX_PATH];
-    const char* space = strchr(args, ' ');
-    if (!space) {
-        kernel_print("Usage: cp <source> <dest>\n");
-        return;
-    }
-
-    size_t src_len = (size_t)(space - args);
-    if (src_len >= SHELL_MAX_PATH) src_len = SHELL_MAX_PATH - 1;
-    memcpy(src, args, src_len);
-    src[src_len] = '\0';
-
-    while (*space == ' ') space++;
-    normalize_path(src, src, sizeof(src));
-    normalize_path(space, dest, sizeof(dest));
+    normalize_path(src_arg, src, sizeof(src));
+    normalize_path(dest_arg, dest, sizeof(dest));
 
     FILE* f_src = fopen(src, "r");
     if (!f_src) {
-        kernel_print("cp: cannot open source file\n");
+        kernel_print("cp: cannot open '");
+        kernel_print(src);
+        kernel_print("'\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     FILE* f_dest = fopen(dest, "w");
     if (!f_dest) {
         fclose(f_src);
-        kernel_print("cp: cannot create destination file\n");
+        kernel_print("cp: cannot create '");
+        kernel_print(dest);
+        kernel_print("'\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
@@ -1397,7 +1505,16 @@ static void cmd_cp(const char* args) {
 
     fclose(f_src);
     fclose(f_dest);
-    kernel_print("File copied\n");
+
+    if (verbose) {
+        kernel_print("'");
+        kernel_print(src);
+        kernel_print("' -> '");
+        kernel_print(dest);
+        kernel_print("'\n");
+    }
+
+    argparse_cleanup(&parsed);
 }
 
 static void cmd_mv(const char* args) {
