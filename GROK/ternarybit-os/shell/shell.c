@@ -109,6 +109,8 @@ static void cmd_top(void);
 static void cmd_posix_shell(void);
 static void cmd_ch_sh(const char* args);
 static void cmd_grep(const char* args);
+static void cmd_wc(const char* args);
+static void cmd_find(const char* args);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -1106,6 +1108,12 @@ static void shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "grep") == 0) {
         cmd_grep(args);
         karma_delta = 1;
+    } else if (strcmp(cmd, "wc") == 0) {
+        cmd_wc(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "find") == 0) {
+        cmd_find(args);
+        karma_delta = 1;
     } else {
         handled = false;
     }
@@ -1932,5 +1940,259 @@ static void cmd_grep(const char* args) {
     }
 
     fclose(fp);
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_wc(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'l', "lines", false, "Print newline counts"},
+            {'w', "words", false, "Print word counts"},
+            {'c', "bytes", false, "Print byte counts"},
+            {'m', "chars", false, "Print character counts"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("wc", "Print newline, word, and byte counts", "[OPTIONS] [FILE...]", specs, 5);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags - if none specified, show all */
+    bool count_lines = argparse_has_flag(&parsed, "l") || argparse_has_flag(&parsed, "lines");
+    bool count_words = argparse_has_flag(&parsed, "w") || argparse_has_flag(&parsed, "words");
+    bool count_bytes = argparse_has_flag(&parsed, "c") || argparse_has_flag(&parsed, "bytes");
+    bool count_chars = argparse_has_flag(&parsed, "m") || argparse_has_flag(&parsed, "chars");
+
+    /* If no flags specified, show all (lines, words, bytes) */
+    bool show_all = !count_lines && !count_words && !count_bytes && !count_chars;
+    if (show_all) {
+        count_lines = count_words = count_bytes = true;
+    }
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: wc [OPTIONS] FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Open file */
+    errno = 0;
+    FILE* fp = fopen(path, "r");
+    if (!fp) {
+        print_errno_message("wc: cannot open file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Count lines, words, and bytes */
+    int lines = 0;
+    int words = 0;
+    int bytes = 0;
+    int chars = 0;
+    bool in_word = false;
+    char line_buffer[512];
+
+    while (fgets(line_buffer, sizeof(line_buffer), fp)) {
+        /* Process each character in the line */
+        for (const char* p = line_buffer; *p; p++) {
+            char ch = *p;
+            bytes++;
+            chars++;  /* For simplicity, assuming single-byte chars */
+
+            if (ch == '\n') {
+                lines++;
+            }
+
+            /* Word counting */
+            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+                if (in_word) {
+                    words++;
+                    in_word = false;
+                }
+            } else {
+                in_word = true;
+            }
+        }
+    }
+
+    /* Count last word if file doesn't end with whitespace */
+    if (in_word) {
+        words++;
+    }
+
+    fclose(fp);
+
+    /* Print results */
+    if (count_lines) {
+        kernel_print("  ");
+        shell_print_decimal(lines);
+    }
+    if (count_words) {
+        kernel_print("  ");
+        shell_print_decimal(words);
+    }
+    if (count_bytes) {
+        kernel_print("  ");
+        shell_print_decimal(bytes);
+    }
+    if (count_chars && !count_bytes) {
+        kernel_print("  ");
+        shell_print_decimal(chars);
+    }
+
+    kernel_print(" ");
+    kernel_print(path);
+    kernel_print("\n");
+
+    argparse_cleanup(&parsed);
+}
+
+/* Helper for find command - recursively search directory */
+static void find_recursive(const char* dir_path, const char* name_pattern,
+                           const char* type_filter, int depth, int max_depth) {
+    if (max_depth >= 0 && depth > max_depth) {
+        return;
+    }
+
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        /* Skip . and .. */
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        /* Build full path */
+        char full_path[SHELL_MAX_PATH];
+        if (strcmp(dir_path, "/") == 0) {
+            snprintf(full_path, sizeof(full_path), "/%s", entry->d_name);
+        } else {
+            snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+        }
+
+        /* Get file info */
+        struct stat st;
+        if (stat(full_path, &st) != 0) {
+            continue;
+        }
+
+        bool is_dir = (st.st_mode == VFS_NODE_DIR);
+        bool matches = true;
+
+        /* Check type filter */
+        if (type_filter) {
+            if (strcmp(type_filter, "f") == 0 && is_dir) {
+                matches = false;
+            } else if (strcmp(type_filter, "d") == 0 && !is_dir) {
+                matches = false;
+            }
+        }
+
+        /* Check name pattern (simple substring match) */
+        if (matches && name_pattern) {
+            matches = simple_match(entry->d_name, name_pattern, false);
+        }
+
+        /* Print if matches */
+        if (matches) {
+            kernel_print(full_path);
+            kernel_print("\n");
+        }
+
+        /* Recurse into directories */
+        if (is_dir) {
+            find_recursive(full_path, name_pattern, type_filter, depth + 1, max_depth);
+        }
+    }
+
+    closedir(dir);
+}
+
+static void cmd_find(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {0, "name", true, "Match filename pattern"},
+            {0, "type", true, "Match file type (f=file, d=directory)"},
+            {0, "maxdepth", true, "Maximum search depth"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("find", "Search for files in directory hierarchy", "[PATH] [OPTIONS]", specs, 4);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get starting path (default to current directory) */
+    const char* start_path = argparse_get_positional(&parsed, 0);
+    char search_path[SHELL_MAX_PATH];
+
+    if (start_path) {
+        normalize_path(start_path, search_path, sizeof(search_path));
+    } else {
+        strncpy(search_path, current_path, sizeof(search_path) - 1);
+        search_path[sizeof(search_path) - 1] = '\0';
+    }
+
+    /* Get options */
+    const char* name_pattern = argparse_get_value(&parsed, "name");
+    const char* type_filter = argparse_get_value(&parsed, "type");
+    const char* maxdepth_str = argparse_get_value(&parsed, "maxdepth");
+
+    int max_depth = -1;  /* -1 means unlimited */
+    if (maxdepth_str) {
+        max_depth = 0;
+        for (const char* p = maxdepth_str; *p; p++) {
+            if (*p >= '0' && *p <= '9') {
+                max_depth = max_depth * 10 + (*p - '0');
+            }
+        }
+    }
+
+    /* Print the starting path itself if it matches */
+    struct stat st;
+    if (stat(search_path, &st) == 0) {
+        bool is_dir = (st.st_mode == VFS_NODE_DIR);
+        bool matches = true;
+
+        if (type_filter) {
+            if (strcmp(type_filter, "f") == 0 && is_dir) {
+                matches = false;
+            } else if (strcmp(type_filter, "d") == 0 && !is_dir) {
+                matches = false;
+            }
+        }
+
+        if (matches) {
+            kernel_print(search_path);
+            kernel_print("\n");
+        }
+
+        /* If directory, recurse */
+        if (is_dir) {
+            find_recursive(search_path, name_pattern, type_filter, 1, max_depth);
+        }
+    } else {
+        print_errno_message("find: cannot access path");
+    }
+
     argparse_cleanup(&parsed);
 }
