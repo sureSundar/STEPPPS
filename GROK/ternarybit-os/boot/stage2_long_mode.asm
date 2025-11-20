@@ -121,15 +121,58 @@ wait_8042_data:
     ret
 
 ; === LOAD KERNEL ===
+; Load kernel in chunks of max 64 sectors to avoid BIOS limitations
 load_kernel:
     mov si, msg_loading
     call print_string
 
+    ; Initialize counters
+    mov word [sectors_remaining], KERNEL_SECTORS
+    mov word [current_lba_lo], KERNEL_START_SECTOR
+    mov word [current_lba_hi], 0
+    mov word [buffer_segment], KERNEL_LOAD_SEGMENT
+
+.load_loop:
+    ; Calculate sectors to read this iteration (min of 64 and remaining)
+    mov ax, [sectors_remaining]
+    cmp ax, 64
+    jbe .use_remaining
+    mov ax, 64
+.use_remaining:
+    mov [disk_packet_count], ax
+
+    ; Update disk packet with current segment (offset always 0)
+    mov ax, [buffer_segment]
+    mov [disk_packet_segment], ax
+    mov ax, [current_lba_lo]
+    mov [disk_packet_lba], ax
+    mov ax, [current_lba_hi]
+    mov [disk_packet_lba+2], ax
+
+    ; Read sectors
     mov ah, 0x42           ; Extended read
     mov dl, [BOOT_DRIVE_ADDR]
     mov si, disk_packet
     int 0x13
     jc disk_error
+
+    ; Update counters for next iteration
+    mov ax, [disk_packet_count]
+
+    ; Update sectors_remaining
+    sub [sectors_remaining], ax
+
+    ; Update current_lba
+    add [current_lba_lo], ax
+    adc word [current_lba_hi], 0
+
+    ; Update buffer_segment (ax * 512 / 16 = ax * 32 = ax << 5)
+    shl ax, 5
+    add [buffer_segment], ax
+
+    ; Check if done
+    cmp word [sectors_remaining], 0
+    jne .load_loop
 
     mov si, msg_kernel_loaded
     call print_string
@@ -140,13 +183,22 @@ disk_error:
     call print_string
     jmp halt_system
 
+; Variables for chunked loading
+sectors_remaining:  dw 0
+current_lba_lo:     dw 0
+current_lba_hi:     dw 0
+buffer_segment:     dw 0
+
 disk_packet:
     db 0x10                          ; Packet size
     db 0                             ; Reserved
-    dw KERNEL_SECTORS                ; Number of sectors
-    dw KERNEL_LOAD_OFFSET            ; Buffer offset
-    dw KERNEL_LOAD_SEGMENT           ; Buffer segment
-    dq KERNEL_START_SECTOR           ; Starting LBA
+disk_packet_count:
+    dw 0                             ; Number of sectors (filled at runtime)
+    dw 0                             ; Buffer offset (always 0)
+disk_packet_segment:
+    dw KERNEL_LOAD_SEGMENT           ; Buffer segment (updated each iteration)
+disk_packet_lba:
+    dq KERNEL_START_SECTOR           ; Starting LBA (updated each iteration)
 
 ; === SETUP PAGE TABLES ===
 setup_page_tables:
@@ -339,8 +391,8 @@ protected_mode_entry:
 ; ========================================
 [BITS 64]
 long_mode_entry:
-    ; Clear segment registers (not used in long mode)
-    xor ax, ax
+    ; Load data segments with 64-bit data selector
+    mov ax, DATA64_SEG
     mov ds, ax
     mov es, ax
     mov fs, ax
