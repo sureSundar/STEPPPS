@@ -114,6 +114,9 @@ static void cmd_find(const char* args);
 static void cmd_chmod(const char* args);
 static void cmd_ln(const char* args);
 static void cmd_sort(const char* args);
+static void cmd_uniq(const char* args);
+static void cmd_cut(const char* args);
+static void cmd_tee(const char* args);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -1125,6 +1128,15 @@ static void shell_process_command(char* cmd) {
         karma_delta = 1;
     } else if (strcmp(cmd, "sort") == 0) {
         cmd_sort(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "uniq") == 0) {
+        cmd_uniq(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "cut") == 0) {
+        cmd_cut(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "tee") == 0) {
+        cmd_tee(args);
         karma_delta = 1;
     } else {
         handled = false;
@@ -2493,5 +2505,301 @@ static void cmd_sort(const char* args) {
         prev_line = lines[i];
     }
 
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_uniq(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'c', "count", false, "Prefix lines by number of occurrences"},
+            {'d', "repeated", false, "Only print duplicate lines"},
+            {'u', "unique", false, "Only print unique lines"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("uniq", "Report or omit repeated lines", "[OPTIONS] [FILE]", specs, 4);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    bool count = argparse_has_flag(&parsed, "c") || argparse_has_flag(&parsed, "count");
+    bool repeated = argparse_has_flag(&parsed, "d") || argparse_has_flag(&parsed, "repeated");
+    bool unique_only = argparse_has_flag(&parsed, "u") || argparse_has_flag(&parsed, "unique");
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: uniq [OPTIONS] FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Open file */
+    errno = 0;
+    FILE* fp = fopen(path, "r");
+    if (!fp) {
+        print_errno_message("uniq: cannot open file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Process file */
+    char prev_line[512] = {0};
+    char current_line[512];
+    int occurrence_count = 0;
+
+    while (fgets(current_line, sizeof(current_line), fp)) {
+        /* Remove trailing newline */
+        size_t len = strlen(current_line);
+        if (len > 0 && current_line[len - 1] == '\n') {
+            current_line[len - 1] = '\0';
+        }
+
+        if (prev_line[0] == '\0') {
+            /* First line */
+            strcpy(prev_line, current_line);
+            occurrence_count = 1;
+        } else if (strcmp(prev_line, current_line) == 0) {
+            /* Same as previous */
+            occurrence_count++;
+        } else {
+            /* Different - print previous */
+            bool should_print = true;
+            if (repeated && occurrence_count == 1) should_print = false;
+            if (unique_only && occurrence_count > 1) should_print = false;
+
+            if (should_print) {
+                if (count) {
+                    shell_print_decimal(occurrence_count);
+                    kernel_print(" ");
+                }
+                kernel_print(prev_line);
+                kernel_print("\n");
+            }
+
+            strcpy(prev_line, current_line);
+            occurrence_count = 1;
+        }
+    }
+
+    /* Print last line */
+    if (prev_line[0] != '\0') {
+        bool should_print = true;
+        if (repeated && occurrence_count == 1) should_print = false;
+        if (unique_only && occurrence_count > 1) should_print = false;
+
+        if (should_print) {
+            if (count) {
+                shell_print_decimal(occurrence_count);
+                kernel_print(" ");
+            }
+            kernel_print(prev_line);
+            kernel_print("\n");
+        }
+    }
+
+    fclose(fp);
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_cut(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'d', "delimiter", true, "Use DELIM instead of TAB"},
+            {'f', "fields", true, "Select only these fields"},
+            {'c', "characters", true, "Select only these characters"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("cut", "Remove sections from each line", "[OPTIONS] FILE", specs, 4);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    const char* delim_str = argparse_get_value(&parsed, "d");
+    const char* fields_str = argparse_get_value(&parsed, "f");
+    const char* chars_str = argparse_get_value(&parsed, "c");
+
+    char delimiter = '\t';
+    if (delim_str && delim_str[0]) {
+        delimiter = delim_str[0];
+    }
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: cut -f FIELDS [-d DELIM] FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Parse field number (simple: just one field for now) */
+    int field_num = 0;
+    if (fields_str) {
+        for (const char* p = fields_str; *p >= '0' && *p <= '9'; p++) {
+            field_num = field_num * 10 + (*p - '0');
+        }
+    }
+
+    int char_start = 0, char_end = 0;
+    if (chars_str) {
+        /* Parse character range like "1-5" or "3" */
+        const char* p = chars_str;
+        while (*p >= '0' && *p <= '9') {
+            char_start = char_start * 10 + (*p - '0');
+            p++;
+        }
+        if (*p == '-') {
+            p++;
+            while (*p >= '0' && *p <= '9') {
+                char_end = char_end * 10 + (*p - '0');
+                p++;
+            }
+        } else {
+            char_end = char_start;
+        }
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Open file */
+    errno = 0;
+    FILE* fp = fopen(path, "r");
+    if (!fp) {
+        print_errno_message("cut: cannot open file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Process file */
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        /* Remove trailing newline */
+        size_t len = strlen(line);
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
+
+        if (chars_str && char_start > 0) {
+            /* Character mode */
+            int line_len = strlen(line);
+            for (int i = char_start - 1; i < char_end && i < line_len; i++) {
+                kernel_putchar(line[i]);
+            }
+            kernel_print("\n");
+        } else if (field_num > 0) {
+            /* Field mode */
+            char* token = line;
+            int current_field = 1;
+
+            while (token && current_field <= field_num) {
+                char* next = strchr(token, delimiter);
+                if (next) {
+                    *next = '\0';
+                }
+
+                if (current_field == field_num) {
+                    kernel_print(token);
+                    kernel_print("\n");
+                    break;
+                }
+
+                if (next) {
+                    token = next + 1;
+                } else {
+                    token = NULL;
+                }
+                current_field++;
+            }
+
+            if (current_field <= field_num) {
+                kernel_print("\n");  /* Field not found */
+            }
+        }
+    }
+
+    fclose(fp);
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_tee(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'a', "append", false, "Append to files, do not overwrite"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("tee", "Read from stdin and write to stdout and files", "[OPTIONS] FILE", specs, 2);
+        kernel_print("\nNote: In TBOS, tee reads from a source file instead of stdin\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    bool append = argparse_has_flag(&parsed, "a") || argparse_has_flag(&parsed, "append");
+
+    /* Get file arguments (source and destination) */
+    const char* src_arg = argparse_get_positional(&parsed, 0);
+    const char* dest_arg = argparse_get_positional(&parsed, 1);
+
+    if (!src_arg || !dest_arg) {
+        kernel_print("Usage: tee [-a] SOURCE_FILE OUTPUT_FILE\n");
+        kernel_print("(TBOS tee reads from source file instead of stdin)\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize paths */
+    char src_path[SHELL_MAX_PATH];
+    char dest_path[SHELL_MAX_PATH];
+    normalize_path(src_arg, src_path, sizeof(src_path));
+    normalize_path(dest_arg, dest_path, sizeof(dest_path));
+
+    /* Open source file */
+    errno = 0;
+    FILE* fp_src = fopen(src_path, "r");
+    if (!fp_src) {
+        print_errno_message("tee: cannot open source file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Open destination file */
+    FILE* fp_dest = fopen(dest_path, append ? "a" : "w");
+    if (!fp_dest) {
+        fclose(fp_src);
+        print_errno_message("tee: cannot open destination file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Read and write */
+    char buffer[512];
+    while (fgets(buffer, sizeof(buffer), fp_src)) {
+        /* Write to stdout */
+        kernel_print(buffer);
+        /* Write to file */
+        fprintf(fp_dest, "%s", buffer);
+    }
+
+    fclose(fp_src);
+    fclose(fp_dest);
     argparse_cleanup(&parsed);
 }

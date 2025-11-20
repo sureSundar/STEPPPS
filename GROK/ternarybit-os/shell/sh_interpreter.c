@@ -248,6 +248,53 @@ static int sh_builtin_help(void) {
     return 0;
 }
 
+/* Handle I/O redirection in command */
+static int handle_redirection(char* cmd, char** input_file, char** output_file, int* append_mode) {
+    *input_file = NULL;
+    *output_file = NULL;
+    *append_mode = 0;
+
+    char* p = cmd;
+    while (*p) {
+        if (*p == '>') {
+            if (*(p + 1) == '>') {
+                /* Append mode >> */
+                *append_mode = 1;
+                *p = '\0';
+                p += 2;
+            } else {
+                /* Overwrite mode > */
+                *p = '\0';
+                p++;
+            }
+            /* Skip whitespace */
+            while (*p == ' ' || *p == '\t') p++;
+            *output_file = p;
+            /* Find end of filename */
+            while (*p && *p != ' ' && *p != '\t' && *p != '<') p++;
+            if (*p) {
+                *p = '\0';
+                p++;
+            }
+        } else if (*p == '<') {
+            *p = '\0';
+            p++;
+            /* Skip whitespace */
+            while (*p == ' ' || *p == '\t') p++;
+            *input_file = p;
+            /* Find end of filename */
+            while (*p && *p != ' ' && *p != '\t' && *p != '>') p++;
+            if (*p) {
+                *p = '\0';
+                p++;
+            }
+        } else {
+            p++;
+        }
+    }
+    return 0;
+}
+
 /* Execute a single sh command */
 static int sh_execute_single(const char* cmd) {
     /* Skip leading whitespace */
@@ -274,10 +321,20 @@ static int sh_execute_single(const char* cmd) {
         }
     }
 
+    /* Handle I/O redirection */
+    char cmd_copy[1024];
+    strncpy(cmd_copy, expanded, sizeof(cmd_copy) - 1);
+    cmd_copy[sizeof(cmd_copy) - 1] = '\0';
+
+    char* input_file = NULL;
+    char* output_file = NULL;
+    int append_mode = 0;
+    handle_redirection(cmd_copy, &input_file, &output_file, &append_mode);
+
     /* Parse command */
     char* argv[64];
     int argc = 0;
-    sh_parse(expanded, argv, &argc);
+    sh_parse(cmd_copy, argv, &argc);
 
     if (argc == 0) {
         return 0;
@@ -293,6 +350,16 @@ static int sh_execute_single(const char* cmd) {
             if (i > 1) strcat(args, " ");
             strcat(args, argv[i]);
         }
+
+        if (output_file) {
+            /* Redirect output to file */
+            extern int vfs_write_file(const char* path, const void* data, size_t size, int append);
+            char output[512];
+            strncpy(output, args, sizeof(output) - 2);
+            strcat(output, "\n");
+            vfs_write_file(output_file, output, strlen(output), append_mode);
+            return 0;
+        }
         return sh_builtin_echo(args);
     } else if (strcmp(cmd_name, "set") == 0) {
         return sh_builtin_set(argc > 1 ? argv[1] : NULL);
@@ -307,10 +374,56 @@ static int sh_execute_single(const char* cmd) {
         extern int shell_morph_switch(const char* shell_name);
         shell_morph_switch("tbos");
         return 0;
+    } else if (strcmp(cmd_name, "if") == 0) {
+        kernel_print("sh: 'if' not yet implemented\n");
+        return 1;
+    } else if (strcmp(cmd_name, "for") == 0) {
+        kernel_print("sh: 'for' not yet implemented\n");
+        return 1;
+    } else if (strcmp(cmd_name, "while") == 0) {
+        kernel_print("sh: 'while' not yet implemented\n");
+        return 1;
     }
 
     /* Fallback to TBOS native command execution */
-    return shell_execute_command(expanded);
+    /* Rebuild command with redirection stripped */
+    return shell_execute_command(cmd_copy);
+}
+
+/* Execute piped commands */
+static int sh_execute_pipeline(const char* cmdline) {
+    /* Check for pipes */
+    char* pipe_pos = strchr(cmdline, '|');
+    if (!pipe_pos) {
+        return sh_execute_single(cmdline);
+    }
+
+    /* Split pipeline */
+    char buffer[1024];
+    strncpy(buffer, cmdline, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    /* For now, just warn that pipes are not fully implemented */
+    kernel_print("sh: pipes partially supported - executing commands sequentially\n");
+
+    /* Execute each command in the pipeline */
+    char* cmd = buffer;
+    char* next_pipe;
+    int status = 0;
+
+    while (cmd) {
+        next_pipe = strchr(cmd, '|');
+        if (next_pipe) {
+            *next_pipe = '\0';
+            next_pipe++;
+            while (*next_pipe == ' ' || *next_pipe == '\t') next_pipe++;
+        }
+
+        status = sh_execute_single(cmd);
+        cmd = next_pipe;
+    }
+
+    return status;
 }
 
 static int sh_execute(const char* cmdline) {
@@ -366,7 +479,7 @@ static int sh_execute(const char* cmdline) {
             continue;
         }
 
-        last_status = sh_execute_single(current);
+        last_status = sh_execute_pipeline(current);
     }
 
     return last_status;
