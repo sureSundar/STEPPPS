@@ -6,6 +6,8 @@
 #include "tbos/stdio.h"
 #include "tbos/vfs.h"
 #include "tbos/errno.h"
+#include "tbos/shell_morph.h"
+#include "tbos/argparse.h"
 #include "fs/ucfs_codec.h"
 #include "fs/ucfs_overlay.h"
 #include "fs/ucfs_config.h"
@@ -51,6 +53,7 @@ static char* trim_spaces(char* str);
 static void normalize_path(const char* input, char* out, size_t out_size);
 static void print_errno_message(const char* prefix);
 static uint8_t shell_serial_read_char(void);
+static void shell_process_command(char* cmd);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Command declarations
@@ -104,6 +107,8 @@ static void cmd_hal(void);
 static void cmd_shutdown(void);
 static void cmd_top(void);
 static void cmd_posix_shell(void);
+static void cmd_ch_sh(const char* args);
+static void cmd_grep(const char* args);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -156,9 +161,23 @@ static void shell_print_decimal(int value) {
 }
 
 static void shell_print_prompt(void) {
-    kernel_print("tbos:");
-    kernel_print(current_path);
-    kernel_print("> ");
+    const shell_interpreter_t* current = shell_morph_current();
+    if (current && current->prompt) {
+        /* Use current shell's prompt */
+        if (strcmp(current->name, "tbos") == 0) {
+            kernel_print("tbos:");
+            kernel_print(current_path);
+            kernel_print("> ");
+        } else {
+            /* For other shells, just use their default prompt */
+            kernel_print(current->prompt);
+        }
+    } else {
+        /* Fallback */
+        kernel_print("tbos:");
+        kernel_print(current_path);
+        kernel_print("> ");
+    }
 }
 
 static char* trim_spaces(char* str) {
@@ -257,7 +276,7 @@ static void print_errno_message(const char* prefix) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_help(void) {
-    kernel_print("\n=== TernaryBit OS Shell (50+ Commands) ===\n");
+    kernel_print("\n=== TernaryBit OS Shell (54+ Commands) ===\n");
     kernel_print("\n[General]\n");
     kernel_print("  help, clear, cls, about, reboot, shutdown, test\n");
     kernel_print("\n[Processes & System]\n");
@@ -265,8 +284,14 @@ static void cmd_help(void) {
     kernel_print("\n[Filesystem Operations]\n");
     kernel_print("  pwd, ls, cd, cat, mkdir, touch, rm, rmdir\n");
     kernel_print("  cp <src> <dst>, mv <src> <dst>, head <file>, tail <file>\n");
+    kernel_print("\n[Text Processing]\n");
+    kernel_print("  grep <pattern> <file> - Search for patterns in files\n");
+    kernel_print("  Use --help with any command for options (e.g., ls --help)\n");
     kernel_print("\n[UCFS Commands]\n");
     kernel_print("  ucfs-encode, ucfs-info, ucfs-test, ucfs-help, ucfs-config\n");
+    kernel_print("\n[Shell Morphing]\n");
+    kernel_print("  ch-sh [shell]  - Switch shells (tbos, sh)\n");
+    kernel_print("                   Examples: ch-sh sh, ch-sh tbos\n");
     kernel_print("\n[Consciousness & Karma]\n");
     kernel_print("  karma, consciousness, om, compassion, fast, sangha\n");
     kernel_print("  history, metrics, events\n");
@@ -274,7 +299,8 @@ static void cmd_help(void) {
     kernel_print("  http, ping, netstat, persona\n");
     kernel_print("\n[Utilities]\n");
     kernel_print("  calc <expr>, echo <text>, posix\n");
-    kernel_print("\nFilesystem: RAMFS + VFS + UCFS mounted at '/'\n");
+    kernel_print("\nPOSIX Flags: ls -lah, cat -n, grep -in\n");
+    kernel_print("Filesystem: RAMFS + VFS + UCFS mounted at '/'\n");
 }
 
 static void cmd_clear(void) {
@@ -464,9 +490,35 @@ static void cmd_cd(const char* args) {
 }
 
 static void cmd_ls(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help") || argparse_has_flag(&parsed, "h")) {
+        flag_spec_t specs[] = {
+            {'l', "long", false, "Use long listing format"},
+            {'a', "all", false, "Show hidden files (starting with .)"},
+            {'h', "human-readable", false, "Print sizes in human readable format"},
+            {'1', NULL, false, "List one file per line"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("ls", "List directory contents", "[OPTIONS] [PATH]", specs, 5);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool long_format = argparse_has_flag(&parsed, "l") || argparse_has_flag(&parsed, "long");
+    bool show_all = argparse_has_flag(&parsed, "a") || argparse_has_flag(&parsed, "all");
+    bool human_readable = argparse_has_flag(&parsed, "h") || argparse_has_flag(&parsed, "human-readable");
+    bool one_per_line = argparse_has_flag(&parsed, "1") || long_format;
+
+    /* Get path argument */
     char path[SHELL_MAX_PATH];
-    if (args && *args) {
-        normalize_path(args, path, sizeof(path));
+    const char* path_arg = argparse_get_positional(&parsed, 0);
+    if (path_arg) {
+        normalize_path(path_arg, path, sizeof(path));
     } else {
         strncpy(path, current_path, sizeof(path) - 1);
         path[sizeof(path) - 1] = '\0';
@@ -476,55 +528,155 @@ static void cmd_ls(const char* args) {
     errno = 0;
     if (stat(path, &st) != 0) {
         print_errno_message("ls: path not found");
+        argparse_cleanup(&parsed);
         return;
     }
 
     if (st.st_mode == VFS_NODE_FILE) {
+        if (long_format) {
+            kernel_print(st.st_mode == VFS_NODE_DIR ? "d" : "-");
+            kernel_print("rw-r--r-- 1 root root ");
+            shell_print_decimal((int)st.st_size);
+            kernel_print(" ");
+        }
         kernel_print(path);
         kernel_print("\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     DIR* dir = opendir(path);
     if (!dir) {
         print_errno_message("ls: cannot open directory");
+        argparse_cleanup(&parsed);
         return;
     }
 
-    kernel_print("\n");
+    if (!one_per_line) kernel_print("\n");
+
     struct dirent* entry;
     while ((entry = readdir(dir))) {
+        /* Skip hidden files unless -a is specified */
+        if (!show_all && entry->d_name[0] == '.') {
+            continue;
+        }
+
+        if (long_format) {
+            /* Long format: type, permissions, size, name */
+            kernel_print(entry->d_type == VFS_NODE_DIR ? "d" : "-");
+            kernel_print("rw-r--r-- 1 root root ");
+
+            /* Get file size */
+            char full_path[SHELL_MAX_PATH];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+            struct stat entry_st;
+            if (stat(full_path, &entry_st) == 0) {
+                if (human_readable && entry_st.st_size >= 1024) {
+                    int kb = (int)(entry_st.st_size / 1024);
+                    shell_print_decimal(kb);
+                    kernel_print("K");
+                } else {
+                    shell_print_decimal((int)entry_st.st_size);
+                }
+            } else {
+                kernel_print("   0");
+            }
+            kernel_print(" ");
+        }
+
         kernel_print(entry->d_name);
-        if (entry->d_type == VFS_NODE_DIR) kernel_print("/");
-        kernel_print("  ");
+        if (entry->d_type == VFS_NODE_DIR && !long_format) {
+            kernel_print("/");
+        }
+
+        if (one_per_line) {
+            kernel_print("\n");
+        } else {
+            kernel_print("  ");
+        }
     }
-    kernel_print("\n");
+
+    if (!one_per_line) {
+        kernel_print("\n");
+    }
+
     closedir(dir);
+    argparse_cleanup(&parsed);
 }
 
 static void cmd_cat(const char* args) {
-    if (!args || !*args) {
-        kernel_print("Usage: cat <file>\n");
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'n', "number", false, "Number all output lines"},
+            {'b', "number-nonblank", false, "Number non-blank output lines"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("cat", "Concatenate and print files", "[OPTIONS] FILE", specs, 3);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool number_lines = argparse_has_flag(&parsed, "n") || argparse_has_flag(&parsed, "number");
+    bool number_nonblank = argparse_has_flag(&parsed, "b") || argparse_has_flag(&parsed, "number-nonblank");
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: cat [OPTIONS] <file>\n");
+        argparse_cleanup(&parsed);
         return;
     }
 
     char path[SHELL_MAX_PATH];
-    normalize_path(args, path, sizeof(path));
+    normalize_path(file_arg, path, sizeof(path));
 
     errno = 0;
     FILE* fp = fopen(path, "r");
     if (!fp) {
         print_errno_message("cat: cannot open file");
+        argparse_cleanup(&parsed);
         return;
     }
 
     char buffer[128];
     size_t nread;
     char last = '\0';
+    int line_num = 1;
+    bool at_line_start = true;
+
     while ((nread = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
         for (size_t i = 0; i < nread; i++) {
-            kernel_putchar(buffer[i]);
-            last = buffer[i];
+            char ch = buffer[i];
+
+            /* Print line number at start of line if needed */
+            if (at_line_start && (number_lines || number_nonblank)) {
+                /* Only print line number if:
+                 * - number_lines is set, OR
+                 * - number_nonblank is set AND this is not a blank line
+                 */
+                bool is_blank_line = (ch == '\n');
+                if (number_lines || (number_nonblank && !is_blank_line)) {
+                    /* Print line number with padding */
+                    kernel_print("     ");
+                    shell_print_decimal(line_num);
+                    kernel_print("  ");
+                }
+                line_num++;
+                at_line_start = false;
+            }
+
+            kernel_putchar(ch);
+            last = ch;
+
+            if (ch == '\n') {
+                at_line_start = true;
+            }
         }
     }
 
@@ -536,6 +688,8 @@ static void cmd_cat(const char* args) {
     if (last != '\n') {
         kernel_print("\n");
     }
+
+    argparse_cleanup(&parsed);
 }
 
 static void cmd_mkdir(const char* args) {
@@ -687,6 +841,29 @@ static void cmd_reboot(void) {
  * Command dispatch
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Public function for shell morphing - allow other interpreters to execute TBOS commands */
+int shell_execute_command(const char* cmdline) {
+    if (!cmdline || !*cmdline) return 0;
+
+    /* Make a mutable copy */
+    char buffer[MAX_CMD_LENGTH];
+    strncpy(buffer, cmdline, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    /* Check if we should route through current shell or execute directly */
+    const shell_interpreter_t* current = shell_morph_current();
+    if (current && strcmp(current->name, "tbos") == 0) {
+        /* We're in TBOS mode, execute directly */
+        shell_process_command(buffer);
+    } else {
+        /* We're in another shell, but being called from that shell to execute TBOS commands */
+        /* Execute TBOS command directly */
+        shell_process_command(buffer);
+    }
+
+    return 0;
+}
+
 static void shell_process_command(char* cmd) {
     if (!cmd || !*cmd) return;
 
@@ -832,6 +1009,12 @@ static void shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "posix") == 0 || strcmp(cmd, "posix_shell") == 0) {
         cmd_posix_shell();
         karma_delta = 1;
+    } else if (strcmp(cmd, "ch-sh") == 0 || strcmp(cmd, "chsh") == 0) {
+        cmd_ch_sh(args);
+        karma_delta = 2;
+    } else if (strcmp(cmd, "grep") == 0) {
+        cmd_grep(args);
+        karma_delta = 1;
     } else {
         handled = false;
     }
@@ -852,12 +1035,29 @@ static void shell_process_command(char* cmd) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 void shell_init(void) {
+    kernel_print("Shell: Initializing...\n");
     memset(&cmd_buffer, 0, sizeof(cmd_buffer));
     strncpy(current_path, "/", sizeof(current_path) - 1);
     current_path[sizeof(current_path) - 1] = '\0';
     commands_executed = 0;
     user_karma = 100;
     consciousness_level = 1;
+
+    kernel_print("Shell: Initializing morphing framework...\n");
+    /* Initialize shell morphing framework */
+    shell_morph_init();
+
+    kernel_print("Shell: Registering interpreters...\n");
+    /* Register available shell interpreters */
+    extern const shell_interpreter_t shell_tbos_interpreter;
+    extern const shell_interpreter_t shell_sh_interpreter;
+
+    shell_morph_register(&shell_tbos_interpreter);
+    kernel_print("Shell: TBOS registered\n");
+    shell_morph_register(&shell_sh_interpreter);
+    kernel_print("Shell: sh registered\n");
+
+    kernel_print("Shell morphing: TBOS + sh interpreters loaded\n");
 }
 
 void shell_loop(void) {
@@ -882,7 +1082,16 @@ void shell_loop(void) {
         if (ch == '\n' || ch == '\r') {
             kernel_print("\n");
             cmd_buffer.buffer[cmd_buffer.length] = '\0';
-            shell_process_command(cmd_buffer.buffer);
+
+            /* Route command through current shell interpreter */
+            const shell_interpreter_t* current = shell_morph_current();
+            if (current && current->execute) {
+                current->execute(cmd_buffer.buffer);
+            } else {
+                /* Fallback to direct execution */
+                shell_process_command(cmd_buffer.buffer);
+            }
+
             cmd_buffer.length = 0;
             cmd_buffer.cursor = 0;
             shell_print_prompt();
@@ -1372,11 +1581,13 @@ static void cmd_events(void) {
  * ======================================================================== */
 
 static void cmd_http(const char* args) {
+    (void)args;
     kernel_print("HTTP client not available in bare-metal mode\n");
     kernel_print("(Network stack requires hosted environment)\n");
 }
 
 static void cmd_ping(const char* args) {
+    (void)args;
     kernel_print("PING not available in bare-metal mode\n");
 }
 
@@ -1385,6 +1596,7 @@ static void cmd_netstat(void) {
 }
 
 static void cmd_persona(const char* args) {
+    (void)args;
     kernel_print("Current persona: bare-metal\n");
     kernel_print("Mode: Direct hardware execution\n");
 }
@@ -1416,5 +1628,192 @@ static void cmd_top(void) {
 
 static void cmd_posix_shell(void) {
     kernel_print("POSIX shell compatibility mode\n");
-    kernel_print("(Already in POSIX-compatible mode)\n");
+    kernel_print("(Use 'ch-sh sh' for full POSIX sh interpreter)\n");
+}
+
+static void cmd_ch_sh(const char* args) {
+    if (!args || *args == '\0') {
+        /* List available shells */
+        kernel_print("\n=== Available Shells ===\n");
+        char buffer[256];
+        if (shell_morph_list(buffer, sizeof(buffer)) == 0) {
+            kernel_print("Shells: ");
+            kernel_print(buffer);
+            kernel_print("\n");
+        }
+        kernel_print("\nUsage: ch-sh <shell-name>\n");
+        kernel_print("Example: ch-sh sh\n");
+        kernel_print("         ch-sh tbos\n");
+        return;
+    }
+
+    /* Switch to requested shell */
+    int result = shell_morph_switch(args);
+    if (result == 0) {
+        kernel_print("Switched to ");
+        kernel_print(args);
+        kernel_print(" shell\n");
+
+        /* Re-initialize prompt for new shell */
+        const shell_interpreter_t* current = shell_morph_current();
+        if (current && current->prompt) {
+            kernel_print(current->prompt);
+        }
+    } else if (result == -2) {
+        kernel_print("Shell not found: ");
+        kernel_print(args);
+        kernel_print("\n");
+        kernel_print("Use 'ch-sh' to list available shells\n");
+    } else {
+        kernel_print("Failed to switch shell\n");
+    }
+}
+
+/* Simple pattern matching - checks if pattern is in text */
+static bool simple_match(const char* text, const char* pattern, bool case_insensitive) {
+    if (!text || !pattern) return false;
+
+    size_t text_len = strlen(text);
+    size_t pattern_len = strlen(pattern);
+
+    if (pattern_len > text_len) return false;
+
+    for (size_t i = 0; i <= text_len - pattern_len; i++) {
+        bool match = true;
+        for (size_t j = 0; j < pattern_len; j++) {
+            char t = text[i + j];
+            char p = pattern[j];
+
+            if (case_insensitive) {
+                /* Simple case-insensitive comparison */
+                if (t >= 'A' && t <= 'Z') t = t - 'A' + 'a';
+                if (p >= 'A' && p <= 'Z') p = p - 'A' + 'a';
+            }
+
+            if (t != p) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+
+    return false;
+}
+
+static void cmd_grep(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'i', "ignore-case", false, "Ignore case distinctions"},
+            {'v', "invert-match", false, "Invert match (show non-matching lines)"},
+            {'n', "line-number", false, "Print line number with output lines"},
+            {'c', "count", false, "Print only count of matching lines"},
+            {'H', "with-filename", false, "Print filename with output lines"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("grep", "Search for patterns in files", "[OPTIONS] PATTERN [FILE...]", specs, 6);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get flags */
+    bool ignore_case = argparse_has_flag(&parsed, "i") || argparse_has_flag(&parsed, "ignore-case");
+    bool invert_match = argparse_has_flag(&parsed, "v") || argparse_has_flag(&parsed, "invert-match");
+    bool line_number = argparse_has_flag(&parsed, "n") || argparse_has_flag(&parsed, "line-number");
+    bool count_only = argparse_has_flag(&parsed, "c") || argparse_has_flag(&parsed, "count");
+    bool with_filename = argparse_has_flag(&parsed, "H") || argparse_has_flag(&parsed, "with-filename");
+
+    /* Get pattern */
+    const char* pattern = argparse_get_positional(&parsed, 0);
+    if (!pattern) {
+        kernel_print("Usage: grep [OPTIONS] PATTERN [FILE...]\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Get file argument (optional) */
+    const char* file_arg = argparse_get_positional(&parsed, 1);
+
+    if (!file_arg) {
+        /* No file specified - would read from stdin in real grep */
+        kernel_print("grep: reading from stdin not yet implemented\n");
+        kernel_print("Usage: grep PATTERN FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Open file */
+    errno = 0;
+    FILE* fp = fopen(path, "r");
+    if (!fp) {
+        print_errno_message("grep: cannot open file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Search file line by line */
+    char line_buffer[512];
+    int line_num = 0;
+    int match_count = 0;
+
+    while (fgets(line_buffer, sizeof(line_buffer), fp)) {
+        line_num++;
+
+        /* Check if line matches pattern */
+        bool matches = simple_match(line_buffer, pattern, ignore_case);
+
+        /* Invert if needed */
+        if (invert_match) {
+            matches = !matches;
+        }
+
+        if (matches) {
+            match_count++;
+
+            if (!count_only) {
+                /* Print filename if requested or multiple files */
+                if (with_filename) {
+                    kernel_print(path);
+                    kernel_print(":");
+                }
+
+                /* Print line number if requested */
+                if (line_number) {
+                    shell_print_decimal(line_num);
+                    kernel_print(":");
+                }
+
+                /* Print the matching line */
+                kernel_print(line_buffer);
+
+                /* Add newline if line doesn't end with one */
+                size_t len = strlen(line_buffer);
+                if (len > 0 && line_buffer[len - 1] != '\n') {
+                    kernel_print("\n");
+                }
+            }
+        }
+    }
+
+    /* If count_only, print the count */
+    if (count_only) {
+        shell_print_decimal(match_count);
+        kernel_print("\n");
+    }
+
+    if (ferror(fp)) {
+        print_errno_message("grep: read error");
+    }
+
+    fclose(fp);
+    argparse_cleanup(&parsed);
 }

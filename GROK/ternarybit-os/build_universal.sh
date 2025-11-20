@@ -207,6 +207,30 @@ compile_c() {
     build_objects+=("$out")
 }
 
+compile_directory_sources() {
+    local rel_dir="$1"
+    local label="${2:-$rel_dir}"
+    local abs_dir="$TBOS_ROOT/$rel_dir"
+
+    if [[ ! -d "$abs_dir" ]]; then
+        echo "    [skip] Directory not found: $rel_dir"
+        return
+    fi
+
+    local count=0
+    while IFS= read -r -d '' file; do
+        local rel="${file#$TBOS_ROOT/}"
+        compile_c "$rel"
+        count=$((count + 1))
+    done < <(find "$abs_dir" -type f -name '*.c' -print0 | LC_ALL=C sort -z)
+
+    if [[ "$count" -eq 0 ]]; then
+        echo "    [warn] No C sources discovered under $rel_dir"
+    else
+        echo "    [+] Compiled $count $label source files from $rel_dir/"
+    fi
+}
+
 assemble_bootloader_stage1() {
     local stage2_sectors="$1"
     nasm -I "$BOOT_DIR" -f bin \
@@ -353,18 +377,18 @@ fi
         compile_c "src/core/filesystem/ucfs_config.c"
     else
         echo "    [skip] VFS/RAMFS disabled by profile"
+        compile_c "src/core/filesystem/fs_disabled.c"
     fi
-    if config_enabled "KEYBOARD"; then
-        if config_enabled "INTERRUPTS"; then
-            compile_c "drivers/keyboard/keyboard.c"
-        else
-            echo "    [skip] Keyboard driver requires CONFIG_INTERRUPTS"
-        fi
+    compile_directory_sources "drivers/vga" "vga driver"
+    compile_directory_sources "drivers/timer" "timer driver"
+    if config_enabled "KEYBOARD" && config_enabled "INTERRUPTS"; then
+        compile_directory_sources "drivers/keyboard" "keyboard driver"
     else
-        echo "    [skip] Keyboard driver disabled by profile"
+        echo "    [skip] Hardware keyboard driver disabled by profile"
+        compile_c "drivers/keyboard/keyboard_stub.c"
     fi
     if config_enabled "SHELL"; then
-        compile_c "shell/shell.c"
+        compile_directory_sources "shell" "shell"
     else
         echo "    [skip] Interactive shell disabled by profile"
     fi
