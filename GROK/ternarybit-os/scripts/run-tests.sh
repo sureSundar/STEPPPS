@@ -123,7 +123,7 @@ run_unit_tests() {
             mkdir -p "$(dirname "$test_bin")"
     
             echo -n "🔨 Building ${test_name}... "
-            if gcc -o "$test_bin" "${test_file}.c" "${extra_sources[@]}" -Iinclude -Itests/unit/mocks \
+            if gcc -DHOST_BUILD -o "$test_bin" "${test_file}.c" "${extra_sources[@]}" -Iinclude -Itests/unit/mocks \
                 -Wall -Wextra -Werror -g -O0 \
                 $([ $COVERAGE -eq 1 ] && echo "--coverage -fprofile-arcs -ftest-coverage"); then
                 echo -e "${GREEN}OK${NC}"

@@ -774,6 +774,35 @@ size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream) {
     return bytes / size;
 }
 
+char* fgets(char* str, int size, FILE* stream) {
+    if (!str || size <= 0 || !stream) {
+        return NULL;
+    }
+    if (stream->kind == FILE_KIND_CONSOLE) {
+        return NULL; // console input not supported yet
+    }
+
+    int written = 0;
+    while (written < size - 1) {
+        char ch;
+        size_t read = fread(&ch, 1, 1, stream);
+        if (read != 1) {
+            break;
+        }
+        str[written++] = ch;
+        if (ch == '\n') {
+            break;
+        }
+    }
+
+    if (written == 0) {
+        return NULL;
+    }
+
+    str[written] = '\0';
+    return str;
+}
+
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
     if (!stream) {
         errno = EBADF;

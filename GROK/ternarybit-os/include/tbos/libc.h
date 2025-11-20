@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+struct FILE;
+
 /* For host builds, use system libc instead of our own */
 #ifndef HOST_BUILD
 #include "tbos/errno.h"
@@ -67,6 +69,7 @@ int snprintf(char* buffer, size_t size, const char* format, ...);
 int vsnprintf(char* buffer, size_t size, const char* format, va_list args);
 const char* strerror(int errnum);
 void perror(const char* s);
+char* fgets(char* str, int size, struct FILE* stream);
 
 extern int errno;
 
@@ -75,6 +78,7 @@ extern int errno;
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <errno.h>
 #define libc_init() ((void)0)
 #endif /* HOST_BUILD */

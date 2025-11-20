@@ -392,6 +392,11 @@ clean:
 # Development targets
 dev: all test
 
+.PHONY: build-ci
+build-ci:
+	@echo "🏭 Running CI universal builds (universal/minimal/calc profiles)..."
+	@./scripts/ci_build_universal.sh
+
 # Install (placeholder)
 install:
 	@echo "📦 Install target not yet implemented"
