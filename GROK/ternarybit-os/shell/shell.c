@@ -111,6 +111,9 @@ static void cmd_ch_sh(const char* args);
 static void cmd_grep(const char* args);
 static void cmd_wc(const char* args);
 static void cmd_find(const char* args);
+static void cmd_chmod(const char* args);
+static void cmd_ln(const char* args);
+static void cmd_sort(const char* args);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper implementations
@@ -1113,6 +1116,15 @@ static void shell_process_command(char* cmd) {
         karma_delta = 1;
     } else if (strcmp(cmd, "find") == 0) {
         cmd_find(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "chmod") == 0) {
+        cmd_chmod(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "ln") == 0) {
+        cmd_ln(args);
+        karma_delta = 1;
+    } else if (strcmp(cmd, "sort") == 0) {
+        cmd_sort(args);
         karma_delta = 1;
     } else {
         handled = false;
@@ -2192,6 +2204,293 @@ static void cmd_find(const char* args) {
         }
     } else {
         print_errno_message("find: cannot access path");
+    }
+
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_chmod(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'v', "verbose", false, "Output a diagnostic for every file processed"},
+            {'R', "recursive", false, "Change files and directories recursively"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("chmod", "Change file mode bits", "[OPTIONS] MODE FILE", specs, 3);
+        kernel_print("\nMODE can be:\n");
+        kernel_print("  Octal: 755, 644, etc.\n");
+        kernel_print("  Symbolic: +x, -w, u+rwx, etc. (limited support)\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    bool verbose = argparse_has_flag(&parsed, "v") || argparse_has_flag(&parsed, "verbose");
+    /* bool recursive = argparse_has_flag(&parsed, "R") || argparse_has_flag(&parsed, "recursive"); */
+
+    /* Get mode and file */
+    const char* mode_str = argparse_get_positional(&parsed, 0);
+    const char* file_arg = argparse_get_positional(&parsed, 1);
+
+    if (!mode_str || !file_arg) {
+        kernel_print("Usage: chmod MODE FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Parse mode - support octal (e.g., 755) */
+    uint32_t mode = 0;
+    bool is_octal = true;
+    for (const char* p = mode_str; *p; p++) {
+        if (*p >= '0' && *p <= '7') {
+            mode = mode * 8 + (*p - '0');
+        } else {
+            is_octal = false;
+            break;
+        }
+    }
+
+    if (!is_octal) {
+        /* Simple symbolic mode support */
+        if (strcmp(mode_str, "+x") == 0) {
+            mode = 0111;  /* Execute for all */
+        } else if (strcmp(mode_str, "-x") == 0) {
+            mode = 0;
+        } else if (strcmp(mode_str, "+r") == 0) {
+            mode = 0444;  /* Read for all */
+        } else if (strcmp(mode_str, "+w") == 0) {
+            mode = 0222;  /* Write for all */
+        } else {
+            kernel_print("chmod: unsupported mode format: ");
+            kernel_print(mode_str);
+            kernel_print("\n");
+            argparse_cleanup(&parsed);
+            return;
+        }
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Check file exists */
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        print_errno_message("chmod: cannot access");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Note: RAMFS doesn't actually store permissions, but we acknowledge the command */
+    if (verbose) {
+        kernel_print("mode of '");
+        kernel_print(path);
+        kernel_print("' changed to ");
+        /* Print octal */
+        char octal[8];
+        int idx = 0;
+        uint32_t m = mode;
+        do {
+            octal[idx++] = '0' + (m % 8);
+            m /= 8;
+        } while (m > 0 && idx < 7);
+        octal[idx] = '\0';
+        /* Reverse */
+        for (int i = 0; i < idx / 2; i++) {
+            char tmp = octal[i];
+            octal[i] = octal[idx - 1 - i];
+            octal[idx - 1 - i] = tmp;
+        }
+        kernel_print(octal);
+        kernel_print("\n");
+    }
+
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_ln(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'s', "symbolic", false, "Create symbolic link instead of hard link"},
+            {'f', "force", false, "Remove existing destination files"},
+            {'v', "verbose", false, "Print name of each linked file"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("ln", "Make links between files", "[OPTIONS] TARGET LINK_NAME", specs, 4);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    bool symbolic = argparse_has_flag(&parsed, "s") || argparse_has_flag(&parsed, "symbolic");
+    bool force = argparse_has_flag(&parsed, "f") || argparse_has_flag(&parsed, "force");
+    bool verbose = argparse_has_flag(&parsed, "v") || argparse_has_flag(&parsed, "verbose");
+
+    /* Get target and link name */
+    const char* target_arg = argparse_get_positional(&parsed, 0);
+    const char* link_arg = argparse_get_positional(&parsed, 1);
+
+    if (!target_arg || !link_arg) {
+        kernel_print("Usage: ln [-s] TARGET LINK_NAME\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize paths */
+    char target[SHELL_MAX_PATH];
+    char link_name[SHELL_MAX_PATH];
+    normalize_path(target_arg, target, sizeof(target));
+    normalize_path(link_arg, link_name, sizeof(link_name));
+
+    /* Check if link already exists */
+    struct stat st;
+    if (stat(link_name, &st) == 0) {
+        if (force) {
+            vfs_remove(link_name, false);
+        } else {
+            kernel_print("ln: '");
+            kernel_print(link_name);
+            kernel_print("' already exists\n");
+            argparse_cleanup(&parsed);
+            return;
+        }
+    }
+
+    /* Note: RAMFS doesn't support true links, so we simulate with a copy or stub */
+    if (symbolic) {
+        /* Create a symlink file containing the target path */
+        FILE* fp = fopen(link_name, "w");
+        if (fp) {
+            /* Write symlink marker and target */
+            fprintf(fp, "-> %s", target);
+            fclose(fp);
+            if (verbose) {
+                kernel_print("'");
+                kernel_print(link_name);
+                kernel_print("' -> '");
+                kernel_print(target);
+                kernel_print("'\n");
+            }
+        } else {
+            print_errno_message("ln: cannot create symbolic link");
+        }
+    } else {
+        /* Hard link - copy the file */
+        kernel_print("ln: hard links not supported in RAMFS (use -s for symbolic)\n");
+    }
+
+    argparse_cleanup(&parsed);
+}
+
+static void cmd_sort(const char* args) {
+    /* Parse arguments */
+    argparse_result_t parsed;
+    argparse_parse(args, &parsed);
+
+    /* Check for --help */
+    if (argparse_has_flag(&parsed, "help")) {
+        flag_spec_t specs[] = {
+            {'r', "reverse", false, "Reverse the result of comparisons"},
+            {'n', "numeric-sort", false, "Compare according to string numerical value"},
+            {'u', "unique", false, "Output only unique lines"},
+            {0, "help", false, "Display this help message"}
+        };
+        argparse_print_help("sort", "Sort lines of text files", "[OPTIONS] [FILE]", specs, 4);
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    bool reverse = argparse_has_flag(&parsed, "r") || argparse_has_flag(&parsed, "reverse");
+    bool numeric = argparse_has_flag(&parsed, "n") || argparse_has_flag(&parsed, "numeric-sort");
+    bool unique = argparse_has_flag(&parsed, "u") || argparse_has_flag(&parsed, "unique");
+
+    /* Get file argument */
+    const char* file_arg = argparse_get_positional(&parsed, 0);
+    if (!file_arg) {
+        kernel_print("Usage: sort [OPTIONS] FILE\n");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Normalize file path */
+    char path[SHELL_MAX_PATH];
+    normalize_path(file_arg, path, sizeof(path));
+
+    /* Open file */
+    errno = 0;
+    FILE* fp = fopen(path, "r");
+    if (!fp) {
+        print_errno_message("sort: cannot open file");
+        argparse_cleanup(&parsed);
+        return;
+    }
+
+    /* Read all lines into array */
+    #define MAX_SORT_LINES 256
+    #define MAX_LINE_LEN 256
+    static char lines[MAX_SORT_LINES][MAX_LINE_LEN];
+    int line_count = 0;
+
+    while (line_count < MAX_SORT_LINES && fgets(lines[line_count], MAX_LINE_LEN, fp)) {
+        /* Remove trailing newline */
+        size_t len = strlen(lines[line_count]);
+        if (len > 0 && lines[line_count][len - 1] == '\n') {
+            lines[line_count][len - 1] = '\0';
+        }
+        line_count++;
+    }
+    fclose(fp);
+
+    /* Simple bubble sort */
+    for (int i = 0; i < line_count - 1; i++) {
+        for (int j = 0; j < line_count - i - 1; j++) {
+            int cmp;
+            if (numeric) {
+                /* Convert to numbers */
+                int a = 0, b = 0;
+                for (const char* p = lines[j]; *p >= '0' && *p <= '9'; p++) {
+                    a = a * 10 + (*p - '0');
+                }
+                for (const char* p = lines[j + 1]; *p >= '0' && *p <= '9'; p++) {
+                    b = b * 10 + (*p - '0');
+                }
+                cmp = a - b;
+            } else {
+                cmp = strcmp(lines[j], lines[j + 1]);
+            }
+
+            if (reverse) {
+                cmp = -cmp;
+            }
+
+            if (cmp > 0) {
+                /* Swap */
+                char temp[MAX_LINE_LEN];
+                strcpy(temp, lines[j]);
+                strcpy(lines[j], lines[j + 1]);
+                strcpy(lines[j + 1], temp);
+            }
+        }
+    }
+
+    /* Print sorted lines */
+    const char* prev_line = NULL;
+    for (int i = 0; i < line_count; i++) {
+        /* Skip duplicates if unique */
+        if (unique && prev_line && strcmp(lines[i], prev_line) == 0) {
+            continue;
+        }
+        kernel_print(lines[i]);
+        kernel_print("\n");
+        prev_line = lines[i];
     }
 
     argparse_cleanup(&parsed);
