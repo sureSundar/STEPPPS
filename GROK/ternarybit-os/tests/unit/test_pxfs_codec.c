@@ -1,3 +1,11 @@
+/**
+ * @file test_pxfs_codec.c
+ * @brief PXFS (Pixel Filesystem) Codec Unit Tests
+ *
+ * Build: gcc -DHOST_BUILD -Wall -Iinclude -Isrc -o test_pxfs \
+ *        tests/unit/test_pxfs_codec.c src/core/filesystem/pxfs_codec.c
+ */
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +23,7 @@ static void test_pxfs_parse_basic(void) {
     assert(strcmp(px.components[1], "kernel") == 0);
     assert(strcmp(px.components[2], "boot.bin") == 0);
     pxfs_free(&px);
+    printf("  ✅ test_pxfs_parse_basic passed\n");
 }
 
 static void test_pxfs_canonical(void) {
@@ -27,6 +36,7 @@ static void test_pxfs_canonical(void) {
     assert(pxfs_to_canonical_with_base(&px, "/pxfs_store", buffer, sizeof(buffer)) == 0);
     assert(strcmp(buffer, "/pxfs_store/0080FF/graphics/textures/sunset.png") == 0);
     pxfs_free(&px);
+    printf("  ✅ test_pxfs_canonical passed\n");
 }
 
 static void test_pxfs_invalid(void) {
@@ -34,12 +44,17 @@ static void test_pxfs_invalid(void) {
     assert(pxfs_parse("{256,0,0}foo{256,0,0}bar", &px) == -EINVAL);
     assert(pxfs_parse("{255,0}foo", &px) == -EINVAL);
     assert(pxfs_parse("{255,0,0}", &px) == -EINVAL);
+    printf("  ✅ test_pxfs_invalid passed\n");
 }
 
 int main(void) {
+    printf("PXFS Codec Unit Tests\n");
+    printf("=====================\n\n");
+
     test_pxfs_parse_basic();
     test_pxfs_canonical();
     test_pxfs_invalid();
-    printf("PXFS codec tests passed\n");
+
+    printf("\n✅ All PXFS codec tests passed\n");
     return 0;
 }

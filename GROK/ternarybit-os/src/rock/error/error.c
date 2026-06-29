@@ -13,6 +13,19 @@
  * @date 2025-11-03
  */
 
+/* Enable full POSIX/BSD features for clock_gettime, snprintf, etc. */
+#ifdef __APPLE__
+/* macOS: Use Darwin source for full compatibility */
+#define _DARWIN_C_SOURCE
+#include <mach/mach_time.h>  /* macOS high-resolution timing */
+#else
+/* Linux/POSIX: Enable POSIX features */
+#if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 199309L
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 199309L
+#endif
+#endif
+
 #include "error.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -94,11 +107,27 @@ static uint64_t g_boot_time_ms = 0;
 
 /**
  * @brief Get current timestamp in milliseconds
+ * Cross-platform implementation for Linux and macOS
  */
 static uint64_t get_timestamp_ms(void) {
+#if defined(__APPLE__)
+    /* macOS: use mach_absolute_time for high-resolution timing */
+    static mach_timebase_info_data_t timebase = {0};
+    if (timebase.denom == 0) {
+        mach_timebase_info(&timebase);
+    }
+    uint64_t now = mach_absolute_time();
+    uint64_t ms = (now * timebase.numer / timebase.denom) / 1000000;
+    return ms - g_boot_time_ms;
+#elif defined(CLOCK_MONOTONIC)
+    /* Linux/POSIX: use clock_gettime */
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000) - g_boot_time_ms;
+#else
+    /* Fallback: no high-resolution timer available */
+    return 0;
+#endif
 }
 
 /**
@@ -253,10 +282,21 @@ static void default_watchdog_callback(uint32_t module_id, uint64_t timeout_ms) {
 void error_init(void) {
     if (g_error_initialized) return;
 
-    /* Initialize boot time */
+    /* Initialize boot time - platform specific */
+#if defined(__APPLE__)
+    static mach_timebase_info_data_t timebase = {0};
+    if (timebase.denom == 0) {
+        mach_timebase_info(&timebase);
+    }
+    uint64_t now = mach_absolute_time();
+    g_boot_time_ms = (now * timebase.numer / timebase.denom) / 1000000;
+#elif defined(CLOCK_MONOTONIC)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     g_boot_time_ms = (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+#else
+    g_boot_time_ms = 0;
+#endif
 
     /* Set default handlers */
     g_error_handler = default_error_handler;

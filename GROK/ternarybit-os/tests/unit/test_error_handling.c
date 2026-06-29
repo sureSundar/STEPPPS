@@ -58,6 +58,24 @@ static bool test_recovery_handler(const error_t *error) {
     return g_recovery_should_succeed;
 }
 
+/* Helper functions for test_error_propagation_macros (moved to file scope for clang compatibility) */
+static int helper_test_func_check(int should_fail) {
+    if (should_fail) {
+        return TBOS_EINVAL;
+    }
+    return TBOS_SUCCESS;
+}
+
+static int helper_wrapper_check(int should_fail) {
+    TBOS_CHECK(helper_test_func_check(should_fail));
+    return TBOS_SUCCESS;
+}
+
+static int helper_test_require(void *ptr) {
+    TBOS_REQUIRE_ARG(ptr != NULL);
+    return TBOS_SUCCESS;
+}
+
 /* ========================================================================= */
 /* TEST CASES                                                                */
 /* ========================================================================= */
@@ -211,35 +229,18 @@ void test_recovery_mechanism(void) {
 void test_error_propagation_macros(void) {
     TEST_START("Error Propagation Macros");
 
-    /* Test TBOS_CHECK (internal function) */
-    int test_func_check(int should_fail) {
-        if (should_fail) {
-            return TBOS_EINVAL;
-        }
-        return TBOS_SUCCESS;
-    }
-
-    int wrapper_check(int should_fail) {
-        TBOS_CHECK(test_func_check(should_fail));
-        return TBOS_SUCCESS;
-    }
-
-    int result = wrapper_check(0);
+    /* Test TBOS_CHECK using helper functions at file scope */
+    int result = helper_wrapper_check(0);
     TEST_ASSERT(result == TBOS_SUCCESS, "TBOS_CHECK passes success");
 
-    result = wrapper_check(1);
+    result = helper_wrapper_check(1);
     TEST_ASSERT(result == TBOS_EINVAL, "TBOS_CHECK propagates error");
 
-    /* Test TBOS_REQUIRE_ARG */
-    int test_require(void *ptr) {
-        TBOS_REQUIRE_ARG(ptr != NULL);
-        return TBOS_SUCCESS;
-    }
-
-    result = test_require((void*)1);
+    /* Test TBOS_REQUIRE_ARG using helper function at file scope */
+    result = helper_test_require((void*)1);
     TEST_ASSERT(result == TBOS_SUCCESS, "TBOS_REQUIRE_ARG passes valid arg");
 
-    result = test_require(NULL);
+    result = helper_test_require(NULL);
     TEST_ASSERT(result == TBOS_EINVAL, "TBOS_REQUIRE_ARG rejects NULL");
 }
 
