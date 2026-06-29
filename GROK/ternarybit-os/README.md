@@ -18,6 +18,43 @@
 
 **THE MOST ADVANCED OPERATING SYSTEM EVER CREATED** - From Calculator to Supercomputer to ChemOS
 
+---
+
+## V4.0 Universal Boot (Production Ready)
+
+TernaryBit OS v4.0 introduces the **Boot Capability Block (BCB)** for universal boot support across bare-metal, hosted, and virtualized environments.
+
+### Quick Start (V4.0)
+
+```bash
+# Build all V4.0 targets (BIOS + Hosted Linux)
+./build_v4.sh
+
+# Run BIOS image in QEMU
+qemu-system-i386 -drive file=artifacts/baremetal/tbos-bios.img,format=raw,if=floppy -serial stdio
+
+# Run hosted Linux environment
+./artifacts/hosted/tbos-linux
+```
+
+### V4.0 Build Targets
+
+| Target | Command | Output |
+|--------|---------|--------|
+| BIOS bare-metal | `./build_v4.sh` | `artifacts/baremetal/tbos-bios.img` |
+| Hosted Linux | `./build_v4.sh` | `artifacts/hosted/tbos-linux` |
+| BCB unit tests | `make test-bcb-host` | Test results |
+| Integration tests | `./scripts/run-tests.sh --type integration` | Test results |
+
+### V4.0 Documentation
+
+- [V4.0 Roadmap](v4.0/ROADMAP.md) - Feature status (V4-001 to V4-009 complete)
+- [VirtualBox Guide](docs/VIRTUALBOX_GUIDE.md) - VM setup instructions
+- [UEFI Boot Guide](docs/UEFI_BOOT_GUIDE.md) - UEFI architecture notes
+- [BCB Specification](include/tbos/bcb.h) - Boot Capability Block header
+
+---
+
 ## 🏆 **Revolutionary Achievements**
 
 ### 🧪 **ChemOS - 8th Architecture BREAKTHROUGH**

@@ -14,7 +14,7 @@ jmp stage2_entry          ; skip HAL helpers at file start
 %include "boot_hal.inc"
 
 %ifndef BOOT_KERNEL_LBA_START
-%define BOOT_KERNEL_LBA_START 10
+%define BOOT_KERNEL_LBA_START 20
 %endif
 
 %ifndef BOOT_KERNEL_SECTOR_COUNT
@@ -36,6 +36,16 @@ jmp stage2_entry          ; skip HAL helpers at file start
 %define TBDS_TYPE_BOOT_DEVICE   0x0004
 %define TBDS_TYPE_CONSOLE_INFO  0x0006
 %define TBDS_TYPE_FIRMWARE_INFO 0x0002
+
+; === BCB (Boot Capability Block) V4.0 ===
+; Traceability: v4.0/ROADMAP.md V4-002
+%define BCB_BASE            0x6000
+%define BCB_SIZE            128
+%define BCB_MAGIC           0x43424254  ; "TBBC"
+%define BCB_VERSION_1_0     0x0001
+%define BCB_FLAG_BIOS       (1 << 0)
+%define BCB_FLAG_VGA        (1 << 9)
+%define BCB_FLAG_64BIT      (1 << 13)
 
 %define KERNEL_SEGMENT (KERNEL_ADDR >> 4)
 
@@ -62,6 +72,9 @@ stage2_entry:
 
     ; Build TBDS handoff structure
     call build_tbds
+
+    ; Build BCB (V4.0 Boot Capability Block)
+    call build_bcb
 
     ; Enable A20 line (fast method via port 0x92)
     call enable_a20
@@ -211,6 +224,98 @@ build_tbds:
     popa
     ret
 
+; -------------------------------------
+; BCB (Boot Capability Block) builder - V4.0
+; Traceability: v4.0/ROADMAP.md V4-002
+; -------------------------------------
+
+build_bcb:
+    pusha
+    push es
+
+    ; Clear BCB area (128 bytes)
+    xor ax, ax
+    mov es, ax
+    mov di, BCB_BASE
+    mov cx, BCB_SIZE / 2
+    xor ax, ax
+    rep stosw
+
+    ; BCB Header (offset 0-7)
+    mov di, BCB_BASE
+    mov eax, BCB_MAGIC              ; magic = "TBBC"
+    mov [di], eax
+    mov word [di + 4], BCB_VERSION_1_0  ; version
+    mov word [di + 6], BCB_SIZE - 8     ; length (excluding header)
+
+    ; Boot Environment (offset 8-15)
+    mov dword [di + 8], BCB_FLAG_BIOS | BCB_FLAG_VGA  ; stage_flags
+    mov dword [di + 12], 2              ; boot_stage = 2
+
+    ; Boot Device (offset 16-31)
+    xor eax, eax
+    mov al, [BOOT_DRIVE_ADDR]
+    mov [di + 16], eax                  ; boot_drive_id (low 32 bits)
+    mov dword [di + 20], 0              ; boot_drive_id (high 32 bits)
+    mov dword [di + 24], 0              ; boot_partition
+    mov dword [di + 28], 0              ; boot_fs_type
+
+    ; Memory Map Summary (offset 32-55)
+    ; Get memory size via INT 12h (conventional memory in KB)
+    int 0x12                            ; Returns KB in AX
+    movzx eax, ax
+    shl eax, 10                         ; Convert KB to bytes
+    mov [di + 32], eax                  ; mem_low_bytes (low 32)
+    mov dword [di + 36], 0              ; mem_low_bytes (high 32)
+
+    ; Extended memory - use simple INT 15h, AH=88h
+    mov ah, 0x88
+    int 0x15
+    jc .no_ext_mem
+    movzx eax, ax
+    shl eax, 10                         ; KB to bytes
+    jmp .set_high_mem
+.no_ext_mem:
+    mov eax, 0x100000                   ; Default 1MB if detection fails
+.set_high_mem:
+    mov [di + 40], eax                  ; mem_high_bytes (low 32)
+    mov dword [di + 44], 0              ; mem_high_bytes (high 32)
+
+    ; Total memory = low + high
+    mov eax, [di + 32]
+    add eax, [di + 40]
+    mov [di + 48], eax                  ; mem_total_bytes (low 32)
+    mov dword [di + 52], 0              ; mem_total_bytes (high 32)
+
+    ; Kernel Information (offset 56-71)
+    mov dword [di + 56], KERNEL_ADDR    ; kernel_entry (low 32)
+    mov dword [di + 60], 0              ; kernel_entry (high 32)
+    mov eax, BOOT_KERNEL_SECTOR_COUNT
+    shl eax, 9                          ; sectors * 512 = bytes
+    mov [di + 64], eax                  ; kernel_size
+    mov dword [di + 68], 0              ; kernel_flags
+
+    ; Host API (offset 72-87) - not used for bare-metal
+    mov dword [di + 72], 0              ; host_api_ptr (low)
+    mov dword [di + 76], 0              ; host_api_ptr (high)
+    mov dword [di + 80], 0              ; host_context (low)
+    mov dword [di + 84], 0              ; host_context (high)
+
+    ; Checksums & TBDS pointer (offset 88-127)
+    mov dword [di + 88], 0              ; bcb_checksum (TODO: compute CRC32)
+    mov eax, [tbds_pointer]
+    mov [di + 92], eax                  ; tbds_pointer
+    mov eax, [tbds_length]
+    mov [di + 96], eax                  ; tbds_length
+    ; Reserved bytes 100-127 already zeroed
+
+    ; Store BCB pointer for kernel handoff
+    mov dword [bcb_pointer], BCB_BASE
+
+    pop es
+    popa
+    ret
+
 ; AX=type, BX=flags, CX=payload length, SI=payload pointer
 tbds_append_descriptor:
     push ax
@@ -276,9 +381,13 @@ pm_entry:
     mov esp, 0x90000
     mov ebp, esp
 
-    ; Pass TBDS pointer/length to kernel
+    ; Pass BCB and TBDS pointers to kernel (V4.0 compatible)
+    ; EAX = TBDS pointer (legacy, for backwards compatibility)
+    ; EBX = TBDS length
+    ; ECX = BCB pointer (V4.0)
     mov eax, [tbds_pointer]
     mov ebx, [tbds_length]
+    mov ecx, [bcb_pointer]
 
     ; Jump to kernel
     mov edx, KERNEL_ADDR
@@ -354,6 +463,7 @@ tbds_length         dd 0
 tbds_total_length   dd 0
 tbds_descriptor_count dw 0
 tbds_cursor         dw 0
+bcb_pointer         dd 0
 
 ; === REAL-MODE HELPERS ===
 

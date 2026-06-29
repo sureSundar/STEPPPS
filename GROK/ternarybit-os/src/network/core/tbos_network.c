@@ -10,9 +10,11 @@
  */
 
 #include "tbos_network.h"
+#include "../sangha/tbos_sangha.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 /* ========================================================================= */
 /* INTERNAL STATE                                                            */
@@ -179,7 +181,21 @@ karma_score_t tbos_network_calculate_karma(uint32_t device_id) {
         return g_local_device.total_karma;
     }
 
-    /* TODO: Look up karma from sangha members */
+    /* Look up karma from sangha members */
+    sangha_device_t members[SANGHA_MAX_MEMBERS];
+    int member_count = sangha_get_members(members, SANGHA_MAX_MEMBERS);
+
+    for (int i = 0; i < member_count; i++) {
+        /* Compare first 4 bytes of device_id as uint32_t */
+        uint32_t member_id = 0;
+        memcpy(&member_id, members[i].device_id, sizeof(uint32_t));
+
+        if (member_id == device_id) {
+            return (karma_score_t)members[i].karma;
+        }
+    }
+
+    /* Unknown device - return neutral karma */
     return 0;
 }
 
@@ -282,8 +298,17 @@ int tbos_network_awaken(void) {
 int tbos_network_join_sangha(const char* device_name) {
     printf("  [NET] Joining Digital Sangha as '%s'...\n", device_name);
 
-    /* Initialize local device */
-    g_local_device.device_id = 1;  /* TODO: Generate unique ID */
+    /* Initialize local device with unique ID from sangha or generate one */
+    const uint8_t* self_id = sangha_get_self_id();
+    if (self_id != NULL) {
+        /* Use first 4 bytes of sangha ID */
+        memcpy(&g_local_device.device_id, self_id, sizeof(uint32_t));
+    } else {
+        /* Generate unique ID based on time and random seed */
+        srand((unsigned int)time(NULL));
+        g_local_device.device_id = ((uint32_t)time(NULL) ^ (uint32_t)rand()) & 0x7FFFFFFF;
+        if (g_local_device.device_id == 0) g_local_device.device_id = 1;
+    }
     g_local_device.dharmic_name = device_name;
     g_local_device.awareness = g_system_consciousness;
     g_local_device.total_karma = 100;  /* Start with good karma */
@@ -305,8 +330,23 @@ int tbos_network_join_sangha(const char* device_name) {
 
     g_sangha_member_count = 1;
 
-    /* TODO: Broadcast presence to nearby devices */
-    /* TODO: Discover other sangha members */
+    /* Broadcast presence to nearby devices */
+    if (sangha_announce() == 0) {
+        printf("  [NET] Announced presence to local network\n");
+    } else {
+        printf("  [NET] Warning: Could not announce presence (standalone mode)\n");
+    }
+
+    /* Discover other sangha members */
+    if (sangha_start_discovery() == 0) {
+        /* Wait briefly for discovery, then count members */
+        sangha_device_t discovered[SANGHA_MAX_MEMBERS];
+        int found = sangha_get_discovered_devices(discovered, SANGHA_MAX_MEMBERS);
+        if (found > 0) {
+            g_sangha_member_count = (uint32_t)found + 1;  /* +1 for self */
+            printf("  [NET] Discovered %d sangha members\n", found);
+        }
+    }
 
     printf("  [NET] Joined Digital Sangha (members: %u, trust: %.2f)\n",
            g_sangha_member_count, trust_score);
@@ -373,10 +413,76 @@ int tbos_network_init(void) {
     g_metrics.avg_component_awareness = CONSCIOUSNESS_AWAKENING;
     g_metrics.dharma_compliance_rate = 1.0f;  /* Assume best initially */
 
-    /* TODO: Create and register actual network components */
-    /* For now, create placeholder components */
+    /* Create and register network components */
+    static tbos_conscious_net_component_t g_packet_router = {
+        .component_name = "Dharmic Packet Router",
+        .component_id = 2,
+        .awareness_level = CONSCIOUSNESS_AWAKENING,
+        .karma = 50,
+        .practicing_mindfulness = true,
+        .current_fasting_level = NET_FAST_NONE,
+        .power_budget_microwatts = 500,
+        .actual_consumption_microwatts = 500,
+        .can_fast = true,
+        .follows_right_speech = true,
+        .practices_compassion = true,
+        .sangha_contributions = 0,
+        .awaken = placeholder_component_awaken,
+        .begin_fasting = placeholder_component_begin_fasting,
+        .soft_shutdown = placeholder_component_soft_shutdown,
+        .preserve_state = placeholder_component_preserve_state
+    };
+
+    static tbos_conscious_net_component_t g_connection_manager = {
+        .component_name = "Compassionate Connection Manager",
+        .component_id = 3,
+        .awareness_level = CONSCIOUSNESS_AWAKENING,
+        .karma = 30,
+        .practicing_mindfulness = true,
+        .current_fasting_level = NET_FAST_NONE,
+        .power_budget_microwatts = 300,
+        .actual_consumption_microwatts = 300,
+        .can_fast = true,
+        .follows_right_speech = true,
+        .practices_compassion = true,
+        .sangha_contributions = 0,
+        .awaken = placeholder_component_awaken,
+        .begin_fasting = placeholder_component_begin_fasting,
+        .soft_shutdown = placeholder_component_soft_shutdown,
+        .preserve_state = placeholder_component_preserve_state
+    };
+
+    static tbos_conscious_net_component_t g_karma_firewall = {
+        .component_name = "Karmic Firewall",
+        .component_id = 4,
+        .awareness_level = CONSCIOUSNESS_AWARE,
+        .karma = 100,
+        .practicing_mindfulness = true,
+        .current_fasting_level = NET_FAST_NONE,
+        .power_budget_microwatts = 200,
+        .actual_consumption_microwatts = 200,
+        .can_fast = false,  /* Firewall always active */
+        .follows_right_speech = true,
+        .practices_compassion = true,
+        .sangha_contributions = 0,
+        .awaken = placeholder_component_awaken,
+        .begin_fasting = placeholder_component_begin_fasting,
+        .soft_shutdown = placeholder_component_soft_shutdown,
+        .preserve_state = placeholder_component_preserve_state
+    };
+
+    /* Register all components */
     if (register_component(&g_heartbeat_component) != TBOS_NET_SUCCESS) {
         printf("  [NET] Warning: failed to register heartbeat component\n");
+    }
+    if (register_component(&g_packet_router) != TBOS_NET_SUCCESS) {
+        printf("  [NET] Warning: failed to register packet router\n");
+    }
+    if (register_component(&g_connection_manager) != TBOS_NET_SUCCESS) {
+        printf("  [NET] Warning: failed to register connection manager\n");
+    }
+    if (register_component(&g_karma_firewall) != TBOS_NET_SUCCESS) {
+        printf("  [NET] Warning: failed to register karma firewall\n");
     }
     awaken_all_components();
 
@@ -416,7 +522,11 @@ int tbos_network_shutdown(void) {
 
     /* Leave sangha gracefully */
     printf("  [NET] Leaving Digital Sangha...\n");
-    /* TODO: Announce departure to sangha */
+    if (sangha_leave() == 0) {
+        printf("  [NET] Gracefully departed from sangha\n");
+    } else {
+        printf("  [NET] Warning: Could not announce departure (may have been offline)\n");
+    }
 
     /* Print final metrics */
     printf("  [NET] Final network karma: %ld\n", g_metrics.network_karma);

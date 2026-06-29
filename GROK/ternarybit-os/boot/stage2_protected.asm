@@ -8,8 +8,12 @@
 
 ; === CONSTANTS ===
 KERNEL_LOAD_ADDR    equ 0x10000    ; Load kernel at 64KB (1MB boundary would be 0x100000)
-KERNEL_SECTORS      equ 50         ; Load 50 sectors (~25KB) - adjust as needed
-KERNEL_START_SECTOR equ 10         ; Kernel starts at sector 10 (after boot + stage2)
+%ifndef KERNEL_SECTORS
+KERNEL_SECTORS      equ 50         ; Load 50 sectors (~25KB) - overridden by build script
+%endif
+%ifndef KERNEL_START_SECTOR
+KERNEL_START_SECTOR equ 20         ; Kernel starts at sector 20 - overridden by build script
+%endif
 BOOT_DRIVE_ADDR     equ 0x0500     ; Where stage1 saved boot drive
 
 ; GDT segment selectors (index * 8)

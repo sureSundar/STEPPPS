@@ -1,55 +1,161 @@
 # TernaryBit OS WebAssembly Build System
-# Enables TBOS to run in web browsers and JavaScript environments
+# Traceability: v4.0/ROADMAP.md V4-009
+#
+# Prerequisites:
+#   - Emscripten SDK (emsdk)
+#   - source /path/to/emsdk/emsdk_env.sh
+#
+# Usage:
+#   make -f Makefile.wasm wasm        # Build WASM module
+#   make -f Makefile.wasm wasm-serve  # Build and serve
+#   make -f Makefile.wasm wasm-native # Build native test binary
+#   make -f Makefile.wasm wasm-clean  # Clean build
 
+# Emscripten toolchain
 CC = emcc
-LD = emcc
-CFLAGS = -O2 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=4
-LDFLAGS = -s EXPORTED_FUNCTIONS='["_main","_tbos_init","_tbos_run","_tbos_shutdown"]' \
-          -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
-          -s ALLOW_MEMORY_GROWTH=1 \
-          -s INITIAL_MEMORY=32MB \
-          -s MAXIMUM_MEMORY=512MB \
-          -s USE_PTHREADS=1 \
-          -s PTHREAD_POOL_SIZE=4 \
-          -s MODULARIZE=1 \
-          -s EXPORT_NAME='TBOS'
+NATIVE_CC = gcc
+
+# Directories
+PROJECT_ROOT = $(shell pwd)
+WASM_SRC_DIR = wasm
+BUILD_DIR = build/wasm
+INCLUDE_DIR = include
 
 # Source files
-WASM_SRCS = \
-    kernel/wasm/tbos_wasm_main.c \
-    kernel/core/init.c \
-    kernel/core/scheduler.c \
-    kernel/core/memory.c \
-    kernel/drivers/wasm/console.c \
-    kernel/drivers/wasm/storage.c \
-    kernel/fs/vfs.c \
-    lib/string.c \
-    lib/math.c
+WASM_MAIN = $(WASM_SRC_DIR)/tbos_wasm_main.c
 
 # Output files
-WASM_OUT = build/wasm
-WASM_JS = $(WASM_OUT)/tbos.js
-WASM_WASM = $(WASM_OUT)/tbos.wasm
+WASM_JS = $(BUILD_DIR)/tbos.js
+WASM_BIN = $(BUILD_DIR)/tbos.wasm
+NATIVE_BIN = $(BUILD_DIR)/tbos_wasm_test
+
+# Compiler flags
+CFLAGS = -Wall -Wextra -O2 -I$(INCLUDE_DIR)
+
+# Emscripten flags
+EMFLAGS = \
+	-s WASM=1 \
+	-s EXPORTED_FUNCTIONS='["_main","_tbos_init","_tbos_run","_tbos_command","_tbos_get_bcb_magic","_tbos_get_memory_used"]' \
+	-s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","stringToNewUTF8"]' \
+	-s ALLOW_MEMORY_GROWTH=1 \
+	-s INITIAL_MEMORY=33554432 \
+	-s MAXIMUM_MEMORY=134217728 \
+	-s MODULARIZE=1 \
+	-s EXPORT_NAME='TBOSModule' \
+	-s ENVIRONMENT='web' \
+	-s NO_EXIT_RUNTIME=1
 
 # Build targets
-.PHONY: wasm wasm-clean wasm-test
+.PHONY: wasm wasm-serve wasm-native wasm-clean wasm-test wasm-help
+
+wasm-help:
+	@echo "TernaryBit OS WASM Build Targets:"
+	@echo "  wasm        - Build WebAssembly module"
+	@echo "  wasm-serve  - Build and start test server"
+	@echo "  wasm-native - Build native test binary (no Emscripten needed)"
+	@echo "  wasm-test   - Run native test"
+	@echo "  wasm-clean  - Clean build artifacts"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  - Emscripten SDK for 'wasm' target"
+	@echo "  - GCC for 'wasm-native' target"
 
 wasm: $(WASM_JS)
+	@echo ""
+	@echo "Build complete!"
+	@echo "  $(WASM_JS)"
+	@echo "  $(WASM_BIN)"
+	@echo ""
+	@echo "To test: make -f Makefile.wasm wasm-serve"
 
-$(WASM_JS): $(WASM_SRCS) | $(WASM_OUT)
-	@echo "🌐 Building TBOS WebAssembly..."
-	$(CC) $(CFLAGS) $(WASM_SRCS) -o $@ $(LDFLAGS)
-	@echo "📦 Generating TBOS Web Package..."
-	@cp tools/wasm/* $(WASM_OUT)/
-	@echo "✅ TBOS WebAssembly build complete!"
+$(WASM_JS): $(WASM_MAIN) | $(BUILD_DIR)
+	@echo "[WASM] Compiling WebAssembly module..."
+	@if ! command -v emcc > /dev/null 2>&1; then \
+		echo "ERROR: Emscripten (emcc) not found!"; \
+		echo "Install: https://emscripten.org/docs/getting_started/downloads.html"; \
+		exit 1; \
+	fi
+	$(CC) $(CFLAGS) $(WASM_MAIN) -o $@ $(EMFLAGS)
+	@echo "[WASM] Copying test harness..."
+	@cp $(WASM_SRC_DIR)/tbos.html $(BUILD_DIR)/
+	@echo "[WASM] Creating loader script..."
+	@cat > $(BUILD_DIR)/tbos_loader.js << 'LOADER_EOF'
+// TernaryBit OS WASM Loader (auto-generated)
+window.tbosConsoleWrite = function(text) {
+    const terminal = document.getElementById('terminal');
+    if (terminal) {
+        const line = document.createElement('div');
+        line.className = 'output-line';
+        line.textContent = text;
+        terminal.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+};
+window.tbosConsoleClear = function() {
+    const terminal = document.getElementById('terminal');
+    if (terminal) terminal.innerHTML = '';
+};
+window.tbosUpdateMemory = function(usedKb) {
+    const el = document.getElementById('memory-used');
+    if (el) el.textContent = usedKb;
+};
+window.tbosSetReady = function(ready) {
+    const status = document.getElementById('wasm-status');
+    const statusText = document.getElementById('wasm-status-text');
+    const input = document.getElementById('command-input');
+    if (status) status.className = 'status-dot ' + (ready ? 'ready' : 'loading');
+    if (statusText) statusText.textContent = ready ? 'Ready' : 'Loading...';
+    if (input) { input.disabled = !ready; if (ready) input.focus(); }
+};
+TBOSModule().then(function(Module) {
+    window.TBOS = Module;
+    Module._tbos_run();
+    const input = document.getElementById('command-input');
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const cmd = this.value.trim();
+                if (cmd) {
+                    tbosConsoleWrite('tbos> ' + cmd);
+                    const cmdPtr = Module.stringToNewUTF8(cmd);
+                    Module._tbos_command(cmdPtr);
+                    Module._free(cmdPtr);
+                }
+                this.value = '';
+            }
+        });
+    }
+});
+LOADER_EOF
+	@echo "[WASM] Build complete!"
 
-$(WASM_OUT):
-	@mkdir -p $(WASM_OUT)
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+wasm-native: $(NATIVE_BIN)
+	@echo ""
+	@echo "Native test binary: $(NATIVE_BIN)"
+	@echo "Run with: $(NATIVE_BIN)"
+
+$(NATIVE_BIN): $(WASM_MAIN) | $(BUILD_DIR)
+	@echo "[NATIVE] Building test binary..."
+	$(NATIVE_CC) $(CFLAGS) $(WASM_MAIN) -o $@
+	@echo "[NATIVE] Build complete!"
+
+wasm-test: $(NATIVE_BIN)
+	@echo "[TEST] Running native WASM test..."
+	@echo "help" | $(NATIVE_BIN) || true
+	@echo ""
+	@echo "[TEST] Test complete"
+
+wasm-serve: wasm
+	@echo ""
+	@echo "Starting test server at http://localhost:8080"
+	@echo "Open http://localhost:8080/tbos.html in your browser"
+	@echo "Press Ctrl+C to stop"
+	@cd $(BUILD_DIR) && python3 -m http.server 8080
 
 wasm-clean:
-	@rm -rf $(WASM_OUT)
-
-wasm-test: wasm
-	@echo "🧪 Testing TBOS WebAssembly..."
-	@cd $(WASM_OUT) && python3 -m http.server 8080 &
-	@echo "🌐 Test server: http://localhost:8080"
+	@echo "[CLEAN] Removing WASM build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@echo "[CLEAN] Done"

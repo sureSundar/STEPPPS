@@ -5,6 +5,7 @@
 [EXTERN kernel_main]
 [EXTERN g_tbds_pointer]
 [EXTERN g_tbds_length]
+[EXTERN g_bcb_pointer]      ; V4.0 BCB pointer
 global serial_init
 global serial_write_char
 
@@ -12,10 +13,13 @@ section .text
 global _start
 
 _start:
-    ; Preserve TBDS pointer/length provided via EAX/EBX
-    ; Codex: Doing this before touching AX so kernel_main sees real metadata.
+    ; Preserve boot info pointers provided by Stage 2:
+    ; EAX = TBDS pointer (legacy)
+    ; EBX = TBDS length
+    ; ECX = BCB pointer (V4.0)
     mov [g_tbds_pointer], eax
     mov [g_tbds_length], ebx
+    mov [g_bcb_pointer], ecx    ; V4.0 BCB support
 
     ; Serial bring-up disabled during kernel smoke-test
 

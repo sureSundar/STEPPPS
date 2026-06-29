@@ -2,7 +2,7 @@
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -I../../include -I../../core -I../common
-LDFLAGS = -lm
+LDFLAGS = -lm -liconv
 
 # Source files
 SHELL_SRCS = \
@@ -18,6 +18,7 @@ SHELL_SRCS = \
     commands_week8.c \
     commands_week9.c \
     commands_week10.c \
+    commands_pxfs.c \
     main_shell.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 

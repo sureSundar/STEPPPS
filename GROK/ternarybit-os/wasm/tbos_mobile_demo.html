@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<!--
+  TernaryBit OS - Mobile Filesystem Demo
+  Test PXFS, UCFS, and RF2S on mobile devices
+
+  Usage: Open this file directly in a mobile browser or serve via:
+    python3 -m http.server 8080 --directory wasm/
+    Open: http://<your-ip>:8080/tbos_mobile_demo.html
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>TBOS Filesystem Demo</title>
+    <style>
+        :root {
+            --bg: #0a0a1a;
+            --card-bg: #12122a;
+            --accent: #00ff88;
+            --accent2: #ff6b35;
+            --accent3: #00aaff;
+            --text: #e0e0e0;
+            --muted: #666;
+            --border: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 10px;
+            padding-bottom: 80px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 15px;
+        }
+
+        header h1 {
+            font-size: 1.5em;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: var(--muted);
+            font-size: 0.9em;
+        }
+
+        .device-id {
+            background: var(--card-bg);
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: var(--accent3);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 80px;
+            padding: 12px 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.85em;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+            font-weight: bold;
+        }
+
+        .tab-icon {
+            font-size: 1.5em;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Panels */
+        .panel {
+            display: none;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .panel h2 {
+            font-size: 1.1em;
+            color: var(--accent);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel p {
+            color: var(--muted);
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        /* Input Groups */
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85em;
+            color: var(--muted);
+            margin-bottom: 5px;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 16px; /* Prevents zoom on iOS */
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+            margin-top: 10px;
+        }
+
+        /* Output */
+        .output {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 60px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .output .path {
+            color: var(--accent);
+        }
+
+        .output .freq {
+            color: var(--accent2);
+        }
+
+        .output .unicode {
+            color: var(--accent3);
+        }
+
+        /* File List */
+        .file-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .file-path {
+            font-size: 0.75em;
+            color: var(--muted);
+            font-family: monospace;
+        }
+
+        .file-delete {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.8em;
+        }
+
+        /* RF2S Frequency Visualization */
+        .freq-viz {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .freq-wave {
+            width: 60px;
+            height: 40px;
+            position: relative;
+        }
+
+        .freq-wave svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .freq-value {
+            flex: 1;
+        }
+
+        .freq-value .big {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--accent2);
+        }
+
+        .freq-value .unit {
+            font-size: 0.9em;
+            color: var(--muted);
+        }
+
+        /* PXFS Pixel Display */
+        .pixel-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+
+        .pixel {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .pixel:active {
+            transform: scale(0.9);
+        }
+
+        /* UCFS Unicode Display */
+        .unicode-demo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .unicode-char {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            border-radius: 8px;
+            font-size: 1.8em;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .unicode-char.selected {
+            border-color: var(--accent3);
+            background: rgba(0, 170, 255, 0.2);
+        }
+
+        /* Mesh Network */
+        .mesh-container {
+            position: relative;
+            height: 200px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .mesh-node {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            animation: pulse 2s infinite;
+        }
+
+        .mesh-node.self {
+            border-color: var(--accent2);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TernaryBit OS</h1>
+        <p>Filesystem Integration Demo</p>
+        <div class="device-id" id="device-id">Loading...</div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" data-panel="rf2s">
+            <span class="tab-icon">📡</span>
+            RF2S
+        </div>
+        <div class="tab" data-panel="pxfs">
+            <span class="tab-icon">🎨</span>
+            PXFS
+        </div>
+        <div class="tab" data-panel="ucfs">
+            <span class="tab-icon">🔤</span>
+            UCFS
+        </div>
+        <div class="tab" data-panel="files">
+            <span class="tab-icon">📁</span>
+            Files
+        </div>
+    </div>
+
+    <!-- RF2S Panel -->
+    <div class="panel active" id="panel-rf2s">
+        <h2>📡 RF2S - Radio Frequency Filesystem</h2>
+        <p>Create files at radio frequencies. Paths like /rf2s/432MHz/sensor.dat</p>
+
+        <div class="freq-viz">
+            <div class="freq-wave">
+                <svg viewBox="0 0 60 40">
+                    <path id="wave-path" fill="none" stroke="#ff6b35" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="freq-value">
+                <span class="big" id="freq-display">432</span>
+                <span class="unit" id="freq-unit">MHz</span>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Frequency</label>
+            <input type="number" id="rf2s-freq" value="432" step="0.1" inputmode="decimal">
+        </div>
+
+        <div class="input-group">
+            <label>Unit</label>
+            <select id="rf2s-unit">
+                <option value="Hz">Hz</option>
+                <option value="kHz">kHz</option>
+                <option value="MHz" selected>MHz</option>
+                <option value="GHz">GHz</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>File Name</label>
+            <input type="text" id="rf2s-filename" placeholder="sensor.dat" value="sensor.dat">
+        </div>
+
+        <div class="input-group">
+            <label>Data</label>
+            <input type="text" id="rf2s-data" placeholder="Enter sensor data..." value="temperature:24.5">
+        </div>
+
+        <button class="btn btn-primary" onclick="createRF2SFile()">Create RF2S File</button>
+
+        <div class="input-group" style="margin-top: 15px;">
+            <label>Canonical Path</label>
+            <div class="output" id="rf2s-output">
+                <span class="path">/rf2s/</span><span class="freq">432000000</span><span class="path">/sensor.dat</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PXFS Panel -->
+    <div class="panel" id="panel-pxfs">
+        <h2>🎨 PXFS - Pixel Filesystem</h2>
+        <p>Paths use RGB pixels as delimiters. Tap pixels to set path color.</p>
+
+        <div class="pixel-grid" id="pixel-grid"></div>
+
+        <div class="input-group">
+            <label>Selected Color</label>
+            <div class="output">
+                RGB(<span id="pxfs-r">255</span>, <span id="pxfs-g">0</span>, <span id="pxfs-b">0</span>)
+                <span id="pxfs-preview" style="display:inline-block;width:20px;height:20px;background:red;vertical-align:middle;margin-left:10px;border-radius:4px;"></span>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>File Path</label>
+            <input type="text" id="pxfs-path" placeholder="system/kernel/boot" value="system/kernel/boot">
+        </div>
+
+        <div class="input-group">
+            <label>Data</label>
+            <input type="text" id="pxfs-data" placeholder="File content..." value="TBOS Kernel v4.0">
+        </div>
+
+        <button class="btn btn-primary" onclick="createPXFSFile()">Create PXFS File</button>
+
+        <div class="input-group" style="margin-top: 15px;">
+            <label>PXFS Path</label>
+            <div class="output" id="pxfs-output">
+                {255,0,0}system{255,0,0}kernel{255,0,0}boot
+            </div>
+        </div>
+    </div>
+
+    <!-- UCFS Panel -->
+    <div class="panel" id="panel-ucfs">
+        <h2>🔤 UCFS - Unicode Filesystem</h2>
+        <p>Paths use Unicode characters as delimiters. Select a symbol.</p>
+
+        <div class="unicode-demo" id="unicode-demo"></div>
+
+        <div class="input-group">
+            <label>Selected Delimiter</label>
+            <div class="output">
+                <span id="ucfs-char">🕉️</span> (U+<span id="ucfs-code">1F549</span>)
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>File Path</label>
+            <input type="text" id="ucfs-path" placeholder="mantras/gayatri" value="mantras/gayatri">
+        </div>
+
+        <div class="input-group">
+            <label>Data</label>
+            <input type="text" id="ucfs-data" placeholder="Content..." value="Om Bhur Bhuva Swaha">
+        </div>
+
+        <button class="btn btn-primary" onclick="createUCFSFile()">Create UCFS File</button>
+
+        <div class="input-group" style="margin-top: 15px;">
+            <label>UCFS Path</label>
+            <div class="output" id="ucfs-output">
+                <span class="unicode">🕉️</span>/mantras/gayatri
+            </div>
+        </div>
+    </div>
+
+    <!-- Files Panel -->
+    <div class="panel" id="panel-files">
+        <h2>📁 Virtual Filesystem</h2>
+        <p>All files created in this session</p>
+
+        <ul class="file-list" id="file-list"></ul>
+
+        <button class="btn btn-secondary" onclick="clearAllFiles()">Clear All Files</button>
+    </div>
+
+    <!-- Mesh Network Visualization (bonus) -->
+    <div class="panel">
+        <h2>🌐 RF2S Mesh Network</h2>
+        <p>Simulated devices in the mesh</p>
+        <div class="mesh-container" id="mesh-container"></div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-dot"></span>
+            <span>Connected</span>
+        </div>
+        <div class="status-item">
+            <span id="file-count">0</span> files
+        </div>
+        <div class="status-item">
+            <span id="memory-used">0</span> KB
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // TernaryBit OS Mobile Filesystem Demo
+        // ============================================================
+
+        const TBOS = {
+            files: [],
+            deviceId: null,
+            selectedColor: { r: 255, g: 0, b: 0 },
+            selectedUnicode: { char: '🕉️', code: '1F549' },
+            memoryUsed: 0
+        };
+
+        // Unicode delimiters available
+        const UNICODE_CHARS = [
+            { char: '🕉️', code: '1F549', name: 'Om' },
+            { char: '☯️', code: '262F', name: 'Yin Yang' },
+            { char: '🔒', code: '1F512', name: 'Lock' },
+            { char: '📁', code: '1F4C1', name: 'Folder' },
+            { char: '⚡', code: '26A1', name: 'Lightning' },
+            { char: '🌟', code: '1F31F', name: 'Star' },
+            { char: '🔮', code: '1F52E', name: 'Crystal' },
+            { char: '🎵', code: '1F3B5', name: 'Music' }
+        ];
+
+        // Predefined colors
+        const COLORS = [
+            '#ff0000', '#ff6600', '#ffcc00', '#00ff00',
+            '#00ffcc', '#0066ff', '#6600ff', '#ff00ff',
+            '#ffffff', '#888888', '#444444', '#000000',
+            '#ff3366', '#33ff66', '#3366ff', '#ff9900'
+        ];
+
+        // ============================================================
+        // Initialization
+        // ============================================================
+
+        function init() {
+            // Generate device ID
+            TBOS.deviceId = 'TBOS_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            document.getElementById('device-id').textContent = TBOS.deviceId;
+
+            // Setup tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.panel));
+            });
+
+            // Setup pixel grid
+            setupPixelGrid();
+
+            // Setup Unicode demo
+            setupUnicodeDemo();
+
+            // Setup RF2S wave animation
+            animateWave();
+
+            // Setup mesh network
+            setupMeshNetwork();
+
+            // Update displays
+            updateRF2SOutput();
+            updatePXFSOutput();
+            updateUCFSOutput();
+
+            // Event listeners
+            document.getElementById('rf2s-freq').addEventListener('input', updateRF2SOutput);
+            document.getElementById('rf2s-unit').addEventListener('change', updateRF2SOutput);
+            document.getElementById('rf2s-filename').addEventListener('input', updateRF2SOutput);
+            document.getElementById('pxfs-path').addEventListener('input', updatePXFSOutput);
+            document.getElementById('ucfs-path').addEventListener('input', updateUCFSOutput);
+
+            // Load from localStorage
+            loadFiles();
+        }
+
+        function switchTab(panelId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+            document.querySelector(`[data-panel="${panelId}"]`).classList.add('active');
+            document.getElementById(`panel-${panelId}`).classList.add('active');
+        }
+
+        // ============================================================
+        // RF2S Functions
+        // ============================================================
+
+        function updateRF2SOutput() {
+            const freq = parseFloat(document.getElementById('rf2s-freq').value) || 432;
+            const unit = document.getElementById('rf2s-unit').value;
+            const filename = document.getElementById('rf2s-filename').value || 'file.dat';
+
+            // Calculate Hz
+            let hz = freq;
+            switch (unit) {
+                case 'kHz': hz *= 1000; break;
+                case 'MHz': hz *= 1000000; break;
+                case 'GHz': hz *= 1000000000; break;
+            }
+
+            // Update display
+            document.getElementById('freq-display').textContent = freq;
+            document.getElementById('freq-unit').textContent = unit;
+
+            // Update output
+            const output = document.getElementById('rf2s-output');
+            output.innerHTML = `<span class="path">/rf2s/</span><span class="freq">${Math.floor(hz)}</span><span class="path">/${filename}</span>`;
+        }
+
+        function animateWave() {
+            const path = document.getElementById('wave-path');
+            let offset = 0;
+
+            function draw() {
+                const freq = parseFloat(document.getElementById('rf2s-freq').value) || 432;
+                const unit = document.getElementById('rf2s-unit').value;
+
+                // Scale wavelength based on frequency
+                let scale = 1;
+                switch (unit) {
+                    case 'Hz': scale = 0.1; break;
+                    case 'kHz': scale = 0.3; break;
+                    case 'MHz': scale = 1; break;
+                    case 'GHz': scale = 3; break;
+                }
+
+                const wavelength = 30 / (freq * scale * 0.01 + 1);
+                let d = 'M 0 20';
+                for (let x = 0; x <= 60; x++) {
+                    const y = 20 + Math.sin((x + offset) / wavelength * Math.PI * 2) * 15;
+                    d += ` L ${x} ${y}`;
+                }
+                path.setAttribute('d', d);
+                offset += 0.5;
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        function createRF2SFile() {
+            const freq = parseFloat(document.getElementById('rf2s-freq').value) || 432;
+            const unit = document.getElementById('rf2s-unit').value;
+            const filename = document.getElementById('rf2s-filename').value || 'file.dat';
+            const data = document.getElementById('rf2s-data').value;
+
+            let hz = freq;
+            switch (unit) {
+                case 'kHz': hz *= 1000; break;
+                case 'MHz': hz *= 1000000; break;
+                case 'GHz': hz *= 1000000000; break;
+            }
+
+            const file = {
+                type: 'rf2s',
+                path: `/rf2s/${Math.floor(hz)}/${filename}`,
+                displayPath: `/rf2s/${freq}${unit}/${filename}`,
+                name: filename,
+                data: data,
+                size: data.length,
+                created: Date.now(),
+                icon: '📡'
+            };
+
+            addFile(file);
+            showToast('RF2S file created!');
+        }
+
+        // ============================================================
+        // PXFS Functions
+        // ============================================================
+
+        function setupPixelGrid() {
+            const grid = document.getElementById('pixel-grid');
+            COLORS.forEach((color, i) => {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.style.backgroundColor = color;
+                pixel.onclick = () => selectColor(color);
+                grid.appendChild(pixel);
+            });
+        }
+
+        function selectColor(hex) {
+            // Parse hex color
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+
+            TBOS.selectedColor = { r, g, b };
+
+            document.getElementById('pxfs-r').textContent = r;
+            document.getElementById('pxfs-g').textContent = g;
+            document.getElementById('pxfs-b').textContent = b;
+            document.getElementById('pxfs-preview').style.backgroundColor = hex;
+
+            updatePXFSOutput();
+        }
+
+        function updatePXFSOutput() {
+            const { r, g, b } = TBOS.selectedColor;
+            const pathInput = document.getElementById('pxfs-path').value || 'file';
+            const parts = pathInput.split('/').filter(p => p);
+
+            const pxfsPath = parts.map(p => `{${r},${g},${b}}${p}`).join('');
+            document.getElementById('pxfs-output').textContent = pxfsPath;
+        }
+
+        function createPXFSFile() {
+            const { r, g, b } = TBOS.selectedColor;
+            const pathInput = document.getElementById('pxfs-path').value || 'file';
+            const data = document.getElementById('pxfs-data').value;
+            const parts = pathInput.split('/').filter(p => p);
+            const filename = parts[parts.length - 1];
+
+            const pxfsPath = parts.map(p => `{${r},${g},${b}}${p}`).join('');
+            const canonicalPath = `/pxfs/${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}/${parts.join('/')}`;
+
+            const file = {
+                type: 'pxfs',
+                path: canonicalPath,
+                displayPath: pxfsPath,
+                name: filename,
+                data: data,
+                size: data.length,
+                created: Date.now(),
+                icon: '🎨',
+                color: `rgb(${r},${g},${b})`
+            };
+
+            addFile(file);
+            showToast('PXFS file created!');
+        }
+
+        // ============================================================
+        // UCFS Functions
+        // ============================================================
+
+        function setupUnicodeDemo() {
+            const demo = document.getElementById('unicode-demo');
+            UNICODE_CHARS.forEach((uc, i) => {
+                const char = document.createElement('div');
+                char.className = 'unicode-char' + (i === 0 ? ' selected' : '');
+                char.textContent = uc.char;
+                char.title = uc.name;
+                char.onclick = () => selectUnicode(uc, char);
+                demo.appendChild(char);
+            });
+        }
+
+        function selectUnicode(uc, el) {
+            document.querySelectorAll('.unicode-char').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+
+            TBOS.selectedUnicode = uc;
+            document.getElementById('ucfs-char').textContent = uc.char;
+            document.getElementById('ucfs-code').textContent = uc.code;
+
+            updateUCFSOutput();
+        }
+
+        function updateUCFSOutput() {
+            const { char, code } = TBOS.selectedUnicode;
+            const pathInput = document.getElementById('ucfs-path').value || 'file';
+
+            document.getElementById('ucfs-output').innerHTML =
+                `<span class="unicode">${char}</span>/${pathInput}`;
+        }
+
+        function createUCFSFile() {
+            const { char, code } = TBOS.selectedUnicode;
+            const pathInput = document.getElementById('ucfs-path').value || 'file';
+            const data = document.getElementById('ucfs-data').value;
+            const parts = pathInput.split('/').filter(p => p);
+            const filename = parts[parts.length - 1];
+
+            const file = {
+                type: 'ucfs',
+                path: `/ucfs/U+${code}/${parts.join('/')}`,
+                displayPath: `${char}/${pathInput}`,
+                name: filename,
+                data: data,
+                size: data.length,
+                created: Date.now(),
+                icon: char
+            };
+
+            addFile(file);
+            showToast('UCFS file created!');
+        }
+
+        // ============================================================
+        // File Management
+        // ============================================================
+
+        function addFile(file) {
+            TBOS.files.push(file);
+            TBOS.memoryUsed += file.size + 64; // file + metadata overhead
+            saveFiles();
+            updateFileList();
+            updateStatus();
+        }
+
+        function removeFile(index) {
+            TBOS.memoryUsed -= TBOS.files[index].size + 64;
+            TBOS.files.splice(index, 1);
+            saveFiles();
+            updateFileList();
+            updateStatus();
+        }
+
+        function clearAllFiles() {
+            TBOS.files = [];
+            TBOS.memoryUsed = 0;
+            saveFiles();
+            updateFileList();
+            updateStatus();
+            showToast('All files cleared');
+        }
+
+        function updateFileList() {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+
+            if (TBOS.files.length === 0) {
+                list.innerHTML = '<li style="color:var(--muted);padding:20px;text-align:center;">No files yet. Create some!</li>';
+                return;
+            }
+
+            TBOS.files.forEach((file, i) => {
+                const item = document.createElement('li');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span class="file-icon" style="${file.color ? 'color:' + file.color : ''}">${file.icon}</span>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-path">${file.displayPath}</div>
+                    </div>
+                    <button class="file-delete" onclick="removeFile(${i})">✕</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function updateStatus() {
+            document.getElementById('file-count').textContent = TBOS.files.length;
+            document.getElementById('memory-used').textContent = Math.round(TBOS.memoryUsed / 1024 * 10) / 10;
+        }
+
+        function saveFiles() {
+            localStorage.setItem('tbos_files', JSON.stringify(TBOS.files));
+            localStorage.setItem('tbos_memory', TBOS.memoryUsed);
+        }
+
+        function loadFiles() {
+            try {
+                const files = localStorage.getItem('tbos_files');
+                const memory = localStorage.getItem('tbos_memory');
+                if (files) TBOS.files = JSON.parse(files);
+                if (memory) TBOS.memoryUsed = parseInt(memory);
+                updateFileList();
+                updateStatus();
+            } catch (e) {
+                console.error('Failed to load files:', e);
+            }
+        }
+
+        // ============================================================
+        // Mesh Network Visualization
+        // ============================================================
+
+        function setupMeshNetwork() {
+            const container = document.getElementById('mesh-container');
+            const devices = [
+                { id: TBOS.deviceId, icon: '📱', x: 50, y: 50, self: true },
+                { id: 'TBOS_CALC001', icon: '🧮', x: 20, y: 30 },
+                { id: 'TBOS_RADIO01', icon: '📻', x: 80, y: 40 },
+                { id: 'TBOS_SENSOR1', icon: '🌡️', x: 30, y: 70 }
+            ];
+
+            devices.forEach(d => {
+                const node = document.createElement('div');
+                node.className = 'mesh-node' + (d.self ? ' self' : '');
+                node.style.left = `calc(${d.x}% - 25px)`;
+                node.style.top = `calc(${d.y}% - 25px)`;
+                node.textContent = d.icon;
+                node.title = d.id;
+                container.appendChild(node);
+            });
+        }
+
+        // ============================================================
+        // Utilities
+        // ============================================================
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

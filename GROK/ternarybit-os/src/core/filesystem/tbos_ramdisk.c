@@ -677,7 +677,95 @@ void tbos_fs_print_status(void) {
     printf("\n");
 }
 
+/**
+ * @brief Helper function to print tree recursively
+ */
+static void print_tree_recursive(const char* base_path, int depth, const char* prefix) {
+    if (depth > 10) return;  /* Limit recursion depth */
+
+    char normalized[TBOS_MAX_PATH];
+    if (!normalize_path(base_path, normalized, sizeof(normalized))) {
+        return;
+    }
+
+    /* Find all children of this directory */
+    uint32_t child_count = 0;
+    uint32_t child_indices[64];
+
+    for (uint32_t i = 0; i < TBOS_MAX_FILES && child_count < 64; i++) {
+        if (g_inodes[i].inode_num == 0) continue;
+
+        /* Check if this is a direct child */
+        const char* child_path = g_inodes[i].path;
+        size_t base_len = strlen(normalized);
+
+        /* Must start with base path */
+        if (strncmp(child_path, normalized, base_len) != 0) continue;
+
+        /* Must have content after base path */
+        const char* remainder = child_path + base_len;
+        if (remainder[0] == '\0') continue;  /* Same path */
+        if (remainder[0] != '/' && base_len > 1) continue;
+
+        /* Skip leading slash */
+        if (remainder[0] == '/') remainder++;
+        if (remainder[0] == '\0') continue;
+
+        /* Must not have any more slashes (direct child only) */
+        if (strchr(remainder, '/') != NULL) continue;
+
+        child_indices[child_count++] = i;
+    }
+
+    /* Print each child */
+    for (uint32_t c = 0; c < child_count; c++) {
+        tbos_inode_t* child = &g_inodes[child_indices[c]];
+        const char* name = strrchr(child->path, '/');
+        if (name) name++; else name = child->path;
+
+        /* Print tree branch */
+        bool is_last = (c == child_count - 1);
+        printf("%s%s── ", prefix, is_last ? "└" : "├");
+
+        /* Print name with type indicator */
+        if (child->file_type == TBOS_FT_DIRECTORY) {
+            printf("\033[1;34m%s/\033[0m\n", name);  /* Blue for directories */
+
+            /* Recurse into subdirectory */
+            char new_prefix[256];
+            snprintf(new_prefix, sizeof(new_prefix), "%s%s   ", prefix, is_last ? " " : "│");
+            print_tree_recursive(child->path, depth + 1, new_prefix);
+        } else {
+            printf("%s", name);
+            if (child->size > 0) {
+                printf(" (%zu bytes)", child->size);
+            }
+            printf("\n");
+        }
+    }
+}
+
 void tbos_fs_print_tree(const char* path) {
-    printf("Directory tree for: %s\n", path);
-    printf("(Tree view not yet implemented)\n");
+    char normalized[TBOS_MAX_PATH];
+    if (!normalize_path(path, normalized, sizeof(normalized))) {
+        printf("Invalid path: %s\n", path);
+        return;
+    }
+
+    /* Print root */
+    tbos_inode_t* root = find_inode_exact(normalized);
+    if (!root) {
+        printf("Path not found: %s\n", path);
+        return;
+    }
+
+    printf("\033[1;34m%s\033[0m\n", normalized);  /* Blue for root */
+
+    if (root->file_type != TBOS_FT_DIRECTORY) {
+        printf("Not a directory: %s\n", path);
+        return;
+    }
+
+    /* Print tree recursively */
+    print_tree_recursive(normalized, 0, "");
 }

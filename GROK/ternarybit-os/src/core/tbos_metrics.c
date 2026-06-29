@@ -4,6 +4,7 @@
  */
 
 #include "tbos_metrics.h"
+#include "process/tbos_process.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,8 +98,16 @@ int tbos_metrics_record_power(float watts,
     sample->watts = watts;
     sample->awareness = consciousness;
     sample->karma = karma;
-    sample->active_processes = 0;  /* TODO: Get from process manager */
-    sample->active_threads = 0;
+    /* Get process count from process manager */
+    tbos_scheduler_stats_t sched_stats;
+    if (tbos_scheduler_get_stats(&sched_stats) == 0) {
+        sample->active_processes = sched_stats.running_processes +
+                                   sched_stats.ready_processes;
+        sample->active_threads = sched_stats.total_processes;
+    } else {
+        sample->active_processes = 0;
+        sample->active_threads = 0;
+    }
 
     /* Update circular buffer */
     g_sample_index = (g_sample_index + 1) % TBOS_MAX_METRIC_SAMPLES;

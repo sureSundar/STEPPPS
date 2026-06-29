@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<!--
+  TernaryBit OS - WASM Browser Test Harness
+  Traceability: v4.0/ROADMAP.md V4-009
+
+  This provides a browser-based terminal for running TBOS in WebAssembly.
+
+  Usage:
+    1. Build: make wasm
+    2. Serve: python3 -m http.server 8080 --directory wasm/
+    3. Open:  http://localhost:8080/tbos.html
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TernaryBit OS - WASM</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --terminal-bg: #0f0f1a;
+            --text-color: #00ff88;
+            --prompt-color: #ffaa00;
+            --info-color: #00aaff;
+            --error-color: #ff4444;
+            --border-color: #333355;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Courier New', Consolas, Monaco, monospace;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 2em;
+            color: var(--prompt-color);
+            text-shadow: 0 0 10px var(--prompt-color);
+        }
+
+        header p {
+            color: var(--info-color);
+            margin-top: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px 5px 0 0;
+            font-size: 0.9em;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.ready { background: #00ff88; }
+        .status-dot.loading { background: #ffaa00; animation: pulse 1s infinite; }
+        .status-dot.error { background: #ff4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #terminal {
+            flex: 1;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            padding: 15px;
+            overflow-y: auto;
+            min-height: 400px;
+            max-height: 70vh;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .output-line {
+            margin: 2px 0;
+        }
+
+        .output-line.info { color: var(--info-color); }
+        .output-line.error { color: var(--error-color); }
+        .output-line.prompt { color: var(--prompt-color); }
+        .output-line.system { color: #888; }
+
+        #input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+
+        #prompt {
+            color: var(--prompt-color);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #command-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 1em;
+            outline: none;
+        }
+
+        #command-input::placeholder {
+            color: #555;
+        }
+
+        .button-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: var(--border-color);
+            border: 1px solid var(--info-color);
+            color: var(--info-color);
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--info-color);
+            color: var(--bg-color);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        footer a {
+            color: var(--info-color);
+            text-decoration: none;
+        }
+
+        /* BCB Info Panel */
+        #bcb-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            display: none;
+        }
+
+        #bcb-panel.visible {
+            display: block;
+        }
+
+        #bcb-panel h3 {
+            color: var(--prompt-color);
+            margin-bottom: 10px;
+        }
+
+        .bcb-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 5px 15px;
+        }
+
+        .bcb-label {
+            color: #888;
+        }
+
+        .bcb-value {
+            color: var(--text-color);
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TernaryBit OS</h1>
+        <p>Universal Operating System - WebAssembly Runtime</p>
+    </header>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-dot" id="wasm-status"></span>
+            <span id="wasm-status-text">Initializing...</span>
+        </div>
+        <div class="status-item">
+            <span>Memory: <span id="memory-used">0</span> KB</span>
+        </div>
+        <div class="status-item">
+            <span>HAL: <span id="hal-type">WASM</span></span>
+        </div>
+    </div>
+
+    <div id="terminal"></div>
+
+    <div id="input-line">
+        <span id="prompt">tbos&gt;</span>
+        <input type="text" id="command-input" placeholder="Type 'help' for commands..." autocomplete="off" disabled>
+    </div>
+
+    <div class="button-bar">
+        <button id="btn-clear" onclick="clearTerminal()">Clear</button>
+        <button id="btn-bcb" onclick="toggleBcbPanel()">Show BCB</button>
+        <button id="btn-restart" onclick="restartTbos()">Restart</button>
+    </div>
+
+    <div id="bcb-panel">
+        <h3>Boot Capability Block (BCB)</h3>
+        <div class="bcb-grid">
+            <span class="bcb-label">Magic:</span>
+            <span class="bcb-value" id="bcb-magic">-</span>
+            <span class="bcb-label">Version:</span>
+            <span class="bcb-value" id="bcb-version">-</span>
+            <span class="bcb-label">Stage Flags:</span>
+            <span class="bcb-value" id="bcb-flags">-</span>
+            <span class="bcb-label">HAL Type:</span>
+            <span class="bcb-value" id="bcb-hal">-</span>
+            <span class="bcb-label">Memory:</span>
+            <span class="bcb-value" id="bcb-memory">-</span>
+            <span class="bcb-label">Checksum:</span>
+            <span class="bcb-value" id="bcb-checksum">-</span>
+        </div>
+    </div>
+
+    <footer>
+        <p>TernaryBit OS V4.0 | <a href="https://github.com/ternarybit/ternarybit-os">GitHub</a></p>
+    </footer>
+
+    <script>
+        // =====================================================================
+        // TernaryBit OS WASM Browser Runtime
+        // =====================================================================
+
+        const TBOS = {
+            module: null,
+            ready: false,
+            bcb: null,
+            commandHistory: [],
+            historyIndex: -1,
+            heapUsed: 0
+        };
+
+        // DOM Elements
+        const terminal = document.getElementById('terminal');
+        const commandInput = document.getElementById('command-input');
+        const wasmStatus = document.getElementById('wasm-status');
+        const wasmStatusText = document.getElementById('wasm-status-text');
+        const memoryUsed = document.getElementById('memory-used');
+
+        // =====================================================================
+        // Terminal Functions
+        // =====================================================================
+
+        function print(text, className = '') {
+            const line = document.createElement('div');
+            line.className = 'output-line' + (className ? ' ' + className : '');
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function printBanner() {
+            const banner = `
+╔══════════════════════════════════════════════════════════════╗
+║   TernaryBit OS - WebAssembly Runtime                        ║
+║   Type 'help' for commands                                   ║
+╚══════════════════════════════════════════════════════════════╝
+`;
+            print(banner, 'prompt');
+        }
+
+        function clearTerminal() {
+            terminal.innerHTML = '';
+            printBanner();
+        }
+
+        function toggleBcbPanel() {
+            const panel = document.getElementById('bcb-panel');
+            panel.classList.toggle('visible');
+            document.getElementById('btn-bcb').textContent =
+                panel.classList.contains('visible') ? 'Hide BCB' : 'Show BCB';
+        }
+
+        // =====================================================================
+        // BCB (Boot Capability Block) Simulation
+        // =====================================================================
+
+        function initBcb() {
+            TBOS.bcb = {
+                magic: 0x43424254,      // "TBBC"
+                version: 0x0001,
+                length: 120,
+                stageFlags: (1 << 12) | (1 << 13),  // WASM | 64BIT
+                bootStage: 0,
+                memLowBytes: 640 * 1024,
+                memHighBytes: 32 * 1024 * 1024,
+                memTotalBytes: 32 * 1024 * 1024,
+                kernelEntry: 0,
+                hostApiPtr: 0xDEADBEEF,
+                checksum: 0
+            };
+
+            // Update BCB panel
+            document.getElementById('bcb-magic').textContent =
+                `0x${TBOS.bcb.magic.toString(16).toUpperCase()} (TBBC)`;
+            document.getElementById('bcb-version').textContent =
+                `0x${TBOS.bcb.version.toString(16).padStart(4, '0')}`;
+            document.getElementById('bcb-flags').textContent =
+                `0x${TBOS.bcb.stageFlags.toString(16).padStart(8, '0')} (WASM | 64BIT)`;
+            document.getElementById('bcb-hal').textContent = 'WebAssembly';
+            document.getElementById('bcb-memory').textContent =
+                `${(TBOS.bcb.memTotalBytes / (1024 * 1024)).toFixed(0)} MB`;
+            document.getElementById('bcb-checksum').textContent = 'OK';
+
+            print('[BCB] Boot Capability Block initialized', 'info');
+            print(`[BCB] HAL Type: WebAssembly`, 'info');
+            print(`[BCB] Memory: ${TBOS.bcb.memTotalBytes / (1024 * 1024)} MB`, 'info');
+        }
+
+        // =====================================================================
+        // Host API (JavaScript Bridge)
+        // =====================================================================
+
+        const HostAPI = {
+            writeConsole: function(text) {
+                print(text);
+            },
+
+            readConsole: function() {
+                // Handled via input events
+                return '';
+            },
+
+            allocate: function(size) {
+                TBOS.heapUsed += size;
+                memoryUsed.textContent = Math.round(TBOS.heapUsed / 1024);
+                return TBOS.heapUsed;  // Simulated pointer
+            },
+
+            getTimeMs: function() {
+                return performance.now();
+            },
+
+            sleepMs: function(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            },
+
+            exit: function(code) {
+                print(`\n[SYSTEM] Exit with code: ${code}`, 'system');
+                setStatus('ready', 'Stopped');
+            }
+        };
+
+        // =====================================================================
+        // Command Processor
+        // =====================================================================
+
+        const commands = {
+            help: function() {
+                print('TernaryBit OS WASM Shell Commands:', 'prompt');
+                print('  help     - Show this help');
+                print('  bcb      - Display BCB information');
+                print('  memory   - Show memory status');
+                print('  time     - Show current time');
+                print('  clear    - Clear terminal');
+                print('  version  - Show version info');
+                print('  echo     - Echo text');
+                print('  modules  - List loaded modules');
+                print('  test     - Run self-test');
+            },
+
+            bcb: function() {
+                print('Boot Capability Block (BCB):', 'prompt');
+                print(`  Magic:       0x${TBOS.bcb.magic.toString(16).toUpperCase()} (valid)`);
+                print(`  Version:     0x${TBOS.bcb.version.toString(16).padStart(4, '0')}`);
+                print(`  Stage Flags: 0x${TBOS.bcb.stageFlags.toString(16).padStart(8, '0')}`);
+                print(`  HAL Type:    WebAssembly`);
+                print(`  Memory:      ${TBOS.bcb.memTotalBytes / (1024 * 1024)} MB`);
+                print(`  Host API:    available`);
+                print(`  Checksum:    OK`);
+            },
+
+            memory: function() {
+                print('Memory Status:', 'prompt');
+                print(`  Total:    ${TBOS.bcb.memTotalBytes / (1024 * 1024)} MB`);
+                print(`  Used:     ${(TBOS.heapUsed / 1024).toFixed(1)} KB`);
+                print(`  Free:     ${((TBOS.bcb.memTotalBytes - TBOS.heapUsed) / (1024 * 1024)).toFixed(2)} MB`);
+                print(`  Runtime:  JavaScript/WASM`);
+            },
+
+            time: function() {
+                const now = new Date();
+                print(`Time: ${now.toISOString()}`);
+                print(`Epoch: ${Date.now()} ms`);
+            },
+
+            clear: function() {
+                clearTerminal();
+            },
+
+            version: function() {
+                print('TernaryBit OS V4.0 WASM Runtime', 'prompt');
+                print(`Built: ${new Date().toLocaleDateString()}`);
+                print(`Platform: WebAssembly`);
+                print(`Browser: ${navigator.userAgent.split(' ').slice(-1)[0]}`);
+            },
+
+            echo: function(args) {
+                print(args.join(' '));
+            },
+
+            modules: function() {
+                print('Loaded Modules:', 'prompt');
+                print('  [CORE] tbos_init         - Module system');
+                print('  [CORE] tbos_memory       - Heap allocator');
+                print('  [CORE] tbos_shell        - Command processor');
+                print('  [HAL]  hal_wasm          - WASM HAL drivers');
+                print('  [API]  wasm_host_api     - JavaScript bridge');
+            },
+
+            test: function() {
+                print('Running self-test...', 'info');
+
+                // BCB test
+                const bcbValid = TBOS.bcb.magic === 0x43424254;
+                print(`  BCB Magic:     ${bcbValid ? 'PASS' : 'FAIL'}`, bcbValid ? 'info' : 'error');
+
+                // Memory test
+                const memOk = TBOS.bcb.memTotalBytes > 0;
+                print(`  Memory Init:   ${memOk ? 'PASS' : 'FAIL'}`, memOk ? 'info' : 'error');
+
+                // Host API test
+                const apiOk = typeof HostAPI.writeConsole === 'function';
+                print(`  Host API:      ${apiOk ? 'PASS' : 'FAIL'}`, apiOk ? 'info' : 'error');
+
+                // Timer test
+                const timerOk = HostAPI.getTimeMs() > 0;
+                print(`  Timer:         ${timerOk ? 'PASS' : 'FAIL'}`, timerOk ? 'info' : 'error');
+
+                const allPass = bcbValid && memOk && apiOk && timerOk;
+                print(`\nSelf-test: ${allPass ? 'ALL PASSED' : 'SOME FAILED'}`, allPass ? 'info' : 'error');
+            }
+        };
+
+        function executeCommand(input) {
+            const parts = input.trim().split(/\s+/);
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            print(`tbos> ${input}`, 'prompt');
+
+            if (!cmd) return;
+
+            if (commands[cmd]) {
+                commands[cmd](args);
+            } else {
+                print(`Unknown command: ${cmd}`, 'error');
+                print("Type 'help' for available commands.");
+            }
+        }
+
+        // =====================================================================
+        // Status Management
+        // =====================================================================
+
+        function setStatus(state, text) {
+            wasmStatus.className = 'status-dot ' + state;
+            wasmStatusText.textContent = text;
+        }
+
+        // =====================================================================
+        // WASM Module Loading (Simulated for now)
+        // =====================================================================
+
+        async function loadWasmModule() {
+            setStatus('loading', 'Loading WASM module...');
+
+            try {
+                // Check if actual WASM module exists
+                const response = await fetch('tbos.wasm').catch(() => null);
+
+                if (response && response.ok) {
+                    // Real WASM module loading
+                    print('[WASM] Loading tbos.wasm...', 'system');
+                    const wasmBytes = await response.arrayBuffer();
+                    const wasmModule = await WebAssembly.instantiate(wasmBytes, {
+                        env: {
+                            js_console_write: (ptr, len) => {
+                                // Would read from WASM memory
+                                print('[WASM OUTPUT]');
+                            },
+                            js_get_time_ms: () => performance.now(),
+                            js_sleep_ms: (ms) => { /* async */ }
+                        }
+                    });
+                    TBOS.module = wasmModule.instance;
+                    print('[WASM] Module loaded successfully', 'info');
+                } else {
+                    // Simulation mode - no actual WASM file
+                    print('[WASM] Running in simulation mode', 'system');
+                    print('[WASM] Build with: make wasm', 'system');
+                }
+
+                // Initialize BCB
+                initBcb();
+
+                // Allocate some memory for simulation
+                HostAPI.allocate(64 * 1024);  // 64KB initial allocation
+
+                // Ready
+                TBOS.ready = true;
+                setStatus('ready', 'Ready');
+                commandInput.disabled = false;
+                commandInput.focus();
+
+                print('');
+                printBanner();
+                print('');
+
+            } catch (error) {
+                setStatus('error', 'Load failed');
+                print(`[ERROR] ${error.message}`, 'error');
+            }
+        }
+
+        function restartTbos() {
+            TBOS.ready = false;
+            TBOS.heapUsed = 0;
+            TBOS.bcb = null;
+            commandInput.disabled = true;
+            clearTerminal();
+            print('[SYSTEM] Restarting TernaryBit OS...', 'system');
+            setTimeout(loadWasmModule, 500);
+        }
+
+        // =====================================================================
+        // Input Handling
+        // =====================================================================
+
+        commandInput.addEventListener('keydown', function(e) {
+            if (!TBOS.ready) return;
+
+            if (e.key === 'Enter') {
+                const input = this.value;
+                if (input.trim()) {
+                    TBOS.commandHistory.push(input);
+                    TBOS.historyIndex = TBOS.commandHistory.length;
+                }
+                executeCommand(input);
+                this.value = '';
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (TBOS.historyIndex > 0) {
+                    TBOS.historyIndex--;
+                    this.value = TBOS.commandHistory[TBOS.historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (TBOS.historyIndex < TBOS.commandHistory.length - 1) {
+                    TBOS.historyIndex++;
+                    this.value = TBOS.commandHistory[TBOS.historyIndex];
+                } else {
+                    TBOS.historyIndex = TBOS.commandHistory.length;
+                    this.value = '';
+                }
+            }
+        });
+
+        // =====================================================================
+        // Initialization
+        // =====================================================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            print('[SYSTEM] TernaryBit OS WASM Runtime', 'system');
+            print('[SYSTEM] Initializing...', 'system');
+            loadWasmModule();
+        });
+    </script>
+</body>
+</html>

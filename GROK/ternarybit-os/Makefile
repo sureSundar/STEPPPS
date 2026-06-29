@@ -419,6 +419,17 @@ help:
 	@echo "help         - Show this help"
 
 .PHONY: all test test-hardware test-boot test-steppps test-memory shell clean dev install help directories
+.PHONY: test-network-host
+test-network-host:
+	@echo "🧪 Building Network module host test..."
+	@mkdir -p build
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude -Isrc -Isrc/core -Isrc/network/core \
+		tests/unit/test_network_module.c \
+		src/network/core/tbos_network.c \
+		-o build/host_network_test
+	@echo "🏃 Running Network module host test..."
+	@./build/host_network_test
+
 .PHONY: test-pxfs-host
 test-pxfs-host:
 	@echo "🧪 Building PXFS codec host test..."
@@ -441,6 +452,50 @@ test-pxfs-overlay-host:
 		-o build/host_pxfs_overlay_test
 	@echo "🏃 Running PXFS overlay host test..."
 	@./build/host_pxfs_overlay_test
+
+.PHONY: test-rf2s-host
+test-rf2s-host:
+	@echo "🧪 Building RF2S codec host test..."
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_rf2s_codec.c \
+		src/core/filesystem/rf2s_codec.c \
+		-o build/host_rf2s_codec_test
+	@echo "🏃 Running RF2S codec host test..."
+	@./build/host_rf2s_codec_test
+
+.PHONY: test-rf2s-driver-host
+test-rf2s-driver-host:
+	@echo "🧪 Building RF2S driver host test..."
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude -Isrc -Isrc/core -Isrc/boot -Isrc/shell \
+		tests/unit/test_rf2s_driver.c \
+		src/core/filesystem/rf2s_codec.c \
+		kernel/fs/rf2s_driver.c \
+		kernel/fs/vfs.c \
+		kernel/fs/ramfs.c \
+		-o build/host_rf2s_driver_test
+	@echo "🏃 Running RF2S driver host test..."
+	@./build/host_rf2s_driver_test
+
+# V4.0 Universal Boot Targets
+.PHONY: test-bcb-host build-hosted-linux test-hosted-linux
+
+test-bcb-host:
+	@echo "🧪 Building BCB host test..."
+	@mkdir -p build/v4
+	@gcc -Wall -Wextra -g -DHOST_BUILD -Iinclude \
+		tests/v4/test_bcb.c \
+		-o build/v4/test_bcb
+	@echo "🏃 Running BCB host test..."
+	@./build/v4/test_bcb
+
+build-hosted-linux:
+	@echo "🔧 Building hosted Linux target..."
+	@chmod +x hosted/build_hosted_linux.sh
+	@./hosted/build_hosted_linux.sh
+
+test-hosted-linux: build-hosted-linux
+	@echo "🧪 Testing hosted Linux target..."
+	@echo "bcb\nmemory\nexit" | ./artifacts/hosted/tbos-linux
 
 .PHONY: persona-help list-personas list-packages persona-build persona-test persona-run persona-ci
 

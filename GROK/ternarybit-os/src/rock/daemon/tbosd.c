@@ -8,6 +8,7 @@
 #include "../panic/panic.h"
 #include "../watchdog/watchdog.h"
 #include "../health/health.h"
+#include "../memory/memory_reclaim.h"
 
 // Global variables
 static volatile sig_atomic_t running = 1;
@@ -92,12 +93,23 @@ static void* health_monitor_thread(void *arg) {
                     
                 case HEALTH_CHECK_CRITICAL:
                     ERROR_CRITICAL(r->category, r->value, r->message);
-                    
+
                     // For critical errors, we might want to take action
-                    if (r->category == HEALTH_CATEGORY_MEMORY && 
+                    if (r->category == HEALTH_CATEGORY_MEMORY &&
                         r->value > 90) {  // >90% memory usage
-                        // Trigger memory cleanup
-                        // TODO: Implement memory reclamation
+                        // Trigger memory reclamation
+                        printf("[TBOSD] Critical memory pressure detected (%d%%), initiating reclamation\n", r->value);
+
+                        // First try quick reclamation
+                        size_t freed = mem_reclaim_quick(50 * 1024 * 1024);  // Try to free 50MB
+                        printf("[TBOSD] Quick reclaim freed %zu bytes\n", freed);
+
+                        // If still critical, trigger emergency
+                        if (mem_reclaim_get_usage_percent() > 95) {
+                            printf("[TBOSD] Still critical, triggering emergency reclamation\n");
+                            freed = mem_reclaim_emergency();
+                            printf("[TBOSD] Emergency reclaim freed %zu bytes\n", freed);
+                        }
                     }
                     break;
             }
@@ -123,12 +135,18 @@ static void daemon_loop(void) {
     }
     
     // Main loop
+    static uint32_t loop_counter = 0;
     while (running) {
         // Feed the watchdog
         if (watchdog_feed() != 0) {
             ERROR_ERROR(ERROR_DOMAIN_HARDWARE, 0x3004, "Failed to feed watchdog");
         }
-        
+
+        // Periodic memory pressure check (every 10 iterations = 1 second)
+        if (++loop_counter % 10 == 0) {
+            mem_reclaim_trigger_check();
+        }
+
         // Sleep for a short time (e.g., 100ms)
         usleep(100000);
     }
@@ -161,7 +179,13 @@ int main(int argc, char *argv[]) {
         ERROR_CRITICAL(ERROR_DOMAIN_SYSTEM, 0x3005, "Failed to initialize health monitoring");
         return EXIT_FAILURE;
     }
-    
+
+    // Initialize memory reclamation system
+    if (mem_reclaim_init() != 0) {
+        ERROR_WARNING(ERROR_DOMAIN_MEMORY, 0x3006, "Failed to initialize memory reclamation");
+        // Continue anyway - not critical for startup
+    }
+
     if (init_watchdog() != 0) {
         return EXIT_FAILURE;
     }
@@ -171,7 +195,8 @@ int main(int argc, char *argv[]) {
     
     // Cleanup
     watchdog_stop();
-    
+    mem_reclaim_shutdown();
+
     printf("TBOS Daemon stopped\n");
     return EXIT_SUCCESS;
 }

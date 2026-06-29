@@ -13,7 +13,7 @@ KERNEL_LOAD_ADDR    equ 0x10000    ; Flat address: 0x1000:0x0000 = 0x10000
 KERNEL_SECTORS      equ 50         ; Load 50 sectors (~25KB) - overridden by build script
 %endif
 %ifndef KERNEL_START_SECTOR
-KERNEL_START_SECTOR equ 10         ; Kernel starts at sector 10 - overridden by build script
+KERNEL_START_SECTOR equ 20         ; Kernel starts at sector 20 - overridden by build script
 %endif
 BOOT_DRIVE_ADDR     equ 0x0500     ; Where stage1 saved boot drive
 
@@ -121,7 +121,11 @@ wait_8042_data:
     ret
 
 ; === LOAD KERNEL ===
-; Load kernel in chunks of max 64 sectors to avoid BIOS limitations
+; Load kernel using CHS addressing (compatible with floppies and hard drives)
+; Floppy geometry: 18 sectors/track, 2 heads, 80 cylinders
+SECTORS_PER_TRACK equ 18
+HEADS_PER_CYLINDER equ 2
+
 load_kernel:
     mov si, msg_loading
     call print_string
@@ -133,47 +137,60 @@ load_kernel:
     mov word [buffer_segment], KERNEL_LOAD_SEGMENT
 
 .load_loop:
-    ; Calculate sectors to read this iteration (min of 64 and remaining)
+    ; Calculate sectors to read this iteration (max 1 for simplicity with CHS)
     mov ax, [sectors_remaining]
-    cmp ax, 64
-    jbe .use_remaining
-    mov ax, 64
-.use_remaining:
-    mov [disk_packet_count], ax
+    test ax, ax
+    jz .done
 
-    ; Update disk packet with current segment (offset always 0)
-    mov ax, [buffer_segment]
-    mov [disk_packet_segment], ax
+    ; Read 1 sector at a time for CHS compatibility
+    mov word [read_count], 1
+
+    ; Convert LBA to CHS
+    ; LBA = (C * HEADS + H) * SECTORS + (S - 1)
+    ; S = (LBA % SECTORS_PER_TRACK) + 1
+    ; H = (LBA / SECTORS_PER_TRACK) % HEADS_PER_CYLINDER
+    ; C = (LBA / SECTORS_PER_TRACK) / HEADS_PER_CYLINDER
+
     mov ax, [current_lba_lo]
-    mov [disk_packet_lba], ax
-    mov ax, [current_lba_hi]
-    mov [disk_packet_lba+2], ax
+    xor dx, dx
+    mov bx, SECTORS_PER_TRACK
+    div bx                      ; AX = LBA / 18, DX = LBA % 18
+    mov cl, dl                  ; CL = sector - 1
+    inc cl                      ; CL = sector (1-based)
 
-    ; Read sectors
-    mov ah, 0x42           ; Extended read
-    mov dl, [BOOT_DRIVE_ADDR]
-    mov si, disk_packet
+    xor dx, dx
+    mov bx, HEADS_PER_CYLINDER
+    div bx                      ; AX = cylinder, DX = head
+    mov ch, al                  ; CH = cylinder (low 8 bits)
+    mov dh, dl                  ; DH = head
+
+    ; Setup for INT 13h AH=02h read
+    mov ax, [buffer_segment]
+    mov es, ax
+    xor bx, bx                  ; ES:BX = buffer
+
+    mov ah, 0x02                ; Read sectors
+    mov al, 1                   ; Read 1 sector
+    mov dl, [BOOT_DRIVE_ADDR]   ; Drive number
+
     int 0x13
     jc disk_error
 
     ; Update counters for next iteration
-    mov ax, [disk_packet_count]
+    ; Decrement sectors_remaining
+    dec word [sectors_remaining]
 
-    ; Update sectors_remaining
-    sub [sectors_remaining], ax
-
-    ; Update current_lba
-    add [current_lba_lo], ax
+    ; Increment current_lba
+    inc word [current_lba_lo]
     adc word [current_lba_hi], 0
 
-    ; Update buffer_segment (ax * 512 / 16 = ax * 32 = ax << 5)
-    shl ax, 5
-    add [buffer_segment], ax
+    ; Update buffer_segment (1 sector = 512 bytes = 32 paragraphs)
+    add word [buffer_segment], 32
 
-    ; Check if done
-    cmp word [sectors_remaining], 0
-    jne .load_loop
+    ; Continue loading
+    jmp .load_loop
 
+.done:
     mov si, msg_kernel_loaded
     call print_string
     ret
@@ -188,17 +205,7 @@ sectors_remaining:  dw 0
 current_lba_lo:     dw 0
 current_lba_hi:     dw 0
 buffer_segment:     dw 0
-
-disk_packet:
-    db 0x10                          ; Packet size
-    db 0                             ; Reserved
-disk_packet_count:
-    dw 0                             ; Number of sectors (filled at runtime)
-    dw 0                             ; Buffer offset (always 0)
-disk_packet_segment:
-    dw KERNEL_LOAD_SEGMENT           ; Buffer segment (updated each iteration)
-disk_packet_lba:
-    dq KERNEL_START_SECTOR           ; Starting LBA (updated each iteration)
+read_count:         dw 0
 
 ; === SETUP PAGE TABLES ===
 setup_page_tables:

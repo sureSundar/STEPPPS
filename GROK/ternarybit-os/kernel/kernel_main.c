@@ -11,9 +11,11 @@
 #include "tbos/fs_drivers.h"
 #include "tbos/libc.h"
 #include "tbos_boot_descriptor.h"
+#include "tbos/bcb.h"
 
 extern uint32_t g_tbds_pointer;
 extern uint32_t g_tbds_length;
+extern uint32_t g_bcb_pointer;  // V4.0 BCB pointer (passed in ECX)
 // VGA text mode
 #define VGA_MEMORY 0xB8000
 #define VGA_WIDTH 80
@@ -258,6 +260,69 @@ static void populate_root_fs(void) {
 }
 #endif
 
+/**
+ * @brief Process Boot Capability Block (BCB) - V4.0
+ * Traceability: v4.0/ROADMAP.md V4-003
+ */
+static bool kernel_process_bcb(hal_capabilities_t* caps) {
+    // Check if BCB pointer is valid
+    if (g_bcb_pointer == 0) {
+        return false;  // No BCB, fall back to TBDS
+    }
+
+    tbos_bcb_v1_t* bcb = (tbos_bcb_v1_t*)(uintptr_t)g_bcb_pointer;
+
+    // Validate BCB
+    if (!bcb_validate(bcb)) {
+        kernel_print("[BCB] Invalid BCB structure\n");
+        return false;
+    }
+
+    kernel_print("[BCB] Boot Capability Block v");
+    kernel_print_hex(bcb->version);
+    kernel_print(" detected\n");
+
+    // Display boot environment
+    kernel_print("[BCB] Boot stage: ");
+    kernel_print_hex(bcb->boot_stage);
+    kernel_print(", flags: ");
+    kernel_print_hex(bcb->stage_flags);
+    kernel_print("\n");
+
+    // Display memory info
+    kernel_print("[BCB] Memory: low=");
+    kernel_print_hex((uint32_t)bcb->mem_low_bytes);
+    kernel_print(", high=");
+    kernel_print_hex((uint32_t)bcb->mem_high_bytes);
+    kernel_print("\n");
+
+    // Get HAL type from BCB
+    bcb_hal_type_t hal_type = bcb_get_hal_type(bcb);
+    kernel_print("[BCB] HAL type: ");
+    kernel_print(bcb_hal_type_name(hal_type));
+    kernel_print("\n");
+
+    // Configure HAL based on BCB flags
+    if (caps) {
+        caps->has_console = BCB_HAS_FLAG(bcb, BCB_FLAG_VGA_CONSOLE) ? 1 : 0;
+    }
+
+    // Check for host API (hosted environments)
+    if (BCB_IS_HOSTED(bcb) && bcb->host_api_ptr != 0) {
+        kernel_print("[BCB] Host API available at ");
+        kernel_print_hex((uint32_t)bcb->host_api_ptr);
+        kernel_print("\n");
+    }
+
+    // If BCB includes TBDS pointer, set globals for backwards compatibility
+    if (bcb->tbds_pointer != 0) {
+        g_tbds_pointer = bcb->tbds_pointer;
+        g_tbds_length = bcb->tbds_length;
+    }
+
+    return true;
+}
+
 static void kernel_process_tbds(hal_capabilities_t* caps) {
     if (g_tbds_pointer == 0) {
         kernel_print("[WARN] No TBDS pointer provided\n");
@@ -361,6 +426,17 @@ void kernel_main(void) {
     libc_init();
     kernel_print("[OK] Memory allocator initialized\n");
 
+    // Process boot information (BCB first, fall back to TBDS)
+    // V4.0: Try BCB first for modern boot protocol
+    hal_capabilities_t boot_caps = {0};
+    if (kernel_process_bcb(&boot_caps)) {
+        kernel_print("[OK] BCB processed successfully\n");
+    } else {
+        // Fall back to TBDS for legacy boot
+        kernel_print("[INFO] No BCB, trying TBDS...\n");
+        kernel_process_tbds(&boot_caps);
+    }
+
     // Don't use HAL - causes issues
     hal_dispatch = NULL;
 
@@ -405,6 +481,31 @@ void kernel_main(void) {
         }
     } else {
         kernel_print("[ERROR] Failed to initialize UCFS context!\n");
+    }
+
+    // Mount RF2S overlay at /rf2s
+    kernel_print("[INFO] Mounting RF2S overlay at /rf2s...\n");
+    extern const vfs_driver_t rf2s_driver;
+    extern int rf2s_set_backing_driver(void*, const vfs_driver_t*, void*, const char*);
+
+    void* rf2s_ctx = rf2s_driver.init();
+    if (rf2s_ctx) {
+        // Configure RF2S to use ramfs as backing
+        void* rf2s_ramfs_ctx = ramfs_driver.init();
+        if (rf2s_ramfs_ctx && rf2s_set_backing_driver(rf2s_ctx, &ramfs_driver, rf2s_ramfs_ctx, "/rf2s") == 0) {
+            // Create the rf2s root directory in ramfs
+            vfs_mkdir("/rf2s");
+            int rf2s_mount_result = vfs_mount_with_context("/rf2s", &rf2s_driver, rf2s_ctx);
+            if (rf2s_mount_result == 0) {
+                kernel_print("[OK] RF2S mounted at /rf2s\n");
+            } else {
+                kernel_print("[ERROR] Failed to mount RF2S!\n");
+            }
+        } else {
+            kernel_print("[ERROR] Failed to configure RF2S backing!\n");
+        }
+    } else {
+        kernel_print("[ERROR] Failed to initialize RF2S context!\n");
     }
 #else
     kernel_print("[DEBUG] CONFIG_FS is disabled!\n");

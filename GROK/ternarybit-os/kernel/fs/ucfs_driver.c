@@ -2,8 +2,7 @@
 #include "fs/ucfs_codec.h"
 #include "tbos/errno.h"
 #include "tbos/libc.h"
-
-#include <stdlib.h>
+/* Note: malloc/free provided by tbos/libc.h for freestanding kernel */
 
 typedef struct {
     void* backing_ctx;

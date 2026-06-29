@@ -1,3 +1,4 @@
+// TEST_DEPS: src/network/core/tbos_network.c
 /**
  * @file test_network_module.c
  * @brief Test the conscious network module

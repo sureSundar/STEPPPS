@@ -3,8 +3,7 @@
 #include "tbos/vfs.h"
 #include "tbos/errno.h"
 #include "tbos/libc.h"
-
-#include <stdlib.h>
+/* Note: malloc/free provided by tbos/libc.h for freestanding kernel */
 
 static char g_backing_root[128] = "/ucfs";
 

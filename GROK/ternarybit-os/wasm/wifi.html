@@ -1,0 +1,47 @@
+  <!DOCTYPE html>                                                                                                  
+     <html>                                                                                                           
+     <head>                                                                                                           
+         <title>Scan to Open Demo</title>                                                                             
+         <style>                                                                                                      
+             body {                                                                                                   
+                 display: flex;                                                                                       
+                 flex-direction: column;                                                                              
+                 align-items: center;                                                                                 
+                 justify-content: center;                                                                             
+                 min-height: 100vh;                                                                                   
+                 background: #1a1a2e;                                                                                 
+                 color: #00ff88;                                                                                      
+                 font-family: sans-serif;                                                                             
+             }                                                                                                        
+             #qr { background: white; padding: 20px; border-radius: 10px; }                                           
+             p { margin-top: 20px; }                                                                                  
+             input { padding: 10px; font-size: 16px; width: 300px; margin: 10px; }                                    
+             button { padding: 10px 20px; font-size: 16px; cursor: pointer; }                                         
+         </style>                                                                                                     
+     </head>                                                                                                          
+     <body>                                                                                                           
+         <h1>TBOS Mobile Demo</h1>                                                                                    
+         <p>Enter your Mac's IP address:</p>                                                                          
+         <input type="text" id="ip" placeholder="192.168.1.xxx" value="">                                             
+         <button onclick="generateQR()">Generate QR Code</button>                                                     
+         <div id="qr"></div>                                                                                          
+         <p id="url"></p>                                                                                             
+                                                                                                                      
+         <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>                        
+         <script>                                                                                                     
+             function generateQR() {                                                                                  
+                 const ip = document.getElementById('ip').value || 'localhost';                                       
+                 const url = `http://${ip}:3500/tbos_mobile_demo.html`;                                               
+                 document.getElementById('url').textContent = url;                                                    
+                 document.getElementById('qr').innerHTML = '';                                                        
+                 QRCode.toCanvas(document.createElement('canvas'), url, { width: 256 }, (err, canvas) => {            
+                     if (!err) document.getElementById('qr').appendChild(canvas);                                     
+                 });                                                                                                  
+             }                                                                                                        
+                                                                                                                      
+             // Try to auto-detect                                                                                    
+             fetch('https://api.ipify.org?format=json').catch(() => {});                                              
+         </script>                                                                                                    
+     </body>                                                                                                          
+     </html>                                                                                                          
+         

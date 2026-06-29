@@ -611,3 +611,254 @@ void tbos_scheduler_print_status(void) {
     printf("╚════════════════════════════════════════════════════════╝\n");
     printf("\n");
 }
+
+/* ========================================================================= */
+/* SIGNALS                                                                    */
+/* ========================================================================= */
+
+/* Signal definitions (POSIX-like with consciousness additions) */
+#define TBOS_SIGTERM    15  /* Graceful termination request */
+#define TBOS_SIGKILL    9   /* Forceful termination (cannot be caught) */
+#define TBOS_SIGSTOP    19  /* Stop process */
+#define TBOS_SIGCONT    18  /* Continue if stopped */
+#define TBOS_SIGUSR1    10  /* User-defined signal 1 */
+#define TBOS_SIGUSR2    12  /* User-defined signal 2 */
+#define TBOS_SIGMEDITATE 33 /* Enter meditation (TBOS-specific) */
+#define TBOS_SIGAWAKEN  34  /* Awaken from meditation (TBOS-specific) */
+#define TBOS_SIGKARMA   35  /* Karma adjustment notification (TBOS-specific) */
+
+/* Pending signals for each process */
+static uint64_t g_pending_signals[TBOS_MAX_PROCESSES];
+
+/**
+ * @brief Send a signal to a process
+ */
+int tbos_process_signal(tbos_pid_t pid, int signal) {
+    int slot = get_process_slot(pid);
+    if (slot < 0) {
+        printf("[SIGNAL] Process PID %u not found\n", pid);
+        return -1;
+    }
+
+    tbos_process_t* proc = &g_process_table[slot];
+
+    printf("[SIGNAL] Sending signal %d to process %s (PID %u)\n",
+           signal, proc->name, pid);
+
+    /* Handle SIGKILL - cannot be caught */
+    if (signal == TBOS_SIGKILL) {
+        printf("[SIGNAL] SIGKILL: Forcefully terminating %s\n", proc->name);
+        proc->karma -= 10;  /* Karma penalty */
+        return tbos_process_terminate(pid, 128 + signal);
+    }
+
+    /* Handle SIGSTOP */
+    if (signal == TBOS_SIGSTOP) {
+        printf("[SIGNAL] SIGSTOP: Stopping process %s\n", proc->name);
+        if (proc->state == PROC_STATE_RUNNING) {
+            g_scheduler_stats.running_processes--;
+        } else if (proc->state == PROC_STATE_READY) {
+            g_scheduler_stats.ready_processes--;
+        }
+        proc->state = PROC_STATE_BLOCKED;
+        g_scheduler_stats.blocked_processes++;
+        return 0;
+    }
+
+    /* Handle SIGCONT */
+    if (signal == TBOS_SIGCONT) {
+        printf("[SIGNAL] SIGCONT: Continuing process %s\n", proc->name);
+        if (proc->state == PROC_STATE_BLOCKED ||
+            proc->state == PROC_STATE_SLEEPING ||
+            proc->state == PROC_STATE_MEDITATING) {
+            g_scheduler_stats.blocked_processes--;
+            proc->state = PROC_STATE_READY;
+            g_scheduler_stats.ready_processes++;
+        }
+        return 0;
+    }
+
+    /* Handle SIGTERM */
+    if (signal == TBOS_SIGTERM) {
+        printf("[SIGNAL] SIGTERM: Graceful termination of %s\n", proc->name);
+        proc->karma += 5;  /* Reward for graceful handling */
+        return tbos_process_terminate(pid, 0);
+    }
+
+    /* Handle TBOS-specific SIGMEDITATE */
+    if (signal == TBOS_SIGMEDITATE) {
+        printf("[SIGNAL] SIGMEDITATE: Process %s entering meditation\n", proc->name);
+        return tbos_process_meditate(10000);
+    }
+
+    /* Mark other signals as pending */
+    g_pending_signals[slot] |= (1ULL << signal);
+    printf("[SIGNAL] Signal %d marked pending for %s\n", signal, proc->name);
+    return 0;
+}
+
+/**
+ * @brief Check if a signal is pending
+ */
+bool tbos_process_signal_pending(int signal) {
+    tbos_process_t* current = tbos_process_current();
+    if (!current) return false;
+
+    int slot = get_process_slot(current->pid);
+    if (slot < 0) return false;
+
+    return (g_pending_signals[slot] & (1ULL << signal)) != 0;
+}
+
+/* ========================================================================= */
+/* IPC (Inter-Process Communication)                                          */
+/* ========================================================================= */
+
+#define TBOS_MSG_MAX_SIZE 1024
+#define TBOS_MSG_QUEUE_SIZE 16
+
+typedef struct {
+    tbos_pid_t sender;
+    tbos_pid_t receiver;
+    uint32_t type;
+    uint32_t size;
+    uint8_t data[TBOS_MSG_MAX_SIZE];
+    uint64_t timestamp;
+    karma_score_t karma_attached;
+} tbos_message_t;
+
+typedef struct {
+    tbos_message_t messages[TBOS_MSG_QUEUE_SIZE];
+    uint32_t head;
+    uint32_t tail;
+    uint32_t count;
+} tbos_message_queue_t;
+
+static tbos_message_queue_t g_message_queues[TBOS_MAX_PROCESSES];
+
+/**
+ * @brief Send a message to another process
+ */
+int tbos_ipc_send(tbos_pid_t receiver, uint32_t type, const void* data, uint32_t size) {
+    if (size > TBOS_MSG_MAX_SIZE) {
+        printf("[IPC] Message too large: %u > %d\n", size, TBOS_MSG_MAX_SIZE);
+        return -1;
+    }
+
+    int slot = get_process_slot(receiver);
+    if (slot < 0) {
+        printf("[IPC] Receiver PID %u not found\n", receiver);
+        return -1;
+    }
+
+    tbos_message_queue_t* queue = &g_message_queues[slot];
+    if (queue->count >= TBOS_MSG_QUEUE_SIZE) {
+        printf("[IPC] Message queue full for PID %u\n", receiver);
+        return -1;
+    }
+
+    tbos_message_t* msg = &queue->messages[queue->tail];
+    tbos_process_t* sender = tbos_process_current();
+
+    msg->sender = sender ? sender->pid : TBOS_PID_KERNEL;
+    msg->receiver = receiver;
+    msg->type = type;
+    msg->size = size;
+    msg->timestamp = get_time_us();
+    msg->karma_attached = 0;
+
+    if (data && size > 0) {
+        memcpy(msg->data, data, size);
+    }
+
+    queue->tail = (queue->tail + 1) % TBOS_MSG_QUEUE_SIZE;
+    queue->count++;
+
+    printf("[IPC] Message: PID %u -> PID %u (type: %u, size: %u)\n",
+           msg->sender, receiver, type, size);
+
+    if (sender) sender->karma += 1;  /* Reward for communication */
+    return 0;
+}
+
+/**
+ * @brief Receive a message
+ */
+int tbos_ipc_receive(tbos_message_t* msg) {
+    tbos_process_t* current = tbos_process_current();
+    if (!current || !msg) return -1;
+
+    int slot = get_process_slot(current->pid);
+    if (slot < 0) return -1;
+
+    tbos_message_queue_t* queue = &g_message_queues[slot];
+    if (queue->count == 0) return -1;
+
+    memcpy(msg, &queue->messages[queue->head], sizeof(tbos_message_t));
+    queue->head = (queue->head + 1) % TBOS_MSG_QUEUE_SIZE;
+    queue->count--;
+
+    printf("[IPC] Received: PID %u <- PID %u (type: %u)\n",
+           current->pid, msg->sender, msg->type);
+
+    if (msg->karma_attached > 0) {
+        current->karma += msg->karma_attached;
+        printf("[IPC] Received %ld karma\n", msg->karma_attached);
+    }
+    return 0;
+}
+
+/**
+ * @brief Check pending messages count
+ */
+int tbos_ipc_pending(void) {
+    tbos_process_t* current = tbos_process_current();
+    if (!current) return 0;
+
+    int slot = get_process_slot(current->pid);
+    if (slot < 0) return 0;
+
+    return g_message_queues[slot].count;
+}
+
+/* ========================================================================= */
+/* ENHANCED WAIT                                                              */
+/* ========================================================================= */
+
+#define TBOS_WNOHANG    1
+#define TBOS_WUNTRACED  2
+
+/**
+ * @brief Wait for child process with options
+ */
+tbos_pid_t tbos_process_waitpid(tbos_pid_t pid, int* status, int options) {
+    tbos_process_t* current = tbos_process_current();
+    if (!current) return TBOS_PID_INVALID;
+
+    for (int i = 0; i < TBOS_MAX_PROCESSES; i++) {
+        tbos_process_t* child = &g_process_table[i];
+
+        if (child->state == PROC_STATE_INVALID) continue;
+        if (child->parent_pid != current->pid) continue;
+        if (pid != (tbos_pid_t)-1 && child->pid != pid) continue;
+
+        /* Check for zombie */
+        if (child->state == PROC_STATE_ZOMBIE) {
+            if (status) *status = child->exit_code;
+            tbos_pid_t child_pid = child->pid;
+            child->state = PROC_STATE_INVALID;
+            g_scheduler_stats.total_processes--;
+            printf("[WAIT] Collected PID %u (exit: %d)\n", child_pid, child->exit_code);
+            return child_pid;
+        }
+
+        /* Check for stopped */
+        if ((options & TBOS_WUNTRACED) && child->state == PROC_STATE_BLOCKED) {
+            if (status) *status = 0x7F;
+            return child->pid;
+        }
+    }
+
+    if (options & TBOS_WNOHANG) return 0;
+    return TBOS_PID_INVALID;
+}
