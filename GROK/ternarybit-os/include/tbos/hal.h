@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 typedef enum {
     HAL_DEVICE_CONSOLE,
@@ -39,6 +41,27 @@ typedef struct {
     void (*write_sector)(uint32_t lba, const void* buffer, uint32_t sectors);
 } hal_storage_ops_t;
 
+/**
+ * @brief HAL Network Operations
+ * Platform-abstracted network socket operations for hosted and bare-metal modes
+ */
+typedef struct {
+    int (*socket)(int domain, int type, int protocol);
+    int (*connect)(int fd, const char* host, uint16_t port);
+    int (*bind)(int fd, uint16_t port);
+    int (*listen)(int fd, int backlog);
+    int (*accept)(int fd, char* remote_addr, uint16_t* remote_port);
+    ssize_t (*send)(int fd, const void* buf, size_t len);
+    ssize_t (*recv)(int fd, void* buf, size_t len);
+    int (*close)(int fd);
+    int (*set_nonblocking)(int fd, int enabled);
+    int (*get_local_ip)(char* buf, size_t len);
+    ssize_t (*sendto)(int fd, const void* buf, size_t len,
+                      const char* host, uint16_t port);
+    ssize_t (*recvfrom)(int fd, void* buf, size_t len,
+                        char* from_addr, uint16_t* from_port);
+} hal_network_ops_t;
+
 typedef struct {
     void (*init)(void);
     hal_capabilities_t (*capabilities)(void);
@@ -46,6 +69,7 @@ typedef struct {
     hal_input_ops_t input;
     hal_timer_ops_t timer;
     hal_storage_ops_t storage;
+    hal_network_ops_t network;
 } hal_dispatch_table_t;
 
 const hal_dispatch_table_t* hal_get_dispatch(void);

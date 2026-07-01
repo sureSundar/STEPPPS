@@ -8,6 +8,11 @@
 #ifndef _TBOS_TIME_H
 #define _TBOS_TIME_H
 
+#if defined(HOST_BUILD) || defined(TBOS_HOSTED)
+/* Use system time.h for host-based builds */
+#include_next <time.h>
+#else
+
 #include <stdint.h>
 
 typedef int64_t time_t;
@@ -29,5 +34,7 @@ static inline time_t time(time_t *tloc) {
     (void)tloc;
     return 0;
 }
+
+#endif /* !HOST_BUILD && !TBOS_HOSTED */
 
 #endif /* _TBOS_TIME_H */

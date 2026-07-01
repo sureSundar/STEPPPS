@@ -526,3 +526,341 @@ persona-run:
 
 persona-ci:
 	@PACKAGES="$(PACKAGES)" ./scripts/tbos_persona_ci.sh $(PERSONAS)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MULTI-ARCHITECTURE BUILD TARGETS
+# ═══════════════════════════════════════════════════════════════════════════
+
+.PHONY: arch-info arch-all arch-host arch-x86_64 arch-arm64 arch-riscv64 arch-test arch-clean
+
+# Detect host architecture
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Darwin)
+    TBOS_HOST_OS := macos
+else ifeq ($(UNAME_S),Linux)
+    TBOS_HOST_OS := linux
+else
+    TBOS_HOST_OS := unknown
+endif
+
+ifeq ($(UNAME_M),x86_64)
+    TBOS_HOST_ARCH := x86_64
+else ifeq ($(UNAME_M),arm64)
+    TBOS_HOST_ARCH := arm64
+else ifeq ($(UNAME_M),aarch64)
+    TBOS_HOST_ARCH := arm64
+else
+    TBOS_HOST_ARCH := $(UNAME_M)
+endif
+
+# Cross-compiler detection
+X86_64_ELF_CC := $(shell which x86_64-elf-gcc 2>/dev/null)
+ARM64_ELF_CC := $(shell which aarch64-elf-gcc 2>/dev/null || which aarch64-linux-gnu-gcc 2>/dev/null)
+RISCV64_ELF_CC := $(shell which riscv64-elf-gcc 2>/dev/null || which riscv64-linux-gnu-gcc 2>/dev/null)
+
+# Common flags
+TBOS_COMMON_FLAGS := -Wall -Wextra -Iinclude -DTBOS_HOSTED -DHOST_BUILD
+TBOS_DEBUG_FLAGS := -g -O0 -DDEBUG
+TBOS_RELEASE_FLAGS := -O2 -DNDEBUG
+
+# Shell sources for multi-arch build
+TBOS_SHELL_SRCS := demos/tbos_mini_shell.c
+TBOS_HYBRID_SRCS := src/shell/universal/tbos_hybrid_shell.c
+
+# Network sources
+TBOS_NET_SRCS := \
+    kernel/hal_hosted.c \
+    src/network/tbos_net.c \
+    src/network/dns/tbos_dns.c \
+    src/network/wow/tbos_wow.c \
+    src/network/transport/udp/tbos_udp.c
+
+arch-info:
+	@echo ""
+	@echo "================================================================"
+	@echo "  TBOS Multi-Architecture Build Info"
+	@echo "================================================================"
+	@echo ""
+	@echo "Host System:"
+	@echo "  OS:   $(TBOS_HOST_OS)"
+	@echo "  Arch: $(TBOS_HOST_ARCH)"
+	@echo ""
+	@echo "Available Cross-Compilers:"
+	@echo "  Host GCC:       $(shell which gcc)"
+ifeq ($(X86_64_ELF_CC),)
+	@echo "  x86_64-elf-gcc: NOT FOUND"
+else
+	@echo "  x86_64-elf-gcc: $(X86_64_ELF_CC)"
+endif
+ifeq ($(ARM64_ELF_CC),)
+	@echo "  aarch64-gcc:    NOT FOUND"
+else
+	@echo "  aarch64-gcc:    $(ARM64_ELF_CC)"
+endif
+ifeq ($(RISCV64_ELF_CC),)
+	@echo "  riscv64-gcc:    NOT FOUND"
+else
+	@echo "  riscv64-gcc:    $(RISCV64_ELF_CC)"
+endif
+	@echo ""
+	@echo "To install cross-compilers:"
+	@echo "  macOS:  brew install x86_64-elf-gcc aarch64-elf-gcc"
+	@echo "  Ubuntu: apt install gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu"
+	@echo "================================================================"
+	@echo ""
+
+# Build for all available architectures
+arch-all: arch-info arch-host
+	@echo ""
+	@echo "Building for all available architectures..."
+ifneq ($(X86_64_ELF_CC),)
+	@$(MAKE) arch-x86_64
+endif
+ifneq ($(ARM64_ELF_CC),)
+	@$(MAKE) arch-arm64
+endif
+ifneq ($(RISCV64_ELF_CC),)
+	@$(MAKE) arch-riscv64
+endif
+	@echo ""
+	@echo "================================================================"
+	@echo "  Multi-arch build complete!"
+	@echo "  Outputs in build/<arch>/"
+	@echo "================================================================"
+
+# Host architecture build
+arch-host: build/$(TBOS_HOST_ARCH)/tbos_shell build/$(TBOS_HOST_ARCH)/tbos_hybrid build/$(TBOS_HOST_ARCH)/test_net
+	@echo "[$(TBOS_HOST_ARCH)] Host build complete"
+
+build/$(TBOS_HOST_ARCH)/tbos_shell: $(TBOS_SHELL_SRCS)
+	@mkdir -p build/$(TBOS_HOST_ARCH)
+	@echo "[$(TBOS_HOST_ARCH)] Building tbos_shell..."
+	@gcc $(TBOS_COMMON_FLAGS) $(TBOS_DEBUG_FLAGS) -o $@ $<
+
+build/$(TBOS_HOST_ARCH)/tbos_hybrid: $(TBOS_HYBRID_SRCS)
+	@mkdir -p build/$(TBOS_HOST_ARCH)
+	@echo "[$(TBOS_HOST_ARCH)] Building tbos_hybrid..."
+	@gcc $(TBOS_COMMON_FLAGS) $(TBOS_DEBUG_FLAGS) -o $@ $<
+
+build/$(TBOS_HOST_ARCH)/test_net: tests/test_net_quick.c $(TBOS_NET_SRCS)
+	@mkdir -p build/$(TBOS_HOST_ARCH)
+	@echo "[$(TBOS_HOST_ARCH)] Building test_net..."
+	@gcc $(TBOS_COMMON_FLAGS) $(TBOS_DEBUG_FLAGS) -Isrc/network -o $@ $^
+
+# x86_64 cross-compile (use native gcc for hosted builds since elf-gcc lacks libc)
+arch-x86_64: build/x86_64/tbos_shell build/x86_64/tbos_hybrid
+	@echo "[x86_64] Build complete"
+
+build/x86_64/tbos_shell: $(TBOS_SHELL_SRCS)
+ifeq ($(TBOS_HOST_ARCH),x86_64)
+	@mkdir -p build/x86_64
+	@echo "[x86_64] Building tbos_shell (native)..."
+	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
+else ifneq ($(X86_64_ELF_CC),)
+	@mkdir -p build/x86_64
+	@echo "[x86_64] Building tbos_shell (cross)..."
+	@$(X86_64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[x86_64] Skipped (needs hosted libc)"
+else
+	@echo "[x86_64] Cross-compiler not found, skipping"
+endif
+
+build/x86_64/tbos_hybrid: $(TBOS_HYBRID_SRCS)
+ifeq ($(TBOS_HOST_ARCH),x86_64)
+	@mkdir -p build/x86_64
+	@echo "[x86_64] Building tbos_hybrid (native)..."
+	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
+else ifneq ($(X86_64_ELF_CC),)
+	@mkdir -p build/x86_64
+	@echo "[x86_64] Building tbos_hybrid (cross)..."
+	@$(X86_64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[x86_64] Skipped (needs hosted libc)"
+else
+	@echo "[x86_64] Cross-compiler not found, skipping"
+endif
+
+# ARM64 cross-compile
+arch-arm64: build/arm64/tbos_shell build/arm64/tbos_hybrid
+	@echo "[arm64] Build complete"
+
+build/arm64/tbos_shell: $(TBOS_SHELL_SRCS)
+ifneq ($(ARM64_ELF_CC),)
+	@mkdir -p build/arm64
+	@echo "[arm64] Building tbos_shell..."
+	@$(ARM64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[arm64] Skipped (needs hosted libc)"
+else ifeq ($(TBOS_HOST_ARCH),arm64)
+	@mkdir -p build/arm64
+	@echo "[arm64] Building tbos_shell (native)..."
+	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
+else
+	@echo "[arm64] Cross-compiler not found, skipping"
+endif
+
+build/arm64/tbos_hybrid: $(TBOS_HYBRID_SRCS)
+ifneq ($(ARM64_ELF_CC),)
+	@mkdir -p build/arm64
+	@echo "[arm64] Building tbos_hybrid..."
+	@$(ARM64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[arm64] Skipped (needs hosted libc)"
+else ifeq ($(TBOS_HOST_ARCH),arm64)
+	@mkdir -p build/arm64
+	@echo "[arm64] Building tbos_hybrid (native)..."
+	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
+else
+	@echo "[arm64] Cross-compiler not found, skipping"
+endif
+
+# RISC-V 64 cross-compile
+arch-riscv64: build/riscv64/tbos_shell build/riscv64/tbos_hybrid
+	@echo "[riscv64] Build complete"
+
+build/riscv64/tbos_shell: $(TBOS_SHELL_SRCS)
+ifneq ($(RISCV64_ELF_CC),)
+	@mkdir -p build/riscv64
+	@echo "[riscv64] Building tbos_shell..."
+	@$(RISCV64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[riscv64] Skipped (needs hosted libc)"
+else
+	@echo "[riscv64] Cross-compiler not found, skipping"
+endif
+
+build/riscv64/tbos_hybrid: $(TBOS_HYBRID_SRCS)
+ifneq ($(RISCV64_ELF_CC),)
+	@mkdir -p build/riscv64
+	@echo "[riscv64] Building tbos_hybrid..."
+	@$(RISCV64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[riscv64] Skipped (needs hosted libc)"
+else
+	@echo "[riscv64] Cross-compiler not found, skipping"
+endif
+
+# Run tests on host architecture
+arch-test: arch-host
+	@echo ""
+	@echo "================================================================"
+	@echo "  Running tests on $(TBOS_HOST_ARCH)..."
+	@echo "================================================================"
+	@build/$(TBOS_HOST_ARCH)/test_net
+
+# Clean multi-arch builds
+arch-clean:
+	@echo "Cleaning multi-arch builds..."
+	@rm -rf build/x86_64 build/arm64 build/riscv64 build/$(TBOS_HOST_ARCH)
+	@echo "Clean complete."
+
+# Docker-based cross-compilation (for full cross-platform testing)
+.PHONY: docker-build-all docker-test-arm64 docker-test-riscv64
+
+docker-build-all:
+	@echo "Building TBOS in Docker for multiple architectures..."
+	@docker run --rm -v $(PWD):/src -w /src --platform linux/amd64 gcc:latest make arch-host TBOS_HOST_ARCH=x86_64 || true
+	@docker run --rm -v $(PWD):/src -w /src --platform linux/arm64 gcc:latest make arch-host TBOS_HOST_ARCH=arm64 || true
+	@echo "Docker builds complete. Check build/ for outputs."
+
+docker-test-arm64:
+	@echo "Testing TBOS on ARM64 via Docker..."
+	@docker run --rm -v $(PWD):/src -w /src --platform linux/arm64 gcc:latest sh -c "make arch-host TBOS_HOST_ARCH=arm64 && build/arm64/test_net"
+
+docker-test-riscv64:
+	@echo "Testing TBOS on RISC-V64 via QEMU user mode..."
+	@docker run --rm -v $(PWD):/src -w /src riscv64/debian:latest sh -c "apt-get update && apt-get install -y gcc && make arch-host TBOS_HOST_ARCH=riscv64 && build/riscv64/test_net" || echo "RISC-V Docker not available"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HARDWARE TIER BUILDS (4-bit to Supercomputer)
+# ═══════════════════════════════════════════════════════════════════════════
+
+.PHONY: tier-all tier-calc tier-embed tier-retro tier-desktop tier-server tier-super tier-info tier-test
+
+TIER_BUILD_DIR := build/tiers
+TIER_DEMO_SRC := demos/tbos_universal_demo.c
+
+tier-info:
+	@echo ""
+	@echo "================================================================"
+	@echo "  TBOS Hardware Tier Build System"
+	@echo "  From 4-bit Calculators to Supercomputers"
+	@echo "================================================================"
+	@echo ""
+	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)"
+	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)"
+	@echo "  Tier 2: Retro        (32-bit,   64KB-16MB RAM)"
+	@echo "  Tier 3: Desktop      (64-bit,   16MB-16GB RAM)"
+	@echo "  Tier 4: Server       (64-bit,   16GB-1TB RAM)"
+	@echo "  Tier 5: Supercomputer (64-bit+, 1TB+ distributed)"
+	@echo ""
+	@echo "  Build targets:"
+	@echo "    make tier-all      Build all tiers"
+	@echo "    make tier-calc     Build calculator tier"
+	@echo "    make tier-embed    Build embedded tier"
+	@echo "    make tier-retro    Build retro tier"
+	@echo "    make tier-desktop  Build desktop tier"
+	@echo "    make tier-server   Build server tier"
+	@echo "    make tier-super    Build supercomputer tier"
+	@echo "    make tier-test     Run all tier demos"
+	@echo "================================================================"
+	@echo ""
+
+tier-all: $(TIER_BUILD_DIR)/tbos_calc $(TIER_BUILD_DIR)/tbos_embed $(TIER_BUILD_DIR)/tbos_retro $(TIER_BUILD_DIR)/tbos_desktop $(TIER_BUILD_DIR)/tbos_server $(TIER_BUILD_DIR)/tbos_super
+	@echo ""
+	@echo "All hardware tiers built:"
+	@ls -la $(TIER_BUILD_DIR)/
+
+$(TIER_BUILD_DIR):
+	@mkdir -p $(TIER_BUILD_DIR)
+
+$(TIER_BUILD_DIR)/tbos_calc: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 0] Building Calculator (8-bit, 256B RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $< 2>/dev/null || gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/tbos_embed: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 1] Building Embedded (16-bit, 4KB RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/tbos_retro: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 2] Building Retro (32-bit, 64KB RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/tbos_desktop: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 3] Building Desktop (64-bit, 1MB RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/tbos_server: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 4] Building Server (64-bit SMP, 4MB RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/tbos_super: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 5] Building Supercomputer (64-bit distributed, 16MB RAM)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
+
+tier-calc: $(TIER_BUILD_DIR)/tbos_calc
+	@$(TIER_BUILD_DIR)/tbos_calc
+
+tier-embed: $(TIER_BUILD_DIR)/tbos_embed
+	@$(TIER_BUILD_DIR)/tbos_embed
+
+tier-retro: $(TIER_BUILD_DIR)/tbos_retro
+	@$(TIER_BUILD_DIR)/tbos_retro
+
+tier-desktop: $(TIER_BUILD_DIR)/tbos_desktop
+	@$(TIER_BUILD_DIR)/tbos_desktop
+
+tier-server: $(TIER_BUILD_DIR)/tbos_server
+	@$(TIER_BUILD_DIR)/tbos_server
+
+tier-super: $(TIER_BUILD_DIR)/tbos_super
+	@$(TIER_BUILD_DIR)/tbos_super
+
+tier-test: tier-all
+	@echo ""
+	@echo "================================================================"
+	@echo "  Running all tier demos..."
+	@echo "================================================================"
+	@echo ""
+	@echo "--- Tier 0: Calculator ---"
+	@$(TIER_BUILD_DIR)/tbos_calc
+	@echo ""
+	@echo "--- Tier 1: Embedded ---"
+	@$(TIER_BUILD_DIR)/tbos_embed
+	@echo ""
+	@echo "--- Tier 3: Desktop ---"
+	@$(TIER_BUILD_DIR)/tbos_desktop | head -40
+	@echo "..."
+	@echo ""
+	@echo "All tier demos complete!"

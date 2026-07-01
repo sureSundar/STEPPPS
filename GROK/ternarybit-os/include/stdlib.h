@@ -10,8 +10,8 @@
 #ifndef _TBOS_STDLIB_H
 #define _TBOS_STDLIB_H
 
-#ifdef HOST_BUILD
-/* Use system stdlib.h for host-based unit tests */
+#if defined(HOST_BUILD) || defined(TBOS_HOSTED)
+/* Use system stdlib.h for host-based builds */
 #include_next <stdlib.h>
 #else
 /* Kernel build: use TBOS libc stubs */

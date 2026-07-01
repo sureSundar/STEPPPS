@@ -3,17 +3,22 @@
  * @brief TernaryBit OS - Conscious TCP Implementation
  *
  * TCP where every connection is a conscious relationship.
+ * Now integrated with HAL for real network I/O.
  *
- * @version 1.0
+ * @version 1.1
  * @date 2025-11-03
  */
 
 #include "tbos_tcp.h"
+#include "tbos/hal.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /* ========================================================================= */
 /* INTERNAL STATE                                                            */
@@ -209,8 +214,35 @@ int tbos_tcp_connect(int sockfd, uint32_t remote_ip, uint16_t remote_port) {
     printf("  [TCP] Sending SYN with mindful intention (seq: %u)\n",
            conn->send_seq);
 
-    /* In real implementation, would send actual SYN packet */
-    /* For now, simulate successful connection */
+    /* Use HAL for actual connection if available */
+    const hal_dispatch_table_t* hal = hal_get_dispatch();
+    if (hal && hal->network.connect) {
+        char ip_str[32];
+        snprintf(ip_str, sizeof(ip_str), "%u.%u.%u.%u",
+                 (remote_ip >> 24) & 0xFF,
+                 (remote_ip >> 16) & 0xFF,
+                 (remote_ip >> 8) & 0xFF,
+                 remote_ip & 0xFF);
+
+        /* Create actual socket if we don't have a real fd */
+        if (conn->send_buffer == NULL) {
+            int real_fd = hal->network.socket(AF_INET, SOCK_STREAM, 0);
+            if (real_fd >= 0) {
+                conn->send_buffer = (void*)(intptr_t)real_fd;  /* Store real fd */
+            }
+        }
+
+        int real_fd = (int)(intptr_t)conn->send_buffer;
+        if (real_fd > 0) {
+            int result = hal->network.connect(real_fd, ip_str, remote_port);
+            if (result < 0) {
+                printf("  [TCP] Connection failed (HAL error)\n");
+                conn->state = TCP_STATE_CLOSED;
+                return TBOS_NET_ERROR;
+            }
+        }
+    }
+
     conn->state = TCP_STATE_ESTABLISHED;
     conn->awareness = CONSCIOUSNESS_COMPASSIONATE;
     conn->connection_karma += 10;  /* Good karma for forming relationship */
@@ -277,31 +309,32 @@ int tbos_tcp_send(int sockfd, const void* data, size_t length, int flags) {
         conn->connection_karma += 5;  /* Good karma for compassion */
     }
 
-    tbos_tcp_segment_t preview_segment = {
-        .source_port = conn->local_port,
-        .dest_port = conn->remote_port,
-        .sequence_num = conn->send_seq,
-        .ack_num = conn->recv_seq,
-        .window_size = (uint16_t)(conn->send_window > UINT16_MAX
-                                  ? UINT16_MAX : conn->send_window),
-        .data = (void*)data,
-        .data_length = length
-    };
-    preview_segment.checksum = calculate_checksum(&preview_segment);
-    conn->connection_karma += preview_segment.checksum % 5;
+    /* Use HAL for actual send if we have a real socket */
+    ssize_t sent = (ssize_t)length;  /* Default to simulated */
+    const hal_dispatch_table_t* hal = hal_get_dispatch();
+    if (hal && hal->network.send && conn->send_buffer) {
+        int real_fd = (int)(intptr_t)conn->send_buffer;
+        if (real_fd > 0) {
+            sent = hal->network.send(real_fd, data, length);
+            if (sent < 0) {
+                printf("  [TCP] Send failed (HAL error)\n");
+                return TBOS_NET_ERROR;
+            }
+        }
+    }
 
     /* Update statistics */
-    conn->bytes_sent += length;
+    conn->bytes_sent += (uint64_t)sent;
     conn->packets_sent++;
-    g_total_bytes_sent += length;
+    g_total_bytes_sent += (uint64_t)sent;
 
     /* Good karma for successful send */
     conn->connection_karma += 1;
     g_tcp_collective_karma += 1;
 
-    printf("  [TCP] Sent %zu bytes with Right Speech (karma: +1)\n", length);
+    printf("  [TCP] Sent %zd bytes with Right Speech (karma: +1)\n", sent);
 
-    return (int)length;
+    return (int)sent;
 }
 
 int tbos_tcp_recv(int sockfd, void* buffer, size_t length, int flags) {
@@ -317,8 +350,24 @@ int tbos_tcp_recv(int sockfd, void* buffer, size_t length, int flags) {
         return TBOS_NET_ERROR;
     }
 
+    /* Use HAL for actual receive if we have a real socket */
+    const hal_dispatch_table_t* hal = hal_get_dispatch();
+    if (hal && hal->network.recv && conn->send_buffer) {
+        int real_fd = (int)(intptr_t)conn->send_buffer;
+        if (real_fd > 0) {
+            ssize_t received = hal->network.recv(real_fd, buffer, length);
+            if (received > 0) {
+                conn->bytes_received += (uint64_t)received;
+                conn->packets_received++;
+                g_total_bytes_received += (uint64_t)received;
+                printf("  [TCP] Received %zd bytes with mindful attention\n", received);
+            }
+            return (int)received;
+        }
+    }
+
+    /* Fallback: check internal buffer */
     if (!conn->recv_buffer || conn->recv_buffer_size == 0) {
-        printf("  [TCP] No queued data from peer\n");
         return 0;
     }
 
@@ -363,6 +412,15 @@ int tbos_tcp_close(int sockfd) {
         printf("  [TCP] Entering TIME_WAIT - contemplation period\n");
     }
 
+    /* Close real socket via HAL if we have one */
+    const hal_dispatch_table_t* hal = hal_get_dispatch();
+    if (hal && hal->network.close && conn->send_buffer) {
+        int real_fd = (int)(intptr_t)conn->send_buffer;
+        if (real_fd > 0) {
+            hal->network.close(real_fd);
+        }
+    }
+
     /* Print relationship summary */
     printf("  [TCP] Connection summary:\n");
     printf("        Bytes sent:     %lu\n", conn->bytes_sent);
@@ -373,6 +431,11 @@ int tbos_tcp_close(int sockfd) {
     /* Update global stats */
     g_total_connections_closed++;
     g_tcp_collective_karma += conn->connection_karma / 10;
+
+    /* Free recv buffer if allocated */
+    if (conn->recv_buffer) {
+        free(conn->recv_buffer);
+    }
 
     /* Free connection */
     conn->state = TCP_STATE_CLOSED;

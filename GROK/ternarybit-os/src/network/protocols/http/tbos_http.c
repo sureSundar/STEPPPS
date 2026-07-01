@@ -59,21 +59,13 @@ tbos_http_response_t* tbos_http_get(tbos_http_client_t* client, const char* path
         return NULL;
     }
 
-    /* Create socket if not connected */
-    if (client->sockfd < 0) {
-        client->sockfd = tbos_tcp_socket();
-        uint32_t ip = (192 << 24) | (168 << 16) | (1 << 8) | 1; /* Simulated */
-        tbos_tcp_connect(client->sockfd, ip, client->port);
-        client->connected = true;
-    }
-
     /* Build GET request */
     char request[TBOS_HTTP_MAX_HEADER_LENGTH];
     snprintf(request, sizeof(request),
              "GET %s HTTP/1.1\r\n"
              "Host: %s\r\n"
              "User-Agent: TBOS-Conscious-HTTP/1.0\r\n"
-             "Connection: keep-alive\r\n"
+             "Connection: close\r\n"
              "\r\n",
              path, client->host);
 
@@ -93,6 +85,34 @@ tbos_http_response_t* tbos_http_get(tbos_http_client_t* client, const char* path
         return NULL;
     }
 
+    /* Create socket and connect if needed */
+    if (client->sockfd < 0 || !client->connected) {
+        client->sockfd = tbos_tcp_socket();
+        if (client->sockfd < 0) {
+            printf("  [HTTP] Failed to create socket\n");
+            return NULL;
+        }
+
+        /* Resolve and connect using consciousness TCP */
+        uint32_t ip = 0;
+        /* Simple IP parsing for now - proper DNS in wow layer */
+        if (sscanf(client->host, "%*d.%*d.%*d.%*d") == 0) {
+            /* Looks like IP address - parse it */
+            unsigned a, b, c, d;
+            if (sscanf(client->host, "%u.%u.%u.%u", &a, &b, &c, &d) == 4) {
+                ip = (a << 24) | (b << 16) | (c << 8) | d;
+            }
+        }
+
+        if (tbos_tcp_connect(client->sockfd, ip, client->port) != TBOS_NET_SUCCESS) {
+            printf("  [HTTP] Connection failed - use wow:// for DNS resolution\n");
+            tbos_tcp_close(client->sockfd);
+            client->sockfd = -1;
+            return NULL;
+        }
+        client->connected = true;
+    }
+
     /* Send request */
     int sent = tbos_tcp_send(client->sockfd, request, strlen(request), 0);
     if (sent < 0) {
@@ -102,29 +122,63 @@ tbos_http_response_t* tbos_http_get(tbos_http_client_t* client, const char* path
 
     printf("  [HTTP] GET %s with mindful intention\n", path);
 
-    /* Create response */
+    /* Create response structure */
     tbos_http_response_t* response = malloc(sizeof(tbos_http_response_t));
     if (!response) return NULL;
 
     memset(response, 0, sizeof(tbos_http_response_t));
     strcpy(response->version, "HTTP/1.1");
-    response->status_code = HTTP_STATUS_OK;
-    strcpy(response->reason_phrase, "OK");
     response->was_helpful = true;
     response->served_with_compassion = true;
     response->response_karma = 10;
 
-    /* Simulate body */
-    const char* body_text = "Response from Digital Sangha";
-    response->body_length = strlen(body_text);
-    response->body = malloc(response->body_length + 1);
-    if (response->body) {
-        strcpy(response->body, body_text);
+    /* Read response (simplified - real impl would parse headers properly) */
+    char* buffer = malloc(65536);
+    if (buffer) {
+        size_t total = 0;
+        int n;
+        while ((n = tbos_tcp_recv(client->sockfd, buffer + total, 65536 - total - 1, 0)) > 0) {
+            total += (size_t)n;
+            if (total >= 65535) break;
+        }
+        buffer[total] = '\0';
+
+        /* Parse status line */
+        if (strncmp(buffer, "HTTP/", 5) == 0) {
+            char* space = strchr(buffer, ' ');
+            if (space) {
+                response->status_code = (tbos_http_status_t)atoi(space + 1);
+                char* end = strchr(space + 1, ' ');
+                if (end) {
+                    char* crlf = strstr(end, "\r\n");
+                    if (crlf) {
+                        size_t len = (size_t)(crlf - end - 1);
+                        if (len < sizeof(response->reason_phrase)) {
+                            strncpy(response->reason_phrase, end + 1, len);
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Find body after headers */
+        char* body = strstr(buffer, "\r\n\r\n");
+        if (body) {
+            body += 4;
+            response->body_length = total - (size_t)(body - buffer);
+            response->body = malloc(response->body_length + 1);
+            if (response->body) {
+                memcpy(response->body, body, response->body_length);
+                ((char*)response->body)[response->body_length] = '\0';
+            }
+        }
+
+        free(buffer);
     }
 
     /* Update stats */
     client->successful_requests++;
-    client->bytes_sent += sent;
+    client->bytes_sent += (uint64_t)sent;
     client->bytes_received += response->body_length;
     client->client_karma += 5;
     g_total_requests++;

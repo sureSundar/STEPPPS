@@ -9,8 +9,8 @@
 #ifndef _TBOS_STDIO_H
 #define _TBOS_STDIO_H
 
-#ifdef HOST_BUILD
-/* Use system stdio for host-based unit tests */
+#if defined(HOST_BUILD) || defined(TBOS_HOSTED)
+/* Use system stdio for host-based builds */
 #include_next <stdio.h>
 #else
 /* Kernel build: use TBOS stdio stubs */

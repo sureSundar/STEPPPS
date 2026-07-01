@@ -9,8 +9,8 @@
 #ifndef _TBOS_STRING_H
 #define _TBOS_STRING_H
 
-#ifdef HOST_BUILD
-/* Use system string.h for host-based unit tests */
+#if defined(HOST_BUILD) || defined(TBOS_HOSTED)
+/* Use system string.h for host-based builds */
 #include_next <string.h>
 #else
 /* Kernel build: use TBOS libc stubs */

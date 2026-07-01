@@ -1,15 +1,23 @@
 #ifdef TBOS_HOSTED
 
-#include "tbos/hal.h"
-
+/* System headers first for hosted mode */
 #include <errno.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <termios.h>
 #include <unistd.h>
+#include <ifaddrs.h>
+
+/* TBOS headers after system headers */
+#include "tbos/hal.h"
 
 static struct termios saved_termios;
 static int termios_configured = 0;
@@ -90,7 +98,150 @@ static hal_capabilities_t hal_hosted_capabilities(void) {
     caps.has_console = 1;
     caps.has_input = 1;
     caps.has_timer = 1;
+    caps.has_network = 1;
     return caps;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * NETWORK OPERATIONS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static int hal_hosted_net_socket(int domain, int type, int protocol) {
+    return socket(domain, type, protocol);
+}
+
+static int hal_hosted_net_connect(int fd, const char* host, uint16_t port) {
+    struct sockaddr_in addr;
+    struct hostent* he;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    he = gethostbyname(host);
+    if (he) {
+        memcpy(&addr.sin_addr, he->h_addr_list[0], (size_t)he->h_length);
+    } else if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+        return -1;
+    }
+
+    return connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+}
+
+static int hal_hosted_net_bind(int fd, uint16_t port) {
+    struct sockaddr_in addr;
+    int opt = 1;
+
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(port);
+
+    return bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+}
+
+static int hal_hosted_net_listen(int fd, int backlog) {
+    return listen(fd, backlog);
+}
+
+static int hal_hosted_net_accept(int fd, char* remote_addr, uint16_t* remote_port) {
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+
+    int client_fd = accept(fd, (struct sockaddr*)&addr, &addrlen);
+    if (client_fd >= 0) {
+        if (remote_addr) {
+            inet_ntop(AF_INET, &addr.sin_addr, remote_addr, INET_ADDRSTRLEN);
+        }
+        if (remote_port) {
+            *remote_port = ntohs(addr.sin_port);
+        }
+    }
+    return client_fd;
+}
+
+static ssize_t hal_hosted_net_send(int fd, const void* buf, size_t len) {
+    return send(fd, buf, len, 0);
+}
+
+static ssize_t hal_hosted_net_recv(int fd, void* buf, size_t len) {
+    return recv(fd, buf, len, 0);
+}
+
+static int hal_hosted_net_close(int fd) {
+    return close(fd);
+}
+
+static int hal_hosted_net_set_nonblocking(int fd, int enabled) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) return -1;
+
+    if (enabled) {
+        flags |= O_NONBLOCK;
+    } else {
+        flags &= ~O_NONBLOCK;
+    }
+    return fcntl(fd, F_SETFL, flags);
+}
+
+static int hal_hosted_net_get_local_ip(char* buf, size_t len) {
+    struct ifaddrs* ifaddr;
+    struct ifaddrs* ifa;
+
+    if (getifaddrs(&ifaddr) == -1) return -1;
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) continue;
+        if (ifa->ifa_addr->sa_family != AF_INET) continue;
+        if (strcmp(ifa->ifa_name, "lo") == 0) continue;
+
+        struct sockaddr_in* addr = (struct sockaddr_in*)ifa->ifa_addr;
+        inet_ntop(AF_INET, &addr->sin_addr, buf, len);
+        freeifaddrs(ifaddr);
+        return 0;
+    }
+
+    freeifaddrs(ifaddr);
+    strncpy(buf, "127.0.0.1", len);
+    return 0;
+}
+
+static ssize_t hal_hosted_net_sendto(int fd, const void* buf, size_t len,
+                                      const char* host, uint16_t port) {
+    struct sockaddr_in addr;
+    struct hostent* he;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    he = gethostbyname(host);
+    if (he) {
+        memcpy(&addr.sin_addr, he->h_addr_list[0], (size_t)he->h_length);
+    } else if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+        return -1;
+    }
+
+    return sendto(fd, buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
+}
+
+static ssize_t hal_hosted_net_recvfrom(int fd, void* buf, size_t len,
+                                        char* from_addr, uint16_t* from_port) {
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+
+    ssize_t n = recvfrom(fd, buf, len, 0, (struct sockaddr*)&addr, &addrlen);
+    if (n >= 0) {
+        if (from_addr) {
+            inet_ntop(AF_INET, &addr.sin_addr, from_addr, INET_ADDRSTRLEN);
+        }
+        if (from_port) {
+            *from_port = ntohs(addr.sin_port);
+        }
+    }
+    return n;
 }
 
 static const hal_dispatch_table_t DISPATCH = {
@@ -112,6 +263,20 @@ static const hal_dispatch_table_t DISPATCH = {
     .storage = {
         .read_sector = NULL,
         .write_sector = NULL,
+    },
+    .network = {
+        .socket = hal_hosted_net_socket,
+        .connect = hal_hosted_net_connect,
+        .bind = hal_hosted_net_bind,
+        .listen = hal_hosted_net_listen,
+        .accept = hal_hosted_net_accept,
+        .send = hal_hosted_net_send,
+        .recv = hal_hosted_net_recv,
+        .close = hal_hosted_net_close,
+        .set_nonblocking = hal_hosted_net_set_nonblocking,
+        .get_local_ip = hal_hosted_net_get_local_ip,
+        .sendto = hal_hosted_net_sendto,
+        .recvfrom = hal_hosted_net_recvfrom,
     },
 };
 
