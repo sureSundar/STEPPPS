@@ -237,6 +237,14 @@ $(BUILD_DIR)/test_steppps_framework: $(TEST_DIR)/test_steppps_framework.c $(STEP
 	@echo "🔨 Building STEPPPS Framework Test..."
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
 
+# STEPPPS Entity Framework Demo (uses host compiler)
+STEPPPS_ENTITY_SRCS := src/core/steppps/steppps_entity.c
+steppps-entity-demo: build/steppps_entity_demo
+build/steppps_entity_demo: demos/steppps_entity_demo.c $(STEPPPS_ENTITY_SRCS) | directories
+	@echo "🔨 Building STEPPPS Entity Framework Demo..."
+	gcc -DHOST_BUILD -Wall -Wextra -O2 -g -Iinclude -o $@ $^
+	@echo "✅ Run with: ./build/steppps_entity_demo"
+
 # Memory Manager Test
 test_memory_manager: $(BUILD_DIR)/test_memory_manager
 $(BUILD_DIR)/test_memory_manager: $(TEST_DIR)/test_memory_manager.c $(MEMORY_SRCS) $(BOOT_SRCS) $(HW_DETECTOR_SRCS) | directories
@@ -846,6 +854,31 @@ tier-server: $(TIER_BUILD_DIR)/tbos_server
 
 tier-super: $(TIER_BUILD_DIR)/tbos_super
 	@$(TIER_BUILD_DIR)/tbos_super
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TBOS COMPLETE SHELL (runs on any OS)
+# ═══════════════════════════════════════════════════════════════════════════
+
+.PHONY: tbos tbos-install tbos-run
+
+tbos: build/tbos
+	@echo ""
+	@echo "TBOS Complete Shell built: build/tbos"
+	@echo "Run with: ./build/tbos"
+
+build/tbos: src/shell/tbos_complete_shell.c
+	@mkdir -p build
+	@echo "Building TBOS Complete Shell..."
+	@gcc -DTBOS_HOSTED -Wall -Wextra -O2 -o $@ $< -Iinclude
+	@echo "Build complete!"
+
+tbos-install: build/tbos
+	@echo "Installing TBOS to /usr/local/bin..."
+	@sudo cp build/tbos /usr/local/bin/tbos
+	@echo "TBOS installed! Run 'tbos' from anywhere."
+
+tbos-run: build/tbos
+	@./build/tbos
 
 tier-test: tier-all
 	@echo ""
