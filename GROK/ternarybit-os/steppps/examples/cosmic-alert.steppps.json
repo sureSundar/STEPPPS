@@ -1,0 +1,81 @@
+{
+  "id": "cosmic-alert-solflare-20250701",
+  "name": "Solar Flare Alert",
+  "version": "1.0",
+
+  "space": {
+    "universe": "earth",
+    "coordinates": {
+      "cosmic": "sun:corona:active-region-3421"
+    },
+    "device": "noaa-goes-satellite",
+    "realm": "cosmic"
+  },
+
+  "time": {
+    "utc": "2025-07-01T14:32:00Z",
+    "created": "2025-07-01T14:32:00Z",
+    "relative": "+8min photon arrival, +2days particle arrival",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "cosmic",
+    "source": "sun",
+    "description": "X-class solar flare detected in active region 3421",
+    "severity": "high",
+    "chain": ["solar-cycle-25", "active-region-3421-emergence"]
+  },
+
+  "psychology": {
+    "system": {
+      "health": 100,
+      "consciousness": "enlightened"
+    },
+    "environment": {
+      "weather": "space-weather-storm",
+      "conditions": "geomagnetic-disturbance-expected"
+    },
+    "beings": [
+      { "type": "system", "mood": "alert", "state": "monitoring" },
+      { "type": "human", "mood": "unaware", "state": "normal-activity" }
+    ],
+    "intent": "alert all TBOS instances of potential disruption"
+  },
+
+  "prompt": {
+    "system": "You are a cosmic monitoring STEPPPS. Alert users about space weather.",
+    "user": "Solar flare detected. What precautions should be taken?",
+    "next": "Generate protective-measures STEPPPS for each affected device",
+    "interaction": "Broadcast to Sangha network, escalate based on device type"
+  },
+
+  "pixel": {
+    "type": "terminal",
+    "template": "!!! COSMIC ALERT !!!\n\nEvent: {{event}}\nSeverity: {{severity}}\nETA: {{eta}}\n\nRecommendations:\n{{recommendations}}",
+    "data": {
+      "event": "X-Class Solar Flare",
+      "severity": "HIGH",
+      "eta": "Photons: 8min, Particles: 2 days",
+      "recommendations": "- Backup critical data\n- Monitor satellite systems\n- Prepare for radio blackouts"
+    },
+    "style": { "color": "red", "blink": true }
+  },
+
+  "script": {
+    "lang": "sh",
+    "code": "#!/bin/sh\n# Broadcast cosmic alert to Sangha\nfor node in $(sangha list); do\n  sangha send $node '{\"alert\":\"solar-flare\",\"severity\":\"high\"}'\ndone\n\n# Log locally\necho \"[$(date -u)] COSMIC ALERT: Solar flare\" >> /var/log/tbos/cosmic.log\n\n# Generate child STEPPPS for each critical system\nfor sys in satellite radio power; do\n  steppps generate --parent $STEPPPS_ID --type protective --target $sys\ndone",
+    "entry": "alert",
+    "deps": ["sangha", "steppps-cli"],
+    "sandbox": false,
+    "outputs": ["protective-satellite-001", "protective-radio-001", "protective-power-001"]
+  },
+
+  "meta": {
+    "author": "cosmic-monitor",
+    "tags": ["cosmic", "alert", "solar", "space-weather"],
+    "karma_cost": 0,
+    "karma_reward": 50,
+    "children": ["protective-satellite-001", "protective-radio-001", "protective-power-001"]
+  }
+}

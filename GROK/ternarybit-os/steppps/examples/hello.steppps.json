@@ -1,0 +1,78 @@
+{
+  "id": "hello-world-001",
+  "name": "Hello World STEPPPS",
+  "version": "1.0",
+
+  "space": {
+    "universe": "earth",
+    "coordinates": { "lat": 37.7749, "lon": -122.4194 },
+    "device": "my-laptop",
+    "path": "/home/user/hello.steppps.json",
+    "realm": "physical"
+  },
+
+  "time": {
+    "utc": "2025-01-01T00:00:00Z",
+    "created": "2025-01-01T00:00:00Z",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "user",
+    "source": "keyboard",
+    "description": "User requested hello world",
+    "severity": "info"
+  },
+
+  "psychology": {
+    "system": {
+      "health": 95,
+      "karma": 100,
+      "consciousness": "aware"
+    },
+    "environment": {
+      "weather": "sunny",
+      "temperature": 22
+    },
+    "beings": [
+      { "type": "human", "mood": "curious", "state": "learning" }
+    ],
+    "intent": "greet and demonstrate STEPPPS"
+  },
+
+  "prompt": {
+    "system": "You are a friendly TBOS entity demonstrating STEPPPS",
+    "user": "Say hello and explain what you are",
+    "next": "Generate a follow-up STEPPPS that asks the user what they want to do",
+    "interaction": "Display greeting, await user input"
+  },
+
+  "pixel": {
+    "type": "terminal",
+    "template": "=== STEPPPS: {{name}} ===\n\n{{message}}\n\nKarma: {{karma}} | Mood: {{mood}}",
+    "data": {
+      "message": "Hello! I am a self-contained STEPPPS entity.",
+      "karma": 100,
+      "mood": "happy"
+    },
+    "actions": [
+      { "label": "Continue", "action": "next", "next": "menu-001" },
+      { "label": "Exit", "action": "exit" }
+    ]
+  },
+
+  "script": {
+    "lang": "sh",
+    "code": "echo \"Hello from STEPPPS!\"\necho \"I am: $STEPPPS_NAME\"\necho \"Location: $STEPPPS_SPACE_PATH\"\necho \"Time: $STEPPPS_TIME_UTC\"\nexit 0",
+    "entry": "main",
+    "sandbox": true,
+    "outputs": ["menu-001"]
+  },
+
+  "meta": {
+    "author": "tbos",
+    "tags": ["hello", "demo", "beginner"],
+    "karma_cost": 0,
+    "karma_reward": 5
+  }
+}

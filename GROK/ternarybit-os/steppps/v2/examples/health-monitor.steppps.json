@@ -1,0 +1,86 @@
+{
+  "id": "health-monitor-001",
+  "name": "System Health Monitor",
+  "version": "2.0",
+
+  "space": {
+    "universe": "earth",
+    "device": "server-prod-01",
+    "path": "/etc/tbos/monitors/health.steppps.json",
+    "realm": "virtual"
+  },
+
+  "time": {
+    "utc": "2025-07-03T12:00:00Z",
+    "created": "2025-07-01T00:00:00Z",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "scheduled",
+    "source": "cron",
+    "description": "Scheduled health check every 5 minutes",
+    "severity": "info"
+  },
+
+  "psychology": {
+    "system": {
+      "health": 87,
+      "karma": 2500,
+      "consciousness": "mindful"
+    },
+    "environment": {
+      "conditions": "datacenter-climate-controlled"
+    },
+    "beings": [
+      { "type": "system", "mood": "vigilant", "state": "monitoring" }
+    ],
+    "intent": "monitor system health and alert on issues"
+  },
+
+  "prompt": {
+    "system": "You are a system health monitor. Report anomalies clearly.",
+    "user": "Check system health and report status",
+    "next": "If health < 50, generate alert STEPPPS for ops team",
+    "interaction": "Log metrics, alert if thresholds exceeded",
+    "model": "local-llm",
+    "temperature": 0.3
+  },
+
+  "pixel": {
+    "type": "terminal",
+    "template": "╔═══════════════════════════════════════════╗\n║  SYSTEM HEALTH REPORT                     ║\n╠═══════════════════════════════════════════╣\n║  CPU:    {{cpu}}%                          ║\n║  Memory: {{memory}}%                       ║\n║  Disk:   {{disk}}%                         ║\n║  Status: {{status}}                        ║\n╚═══════════════════════════════════════════╝",
+    "data": {
+      "cpu": 45,
+      "memory": 72,
+      "disk": 58,
+      "status": "HEALTHY"
+    }
+  },
+
+  "script": {
+    "lang": "sh",
+    "code": "#!/bin/sh\n# System Health Check\n\nCPU=$(top -l 1 | grep 'CPU usage' | awk '{print $3}' | cut -d% -f1 2>/dev/null || echo 50)\nMEM=$(vm_stat | grep 'Pages active' | awk '{print $3}' | cut -d. -f1 2>/dev/null || echo 60)\nDISK=$(df -h / | tail -1 | awk '{print $5}' | cut -d% -f1 2>/dev/null || echo 55)\n\necho \"Health Check Results:\"\necho \"  CPU:  ${CPU}%\"\necho \"  MEM:  ${MEM} pages active\"\necho \"  DISK: ${DISK}% used\"\n\n# Simple threshold check\nif [ \"${DISK:-0}\" -gt 90 ]; then\n  echo \"WARNING: Disk usage critical!\"\n  exit 1\nfi\n\necho \"Status: HEALTHY\"\nexit 0",
+    "entry": "check",
+    "sandbox": 2
+  },
+
+  "signature": {
+    "author": "ops-team@company.com",
+    "karma": 15000,
+    "pubkey": "ed25519:ops_team_public_key",
+    "sig": "signed_by_ops_team"
+  },
+
+  "requires": {
+    "execute": ["top", "vm_stat", "df", "awk", "grep"],
+    "filesystem": ["read:/proc/*", "read:/sys/*"]
+  },
+
+  "meta": {
+    "author": "ops-team",
+    "tags": ["health", "monitoring", "system", "scheduled"],
+    "karma_cost": 1,
+    "karma_reward": 10
+  }
+}

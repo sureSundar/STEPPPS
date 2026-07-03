@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "steppps://schema/v1",
+  "title": "STEPPPS - Self-Contained Universal Entity",
+  "description": "A human & machine readable entity with embedded code, metadata, and 7-dimensional context",
+
+  "type": "object",
+  "required": ["id", "space", "time", "event", "psychology", "prompt", "pixel", "script"],
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier (UUID or human-readable)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0"
+    },
+
+    "space": {
+      "type": "object",
+      "description": "Location in multiverse - Earth coordinates, server, or cosmic",
+      "properties": {
+        "universe": { "type": "string", "default": "earth" },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lon": { "type": "number" },
+            "alt": { "type": "number" },
+            "cosmic": { "type": "string" }
+          }
+        },
+        "device": { "type": "string" },
+        "path": { "type": "string" },
+        "realm": { "type": "string", "enum": ["physical", "virtual", "hybrid", "cosmic"] }
+      }
+    },
+
+    "time": {
+      "type": "object",
+      "description": "Temporal context - UTC for Earth, relative for other universes",
+      "properties": {
+        "utc": { "type": "string", "format": "date-time" },
+        "created": { "type": "string", "format": "date-time" },
+        "expires": { "type": "string", "format": "date-time" },
+        "relative": { "type": "string", "description": "Relative time for non-Earth universes" },
+        "epoch": { "type": "string", "enum": ["earth", "tbos", "cosmic", "custom"] }
+      }
+    },
+
+    "event": {
+      "type": "object",
+      "description": "What triggered this - cosmic to business transaction",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["cosmic", "natural", "accident", "incident", "transaction", "user", "system", "scheduled", "reaction"]
+        },
+        "source": { "type": "string" },
+        "description": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical", "cosmic"] },
+        "parent": { "type": "string", "description": "Parent STEPPPS that triggered this" },
+        "chain": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "psychology": {
+      "type": "object",
+      "description": "Context state - system health, weather, mood of beings nearby",
+      "properties": {
+        "system": {
+          "type": "object",
+          "properties": {
+            "health": { "type": "number", "minimum": 0, "maximum": 100 },
+            "cpu": { "type": "number" },
+            "memory": { "type": "number" },
+            "karma": { "type": "integer" },
+            "consciousness": { "type": "string" }
+          }
+        },
+        "environment": {
+          "type": "object",
+          "properties": {
+            "weather": { "type": "string" },
+            "temperature": { "type": "number" },
+            "conditions": { "type": "string" }
+          }
+        },
+        "beings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["human", "animal", "ai", "system"] },
+              "mood": { "type": "string" },
+              "state": { "type": "string" }
+            }
+          }
+        },
+        "intent": { "type": "string", "description": "The intention behind this STEPPPS" }
+      }
+    },
+
+    "prompt": {
+      "type": "object",
+      "description": "GenAI prompt for interaction and next STEPPPS generation",
+      "properties": {
+        "system": { "type": "string", "description": "System prompt context" },
+        "user": { "type": "string", "description": "User-facing prompt" },
+        "next": { "type": "string", "description": "Prompt to generate next STEPPPS" },
+        "interaction": { "type": "string", "description": "How to interact with environment" },
+        "model": { "type": "string", "description": "Preferred AI model" },
+        "temperature": { "type": "number", "default": 0.7 }
+      }
+    },
+
+    "pixel": {
+      "type": "object",
+      "description": "Display and visualization logic",
+      "properties": {
+        "type": { "type": "string", "enum": ["text", "html", "terminal", "gui", "vr", "ar", "none"] },
+        "template": { "type": "string", "description": "Display template or format string" },
+        "style": { "type": "object" },
+        "data": { "type": "object", "description": "Data to render" },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "action": { "type": "string" },
+              "next": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "script": {
+      "type": "object",
+      "description": "Self-contained executable logic",
+      "properties": {
+        "lang": { "type": "string", "enum": ["json", "sh", "c", "python", "js", "lua", "tbos"] },
+        "code": { "type": "string", "description": "The actual code" },
+        "entry": { "type": "string", "description": "Entry point function/command" },
+        "deps": { "type": "array", "items": { "type": "string" } },
+        "sandbox": { "type": "boolean", "default": true },
+        "outputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What this script produces (next STEPPPS IDs)"
+        }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "description": "Additional self-describing metadata",
+      "properties": {
+        "author": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "karma_cost": { "type": "integer", "default": 0 },
+        "karma_reward": { "type": "integer", "default": 1 },
+        "parent": { "type": "string" },
+        "children": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

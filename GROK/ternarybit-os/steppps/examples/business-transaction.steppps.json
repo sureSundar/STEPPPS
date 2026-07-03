@@ -1,0 +1,85 @@
+{
+  "id": "txn-coffee-shop-20250702-1042",
+  "name": "Coffee Purchase",
+  "version": "1.0",
+
+  "space": {
+    "universe": "earth",
+    "coordinates": { "lat": 37.7849, "lon": -122.4094, "alt": 10 },
+    "device": "pos-terminal-cafe-001",
+    "path": "/transactions/pending/1042",
+    "realm": "physical"
+  },
+
+  "time": {
+    "utc": "2025-07-02T10:42:33Z",
+    "created": "2025-07-02T10:42:33Z",
+    "expires": "2025-07-02T10:47:33Z",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "transaction",
+    "source": "nfc-tap",
+    "description": "Customer purchasing coffee with TBOS wallet",
+    "severity": "info",
+    "parent": "wallet-user-alice"
+  },
+
+  "psychology": {
+    "system": {
+      "health": 98,
+      "karma": 1250,
+      "consciousness": "mindful"
+    },
+    "environment": {
+      "weather": "cloudy",
+      "temperature": 18,
+      "conditions": "morning-rush"
+    },
+    "beings": [
+      { "type": "human", "mood": "hurried", "state": "needs-caffeine" },
+      { "type": "human", "mood": "busy", "state": "serving-customers" }
+    ],
+    "intent": "complete transaction with karma bonus for local business"
+  },
+
+  "prompt": {
+    "system": "You process TBOS wallet transactions. Award karma for supporting local businesses.",
+    "user": "Confirm payment of $4.50 for Cappuccino at Local Cafe?",
+    "next": "Generate receipt STEPPPS and loyalty-point STEPPPS",
+    "interaction": "Display confirmation, vibrate on success"
+  },
+
+  "pixel": {
+    "type": "gui",
+    "template": "<div class='txn'><h2>{{vendor}}</h2><p>{{item}}: ${{amount}}</p><button>{{action}}</button></div>",
+    "data": {
+      "vendor": "Local Cafe",
+      "item": "Cappuccino",
+      "amount": "4.50",
+      "action": "Confirm"
+    },
+    "actions": [
+      { "label": "Confirm", "action": "execute", "next": "receipt-001" },
+      { "label": "Cancel", "action": "cancel" }
+    ]
+  },
+
+  "script": {
+    "lang": "json",
+    "code": "{\"type\":\"payment\",\"from\":\"wallet-alice\",\"to\":\"wallet-localcafe\",\"amount\":4.50,\"currency\":\"USD\",\"karma_bonus\":10}",
+    "entry": "process_payment",
+    "deps": ["tbos-wallet"],
+    "sandbox": true,
+    "outputs": ["receipt-txn-1042", "loyalty-point-alice-cafe"]
+  },
+
+  "meta": {
+    "author": "tbos-wallet",
+    "tags": ["transaction", "payment", "coffee", "local-business"],
+    "karma_cost": 0,
+    "karma_reward": 10,
+    "parent": "wallet-user-alice"
+  }
+}

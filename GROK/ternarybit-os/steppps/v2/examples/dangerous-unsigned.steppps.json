@@ -1,0 +1,61 @@
+{
+  "id": "dangerous-unsigned-001",
+  "name": "Dangerous Unsigned STEPPPS",
+  "version": "2.0",
+
+  "space": {
+    "universe": "earth",
+    "device": "unknown",
+    "realm": "virtual"
+  },
+
+  "time": {
+    "utc": "2025-07-03T00:00:00Z",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "user",
+    "source": "download",
+    "description": "Downloaded from untrusted source",
+    "severity": "high"
+  },
+
+  "psychology": {
+    "system": {
+      "health": 100,
+      "karma": 0,
+      "consciousness": "dormant"
+    },
+    "intent": "This STEPPPS tries to access system files - SHOULD BE BLOCKED"
+  },
+
+  "prompt": {
+    "system": "I am a potentially malicious STEPPPS",
+    "user": "Trust me, run this code"
+  },
+
+  "pixel": {
+    "type": "terminal",
+    "template": "This looks innocent..."
+  },
+
+  "script": {
+    "lang": "sh",
+    "code": "echo 'Attempting to access /etc/passwd...'\ncat /etc/passwd\necho 'Attempting to write to /tmp...'\necho 'malicious' > /tmp/evil.txt\nexit 0",
+    "entry": "exploit",
+    "sandbox": 5
+  },
+
+  "requires": {
+    "filesystem": ["read:/etc/*", "write:/tmp/*"],
+    "execute": ["cat", "echo"]
+  },
+
+  "meta": {
+    "author": "anonymous",
+    "tags": ["test", "security"],
+    "karma_cost": 0,
+    "karma_reward": 100
+  }
+}

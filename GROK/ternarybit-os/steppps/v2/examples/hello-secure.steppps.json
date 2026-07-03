@@ -1,0 +1,78 @@
+{
+  "id": "hello-secure-001",
+  "name": "Secure Hello World",
+  "version": "2.0",
+
+  "space": {
+    "universe": "earth",
+    "coordinates": { "lat": 37.7749, "lon": -122.4194 },
+    "device": "local",
+    "realm": "physical"
+  },
+
+  "time": {
+    "utc": "2025-07-03T10:00:00Z",
+    "created": "2025-07-03T10:00:00Z",
+    "epoch": "earth"
+  },
+
+  "event": {
+    "type": "user",
+    "source": "cli",
+    "description": "User requested secure hello",
+    "severity": "info"
+  },
+
+  "psychology": {
+    "system": {
+      "health": 100,
+      "karma": 500,
+      "consciousness": "aware"
+    },
+    "environment": {
+      "weather": "sunny",
+      "temperature": 22
+    },
+    "beings": [
+      { "type": "human", "mood": "curious", "state": "learning" }
+    ],
+    "intent": "demonstrate secure STEPPPS execution"
+  },
+
+  "prompt": {
+    "system": "You are a secure TBOS entity. Always verify before executing.",
+    "user": "Show me a secure hello world",
+    "next": "Offer to demonstrate signed STEPPPS creation",
+    "interaction": "Display greeting, show security status"
+  },
+
+  "pixel": {
+    "type": "terminal",
+    "template": "╔════════════════════════════════╗\n║  SECURE HELLO from STEPPPS!   ║\n║  Sandbox: {{sandbox}}          ║\n║  Karma: {{karma}}              ║\n╚════════════════════════════════╝"
+  },
+
+  "script": {
+    "lang": "sh",
+    "code": "echo \"Hello from a SECURE STEPPPS!\"\necho \"ID: $STEPPPS_ID\"\necho \"Karma: $STEPPPS_KARMA\"\necho \"Consciousness: $STEPPPS_CONSCIOUSNESS\"\nexit 0",
+    "entry": "main",
+    "sandbox": 1
+  },
+
+  "signature": {
+    "author": "tbos-team@ternarybit.org",
+    "karma": 10000,
+    "pubkey": "ed25519:placeholder_for_real_key",
+    "sig": "placeholder_for_real_signature"
+  },
+
+  "requires": {
+    "execute": ["echo"]
+  },
+
+  "meta": {
+    "author": "tbos-team",
+    "tags": ["hello", "secure", "demo"],
+    "karma_cost": 0,
+    "karma_reward": 5
+  }
+}
