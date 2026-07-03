@@ -901,7 +901,7 @@ build/tbos_steppps: src/shell/tbos_complete_shell.c $(STEPPPS_VFS_SRCS)
 build/steppps: $(STEPPPS_V2_SRCS)
 	@mkdir -p build
 	@echo "Building STEPPPS v2 CLI..."
-	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^
+	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
 	@echo "STEPPPS CLI built!"
 
 build/steppps_fs_demo: demos/steppps_fs_demo.c $(STEPPPS_VFS_SRCS)
@@ -977,7 +977,7 @@ endif
 build/windows/steppps.exe: $(STEPPPS_V2_SRCS)
 	@mkdir -p build/windows
 	@echo "Building STEPPPS CLI for Windows..."
-	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ -static
+	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static
 	@echo "STEPPPS Windows build complete!"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1027,9 +1027,9 @@ build/android/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
 build/android/steppps: $(STEPPPS_V2_SRCS)
 	@mkdir -p build/android
 	@if [ -f "$(ANDROID_CC)" ]; then \
-		$(ANDROID_CC) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ -static-libgcc; \
+		$(ANDROID_CC) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static-libgcc; \
 	elif [ -f "$(ANDROID_CC_ALT)" ]; then \
-		$(ANDROID_CC_ALT) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ -static-libgcc; \
+		$(ANDROID_CC_ALT) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static-libgcc; \
 	fi
 
 # Termux build (run this ON Android in Termux)
@@ -1039,7 +1039,7 @@ tbos-termux:
 	clang -DHOST_BUILD -D__ANDROID__ -Wall -O2 \
 		-o build/termux/tbos $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS) $(TBOS_CROSS_INCLUDES)
 	clang -DHOST_BUILD -D__ANDROID__ -Wall -O2 \
-		-o build/termux/steppps $(STEPPPS_V2_SRCS)
+		-o build/termux/steppps $(STEPPPS_V2_SRCS) $(TBOS_CROSS_INCLUDES)
 	@echo "Termux build complete! Run: ./build/termux/tbos"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1090,7 +1090,7 @@ build/ios/pxfs_steppps.o: fs/pxfs_steppps.c
 build/ios/steppps_runtime.o: steppps/v2/steppps_runtime.c
 	@$(IOS_CC) -isysroot $(IOS_SDK) -arch $(IOS_ARCH) -mios-version-min=$(IOS_MIN_VERSION) \
 		-DHOST_BUILD -D__APPLE__ -DTARGET_OS_IPHONE=1 \
-		-Wall -O2 -c -o $@ $<
+		-Wall -O2 -c -o $@ $< $(TBOS_CROSS_INCLUDES)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BUILD ALL PLATFORMS

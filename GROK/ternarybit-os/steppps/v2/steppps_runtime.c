@@ -14,10 +14,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
-#ifdef __APPLE__
+/* Cross-platform support */
+#include "tbos/platform.h"
+
+#if defined(__APPLE__) && !defined(TBOS_PLATFORM_IOS)
 #include <sandbox.h>
 #endif
 
@@ -560,9 +562,11 @@ int steppps_run(steppps_t* s) {
     int rc = 0;
 
     if (strcmp(s->script.lang, "sh") == 0) {
-        /* Shell execution */
-        rc = system(s->script.code);
+        /* Shell execution (uses tbos_system for cross-platform support) */
+        rc = tbos_system(s->script.code);
+#ifndef TBOS_PLATFORM_WINDOWS
         rc = WEXITSTATUS(rc);
+#endif
     }
     else if (strcmp(s->script.lang, "json") == 0) {
         /* JSON is data - just display */
