@@ -859,8 +859,9 @@ tier-super: $(TIER_BUILD_DIR)/tbos_super
 # TBOS COMPLETE SHELL (runs on any OS)
 # ═══════════════════════════════════════════════════════════════════════════
 
-.PHONY: tbos tbos-install tbos-run
+.PHONY: tbos tbos-steppps tbos-install tbos-run tbos-clean
 
+# Simple TBOS shell (no STEPPPS integration)
 tbos: build/tbos
 	@echo ""
 	@echo "TBOS Complete Shell built: build/tbos"
@@ -872,6 +873,51 @@ build/tbos: src/shell/tbos_complete_shell.c
 	@gcc -DTBOS_HOSTED -Wall -Wextra -O2 -o $@ $< -Iinclude
 	@echo "Build complete!"
 
+# TBOS shell with full STEPPPS integration (VFS, PXFS, security)
+STEPPPS_VFS_SRCS := kernel/fs/steppps_vfs.c fs/pxfs_steppps.c
+STEPPPS_V2_SRCS := steppps/v2/steppps_cli.c steppps/v2/steppps_runtime.c
+
+tbos-steppps: build/tbos_steppps build/steppps build/steppps_fs_demo
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS + STEPPPS Build Complete                                ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Binaries:                                                    ║"
+	@echo "║    build/tbos_steppps    - TBOS shell with STEPPPS VFS        ║"
+	@echo "║    build/steppps         - STEPPPS v2 CLI                     ║"
+	@echo "║    build/steppps_fs_demo - Filesystem integration demo        ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Install to ~/.tbos/bin:  make tbos-steppps-install           ║"
+	@echo "║  Run shell:               ./build/tbos_steppps                ║"
+	@echo "║  Run demo:                ./build/steppps_fs_demo             ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+
+build/tbos_steppps: src/shell/tbos_complete_shell.c $(STEPPPS_VFS_SRCS)
+	@mkdir -p build
+	@echo "Building TBOS + STEPPPS shell..."
+	@gcc -DHOST_BUILD -Wall -Wextra -O2 -o $@ $^ -I. -Iinclude
+	@echo "TBOS + STEPPPS shell built!"
+
+build/steppps: $(STEPPPS_V2_SRCS)
+	@mkdir -p build
+	@echo "Building STEPPPS v2 CLI..."
+	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^
+	@echo "STEPPPS CLI built!"
+
+build/steppps_fs_demo: demos/steppps_fs_demo.c $(STEPPPS_VFS_SRCS)
+	@mkdir -p build
+	@echo "Building STEPPPS filesystem demo..."
+	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ -I. -Iinclude
+	@echo "STEPPPS filesystem demo built!"
+
+tbos-steppps-install: tbos-steppps
+	@mkdir -p ~/.tbos/bin
+	@cp build/tbos_steppps ~/.tbos/bin/tbos
+	@cp build/steppps ~/.tbos/bin/steppps
+	@echo ""
+	@echo "Installed to ~/.tbos/bin/"
+	@echo "Add to PATH: export PATH=\$$PATH:~/.tbos/bin"
+
 tbos-install: build/tbos
 	@echo "Installing TBOS to /usr/local/bin..."
 	@sudo cp build/tbos /usr/local/bin/tbos
@@ -879,6 +925,11 @@ tbos-install: build/tbos
 
 tbos-run: build/tbos
 	@./build/tbos
+
+tbos-clean:
+	@rm -f build/tbos build/tbos_steppps build/steppps build/steppps_fs_demo
+	@rm -f build/steppps_entity_demo
+	@echo "TBOS build artifacts cleaned."
 
 tier-test: tier-all
 	@echo ""
