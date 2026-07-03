@@ -937,6 +937,12 @@ tbos-clean:
 # ═══════════════════════════════════════════════════════════════════════════
 
 .PHONY: tbos-windows tbos-android tbos-ios tbos-all-platforms
+.PHONY: android ios windows  # Shorthand aliases
+
+# Shorthand aliases
+android: tbos-android
+ios: tbos-ios
+windows: tbos-windows
 
 # Common source files for cross-platform builds
 TBOS_CROSS_SRCS := src/shell/tbos_complete_shell.c
