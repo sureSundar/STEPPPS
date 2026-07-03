@@ -983,9 +983,24 @@ build/windows/steppps.exe: $(STEPPPS_V2_SRCS)
 # ─────────────────────────────────────────────────────────────────────────────
 # ANDROID (NDK cross-compilation)
 # ─────────────────────────────────────────────────────────────────────────────
-# Set ANDROID_NDK_HOME or use default path
+# Auto-detect NDK or set ANDROID_NDK_HOME manually
+# Common locations: ~/Library/Android/sdk/ndk/*, ~/Android/Sdk/ndk/*
 
-ANDROID_NDK_HOME ?= $(HOME)/Android/Sdk/ndk/25.0.8775105
+# Try to find NDK automatically (latest version)
+ANDROID_SDK_MACOS := $(HOME)/Library/Android/sdk
+ANDROID_SDK_LINUX := $(HOME)/Android/Sdk
+ANDROID_NDK_AUTO := $(shell ls -d $(ANDROID_SDK_MACOS)/ndk/* 2>/dev/null | sort -V | tail -1)
+ANDROID_NDK_AUTO_LINUX := $(shell ls -d $(ANDROID_SDK_LINUX)/ndk/* 2>/dev/null | sort -V | tail -1)
+
+# Use auto-detected or user-specified
+ifeq ($(ANDROID_NDK_HOME),)
+  ifneq ($(ANDROID_NDK_AUTO),)
+    ANDROID_NDK_HOME := $(ANDROID_NDK_AUTO)
+  else ifneq ($(ANDROID_NDK_AUTO_LINUX),)
+    ANDROID_NDK_HOME := $(ANDROID_NDK_AUTO_LINUX)
+  endif
+endif
+
 ANDROID_API ?= 30
 ANDROID_ARCH ?= aarch64
 ANDROID_CC := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/darwin-x86_64/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang
@@ -1015,12 +1030,21 @@ build/android/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
 		echo "Building TBOS for Android ($(ANDROID_ARCH), API $(ANDROID_API))..."; \
 		$(ANDROID_CC_ALT) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static-libgcc; \
 	else \
-		echo "Error: Android NDK not found at $(ANDROID_NDK_HOME)"; \
-		echo "Set ANDROID_NDK_HOME or install Android NDK"; \
+		echo "Error: Android NDK not found"; \
 		echo ""; \
-		echo "Alternative: Build directly on Android using Termux:"; \
+		echo "Install NDK via Android Studio:"; \
+		echo "  Android Studio → Preferences → SDK Manager → SDK Tools"; \
+		echo "  Check 'NDK (Side by side)' and click Apply"; \
+		echo ""; \
+		echo "Or via command line:"; \
+		echo "  sdkmanager --install 'ndk;25.2.9519653'"; \
+		echo ""; \
+		echo "Or set manually:"; \
+		echo "  export ANDROID_NDK_HOME=/path/to/ndk"; \
+		echo ""; \
+		echo "Alternative: Build directly ON Android using Termux:"; \
 		echo "  pkg install clang"; \
-		echo "  clang -DHOST_BUILD -o tbos src/shell/tbos_complete_shell.c -I. -Iinclude"; \
+		echo "  make tbos-termux"; \
 		exit 1; \
 	fi
 
