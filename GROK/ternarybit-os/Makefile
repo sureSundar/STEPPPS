@@ -1007,7 +1007,8 @@ ifeq ($(ANDROID_NDK_HOME),)
   endif
 endif
 
-ANDROID_API ?= 30
+# Android 13 = API 33
+ANDROID_API ?= 33
 ANDROID_ARCH ?= aarch64
 ANDROID_CC := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/darwin-x86_64/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang
 ANDROID_CC_ALT := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang
