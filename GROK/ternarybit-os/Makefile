@@ -929,7 +929,210 @@ tbos-run: build/tbos
 tbos-clean:
 	@rm -f build/tbos build/tbos_steppps build/steppps build/steppps_fs_demo
 	@rm -f build/steppps_entity_demo
+	@rm -rf build/windows build/android build/ios
 	@echo "TBOS build artifacts cleaned."
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CROSS-PLATFORM BUILDS (Windows, Android, iOS)
+# ═══════════════════════════════════════════════════════════════════════════
+
+.PHONY: tbos-windows tbos-android tbos-ios tbos-all-platforms
+
+# Common source files for cross-platform builds
+TBOS_CROSS_SRCS := src/shell/tbos_complete_shell.c
+TBOS_CROSS_STEPPPS_SRCS := kernel/fs/steppps_vfs.c fs/pxfs_steppps.c
+TBOS_CROSS_INCLUDES := -I. -Iinclude
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WINDOWS (MinGW-w64 cross-compilation)
+# ─────────────────────────────────────────────────────────────────────────────
+# Install MinGW: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)
+
+MINGW_CC := x86_64-w64-mingw32-gcc
+MINGW_EXISTS := $(shell which $(MINGW_CC) 2>/dev/null)
+
+tbos-windows: build/windows/tbos.exe build/windows/steppps.exe
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS Windows Build Complete                                  ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  build/windows/tbos.exe     - TBOS shell                      ║"
+	@echo "║  build/windows/steppps.exe  - STEPPPS CLI                     ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Copy to Windows and run in cmd.exe or PowerShell             ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+
+build/windows/tbos.exe: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with:"
+	@echo "  macOS:  brew install mingw-w64"
+	@echo "  Linux:  apt install mingw-w64"
+	@exit 1
+endif
+	@mkdir -p build/windows
+	@echo "Building TBOS for Windows (x86_64)..."
+	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static
+	@echo "Windows build complete!"
+
+build/windows/steppps.exe: $(STEPPPS_V2_SRCS)
+	@mkdir -p build/windows
+	@echo "Building STEPPPS CLI for Windows..."
+	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ -static
+	@echo "STEPPPS Windows build complete!"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ANDROID (NDK cross-compilation)
+# ─────────────────────────────────────────────────────────────────────────────
+# Set ANDROID_NDK_HOME or use default path
+
+ANDROID_NDK_HOME ?= $(HOME)/Android/Sdk/ndk/25.0.8775105
+ANDROID_API ?= 30
+ANDROID_ARCH ?= aarch64
+ANDROID_CC := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/darwin-x86_64/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang
+ANDROID_CC_ALT := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang
+
+tbos-android: build/android/tbos build/android/steppps
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS Android Build Complete                                  ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  build/android/tbos      - TBOS shell ($(ANDROID_ARCH))             ║"
+	@echo "║  build/android/steppps   - STEPPPS CLI                        ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Push to device:                                              ║"
+	@echo "║    adb push build/android/tbos /data/local/tmp/               ║"
+	@echo "║    adb shell /data/local/tmp/tbos                             ║"
+	@echo "║  Or use Termux:                                               ║"
+	@echo "║    Copy to ~/tbos and run ./tbos                              ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+
+build/android/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
+	@mkdir -p build/android
+	@if [ -f "$(ANDROID_CC)" ]; then \
+		echo "Building TBOS for Android ($(ANDROID_ARCH), API $(ANDROID_API))..."; \
+		$(ANDROID_CC) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static-libgcc; \
+	elif [ -f "$(ANDROID_CC_ALT)" ]; then \
+		echo "Building TBOS for Android ($(ANDROID_ARCH), API $(ANDROID_API))..."; \
+		$(ANDROID_CC_ALT) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static-libgcc; \
+	else \
+		echo "Error: Android NDK not found at $(ANDROID_NDK_HOME)"; \
+		echo "Set ANDROID_NDK_HOME or install Android NDK"; \
+		echo ""; \
+		echo "Alternative: Build directly on Android using Termux:"; \
+		echo "  pkg install clang"; \
+		echo "  clang -DHOST_BUILD -o tbos src/shell/tbos_complete_shell.c -I. -Iinclude"; \
+		exit 1; \
+	fi
+
+build/android/steppps: $(STEPPPS_V2_SRCS)
+	@mkdir -p build/android
+	@if [ -f "$(ANDROID_CC)" ]; then \
+		$(ANDROID_CC) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ -static-libgcc; \
+	elif [ -f "$(ANDROID_CC_ALT)" ]; then \
+		$(ANDROID_CC_ALT) -DHOST_BUILD -D__ANDROID__ -Wall -O2 -o $@ $^ -static-libgcc; \
+	fi
+
+# Termux build (run this ON Android in Termux)
+tbos-termux:
+	@echo "Building TBOS for Termux..."
+	@mkdir -p build/termux
+	clang -DHOST_BUILD -D__ANDROID__ -Wall -O2 \
+		-o build/termux/tbos $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS) $(TBOS_CROSS_INCLUDES)
+	clang -DHOST_BUILD -D__ANDROID__ -Wall -O2 \
+		-o build/termux/steppps $(STEPPPS_V2_SRCS)
+	@echo "Termux build complete! Run: ./build/termux/tbos"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# iOS (Limited - library only, no shell execution)
+# ─────────────────────────────────────────────────────────────────────────────
+# Note: iOS apps cannot execute system() or run shell commands.
+# This builds a library that can be integrated into an iOS app.
+
+IOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path 2>/dev/null)
+IOS_CC := $(shell xcrun --sdk iphoneos --find clang 2>/dev/null)
+IOS_ARCH ?= arm64
+IOS_MIN_VERSION ?= 14.0
+
+tbos-ios: build/ios/libtbos.a
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS iOS Library Built                                       ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  build/ios/libtbos.a  - Static library for iOS apps           ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Note: iOS cannot run shell commands (sandboxed).             ║"
+	@echo "║  Integrate libtbos.a into your Xcode project.                 ║"
+	@echo "║  Use TBOS APIs: steppps_*, pxfs_*, karma functions.           ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+
+build/ios/libtbos.a: build/ios/steppps_vfs.o build/ios/pxfs_steppps.o build/ios/steppps_runtime.o
+	@mkdir -p build/ios
+	@echo "Creating iOS static library..."
+	@ar rcs $@ $^
+	@echo "iOS library created!"
+
+build/ios/steppps_vfs.o: kernel/fs/steppps_vfs.c
+ifndef IOS_SDK
+	@echo "Error: iOS SDK not found. Install Xcode."
+	@exit 1
+endif
+	@mkdir -p build/ios
+	@echo "Compiling steppps_vfs.c for iOS..."
+	@$(IOS_CC) -isysroot $(IOS_SDK) -arch $(IOS_ARCH) -mios-version-min=$(IOS_MIN_VERSION) \
+		-DHOST_BUILD -D__APPLE__ -DTARGET_OS_IPHONE=1 \
+		-Wall -O2 -c -o $@ $< $(TBOS_CROSS_INCLUDES)
+
+build/ios/pxfs_steppps.o: fs/pxfs_steppps.c
+	@$(IOS_CC) -isysroot $(IOS_SDK) -arch $(IOS_ARCH) -mios-version-min=$(IOS_MIN_VERSION) \
+		-DHOST_BUILD -D__APPLE__ -DTARGET_OS_IPHONE=1 \
+		-Wall -O2 -c -o $@ $< $(TBOS_CROSS_INCLUDES)
+
+build/ios/steppps_runtime.o: steppps/v2/steppps_runtime.c
+	@$(IOS_CC) -isysroot $(IOS_SDK) -arch $(IOS_ARCH) -mios-version-min=$(IOS_MIN_VERSION) \
+		-DHOST_BUILD -D__APPLE__ -DTARGET_OS_IPHONE=1 \
+		-Wall -O2 -c -o $@ $<
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BUILD ALL PLATFORMS
+# ─────────────────────────────────────────────────────────────────────────────
+
+tbos-all-platforms: tbos-steppps
+	@echo "Building for all available platforms..."
+	@$(MAKE) tbos-windows 2>/dev/null || echo "Windows: Skipped (no MinGW)"
+	@$(MAKE) tbos-android 2>/dev/null || echo "Android: Skipped (no NDK)"
+	@$(MAKE) tbos-ios 2>/dev/null || echo "iOS: Skipped (no Xcode)"
+	@echo ""
+	@echo "Cross-platform build complete!"
+	@ls -la build/*/tbos* build/*/*.exe build/*/*.a 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HELP
+# ─────────────────────────────────────────────────────────────────────────────
+
+tbos-help:
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS Cross-Platform Build System                             ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Native Builds:                                               ║"
+	@echo "║    make tbos              - Simple TBOS shell                 ║"
+	@echo "║    make tbos-steppps      - TBOS + STEPPPS integration        ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Cross-Platform:                                              ║"
+	@echo "║    make tbos-windows      - Windows (requires MinGW)          ║"
+	@echo "║    make tbos-android      - Android (requires NDK)            ║"
+	@echo "║    make tbos-ios          - iOS library (requires Xcode)      ║"
+	@echo "║    make tbos-termux       - Build ON Android in Termux        ║"
+	@echo "║    make tbos-all-platforms - Build all available              ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Install:                                                     ║"
+	@echo "║    make tbos-steppps-install  - Install to ~/.tbos/bin        ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Requirements:                                                ║"
+	@echo "║    Windows: brew install mingw-w64                            ║"
+	@echo "║    Android: export ANDROID_NDK_HOME=/path/to/ndk              ║"
+	@echo "║    iOS:     Xcode with iOS SDK                                ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
 
 tier-test: tier-all
 	@echo ""
