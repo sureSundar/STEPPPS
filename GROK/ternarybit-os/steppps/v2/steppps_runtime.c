@@ -185,7 +185,7 @@ int steppps_runtime_init(void) {
         /* Create directory if needed */
         char dir[256];
         snprintf(dir, sizeof(dir), "%s/.tbos", home);
-        mkdir(dir, 0700);
+        tbos_mkdir(dir);
 
         g_runtime.audit_file = fopen(g_runtime.audit_path, "a");
     }
@@ -546,15 +546,15 @@ int steppps_run(steppps_t* s) {
     steppps_audit_log(s, "run", 0);
 
     /* Set environment */
-    setenv("STEPPPS_ID", s->id, 1);
-    setenv("STEPPPS_NAME", s->name, 1);
-    setenv("STEPPPS_UNIVERSE", s->space.universe, 1);
-    setenv("STEPPPS_PATH", s->space.path, 1);
+    tbos_setenv("STEPPPS_ID", s->id);
+    tbos_setenv("STEPPPS_NAME", s->name);
+    tbos_setenv("STEPPPS_UNIVERSE", s->space.universe);
+    tbos_setenv("STEPPPS_PATH", s->space.path);
 
     char karma_str[32];
     snprintf(karma_str, sizeof(karma_str), "%lld", (long long)s->psych.karma);
-    setenv("STEPPPS_KARMA", karma_str, 1);
-    setenv("STEPPPS_CONSCIOUSNESS", s->psych.consciousness, 1);
+    tbos_setenv("STEPPPS_KARMA", karma_str);
+    tbos_setenv("STEPPPS_CONSCIOUSNESS", s->psych.consciousness);
 
     printf("\n--- Executing STEPPPS [%s] ---\n", s->id);
     printf("Sandbox: %s | Lang: %s\n\n", steppps_sandbox_name(s->script.sandbox), s->script.lang);

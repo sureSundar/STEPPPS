@@ -24,16 +24,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <dirent.h>
 #include <time.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <ctype.h>
+
+/* Cross-platform support */
+#include "tbos/platform.h"
+
+#ifdef TBOS_PLATFORM_WINDOWS
+    #include <io.h>
+    #include <process.h>
+    #define popen _popen
+    #define pclose _pclose
+    /* Windows compatibility shims */
+    #define fork() (-1)  /* fork not supported, will fall back to system() */
+    #define waitpid(pid, status, opts) ((void)(status), 0)
+    #define WEXITSTATUS(status) (status)
+    #define pid_t int
+    #define mkdir(path, mode) _mkdir(path)
+    #define gethostname(buf, len) tbos_gethostname(buf, len)
+    #define environ _environ
+#else
+    #include <unistd.h>
+    #include <signal.h>
+    #include <sys/types.h>
+    #include <sys/wait.h>
+    #include <sys/stat.h>
+    #include <dirent.h>
+    #include <fcntl.h>
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * CONFIGURATION
@@ -42,7 +61,10 @@
 #define TBOS_VERSION        "1.0.0"
 #define MAX_INPUT           4096
 #define MAX_ARGS            256
+#ifndef MAX_PATH
 #define MAX_PATH            4096
+#endif
+#define TBOS_MAX_PATH       4096
 #define MAX_COMMANDS        256
 #define HISTORY_SIZE        100
 
@@ -270,7 +292,7 @@ static int cmd_meditate(int argc, char** argv) {
     for (int i = 0; i < seconds; i++) {
         printf("  \xE0\xA5\x90 ");  /* Om symbol */
         fflush(stdout);
-        sleep(1);
+        tbos_sleep_ms(1000);
     }
 
     printf("\n\nMeditation complete.\n");
@@ -304,31 +326,24 @@ static int cmd_hostinfo(int argc, char** argv) {
 
 static int cmd_ls(int argc, char** argv) {
     const char* path = (argc > 1) ? argv[1] : ".";
-    DIR* dir = opendir(path);
+    tbos_dir_t* dir = tbos_opendir(path);
     if (!dir) {
         perror("ls");
         return 1;
     }
 
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_name[0] == '.' && argc <= 1) continue;
+    tbos_dirent_t* entry;
+    while ((entry = tbos_readdir(dir)) != NULL) {
+        if (entry->name[0] == '.' && argc <= 1) continue;
 
-        struct stat st;
-        char fullpath[MAX_PATH];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
-        stat(fullpath, &st);
-
-        if (S_ISDIR(st.st_mode)) {
-            printf("\033[1;34m%s/\033[0m\n", entry->d_name);
-        } else if (st.st_mode & S_IXUSR) {
-            printf("\033[1;32m%s*\033[0m\n", entry->d_name);
+        if (entry->is_dir) {
+            printf("\033[1;34m%s/\033[0m\n", entry->name);
         } else {
-            printf("%s\n", entry->d_name);
+            printf("%s\n", entry->name);
         }
     }
 
-    closedir(dir);
+    tbos_closedir(dir);
     return 0;
 }
 

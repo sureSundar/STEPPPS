@@ -6,14 +6,14 @@
  */
 
 #include "../../include/tbos/steppps_vfs.h"
+#include "../../include/tbos/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/stat.h>
 
-#ifdef HOST_BUILD
-#include <unistd.h>
+#ifndef TBOS_PLATFORM_WINDOWS
+#include <sys/stat.h>
 #endif
 
 /* ========================================================================= */
@@ -142,8 +142,7 @@ bool steppps_vfs_has_companion(const char* path) {
     steppps_vfs_get_companion_path(path, companion, sizeof(companion));
 
 #ifdef HOST_BUILD
-    struct stat st;
-    return (stat(companion, &st) == 0);
+    return tbos_file_exists(companion);
 #else
     return false;
 #endif
@@ -201,7 +200,7 @@ int steppps_vfs_generate_minimal(const char* path, steppps_minimal_t* meta) {
     /* Space */
     strncpy(meta->path, path, sizeof(meta->path) - 1);
 #ifdef HOST_BUILD
-    gethostname(meta->device, sizeof(meta->device) - 1);
+    tbos_gethostname(meta->device, sizeof(meta->device) - 1);
 #else
     strcpy(meta->device, "tbos");
 #endif

@@ -301,6 +301,90 @@ static inline bool tbos_supports_color(void) {
 }
 
 /* ========================================================================= */
+/* DIRECTORY LISTING                                                          */
+/* ========================================================================= */
+
+#ifdef TBOS_PLATFORM_WINDOWS
+
+typedef struct {
+    HANDLE handle;
+    WIN32_FIND_DATAA data;
+    bool first;
+    char path[MAX_PATH];
+} tbos_dir_t;
+
+typedef struct {
+    char name[256];
+    bool is_dir;
+} tbos_dirent_t;
+
+static inline tbos_dir_t* tbos_opendir(const char* path) {
+    tbos_dir_t* dir = (tbos_dir_t*)malloc(sizeof(tbos_dir_t));
+    if (!dir) return NULL;
+
+    snprintf(dir->path, sizeof(dir->path), "%s\\*", path);
+    dir->handle = FindFirstFileA(dir->path, &dir->data);
+    if (dir->handle == INVALID_HANDLE_VALUE) {
+        free(dir);
+        return NULL;
+    }
+    dir->first = true;
+    return dir;
+}
+
+static inline tbos_dirent_t* tbos_readdir(tbos_dir_t* dir) {
+    static tbos_dirent_t entry;
+
+    if (dir->first) {
+        dir->first = false;
+    } else {
+        if (!FindNextFileA(dir->handle, &dir->data)) {
+            return NULL;
+        }
+    }
+
+    strncpy(entry.name, dir->data.cFileName, sizeof(entry.name) - 1);
+    entry.is_dir = (dir->data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    return &entry;
+}
+
+static inline void tbos_closedir(tbos_dir_t* dir) {
+    if (dir) {
+        FindClose(dir->handle);
+        free(dir);
+    }
+}
+
+#else /* POSIX */
+
+typedef DIR tbos_dir_t;
+
+typedef struct {
+    char name[256];
+    bool is_dir;
+} tbos_dirent_t;
+
+static inline tbos_dir_t* tbos_opendir(const char* path) {
+    return opendir(path);
+}
+
+static inline tbos_dirent_t* tbos_readdir(tbos_dir_t* dir) {
+    static tbos_dirent_t entry;
+    struct dirent* de = readdir(dir);
+    if (!de) return NULL;
+
+    strncpy(entry.name, de->d_name, sizeof(entry.name) - 1);
+    entry.is_dir = (de->d_type == DT_DIR);
+    return &entry;
+}
+
+static inline void tbos_closedir(tbos_dir_t* dir) {
+    closedir(dir);
+}
+
+#endif
+
+/* ========================================================================= */
 /* PATH UTILITIES                                                             */
 /* ========================================================================= */
 
