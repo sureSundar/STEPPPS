@@ -775,9 +775,11 @@ docker-test-riscv64:
 # ═══════════════════════════════════════════════════════════════════════════
 
 .PHONY: tier-all tier-calc tier-embed tier-retro tier-desktop tier-server tier-super tier-info tier-test
+.PHONY: tier-shell-all tier-shell-calc tier-shell-embed tier-shell-retro tier-shell-desktop tier-shell-server tier-shell-super
 
 TIER_BUILD_DIR := build/tiers
 TIER_DEMO_SRC := demos/tbos_universal_demo.c
+TIER_SHELL_SRC := src/shell/tbos_tier_shell.c
 
 tier-info:
 	@echo ""
@@ -786,22 +788,26 @@ tier-info:
 	@echo "  From 4-bit Calculators to Supercomputers"
 	@echo "================================================================"
 	@echo ""
-	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)"
-	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)"
-	@echo "  Tier 2: Retro        (32-bit,   64KB-16MB RAM)"
-	@echo "  Tier 3: Desktop      (64-bit,   16MB-16GB RAM)"
-	@echo "  Tier 4: Server       (64-bit,   16GB-1TB RAM)"
-	@echo "  Tier 5: Supercomputer (64-bit+, 1TB+ distributed)"
+	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   5 commands"
+	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)  15 commands"
+	@echo "  Tier 2: Retro        (32-bit,   64KB-16MB RAM) 25 commands"
+	@echo "  Tier 3: Desktop      (64-bit,   16MB-16GB RAM) 35 commands"
+	@echo "  Tier 4: Server       (64-bit,   16GB-1TB RAM)  40 commands"
+	@echo "  Tier 5: Supercomputer (64-bit+, 1TB+ distributed) 45 commands"
 	@echo ""
-	@echo "  Build targets:"
-	@echo "    make tier-all      Build all tiers"
-	@echo "    make tier-calc     Build calculator tier"
-	@echo "    make tier-embed    Build embedded tier"
-	@echo "    make tier-retro    Build retro tier"
-	@echo "    make tier-desktop  Build desktop tier"
-	@echo "    make tier-server   Build server tier"
-	@echo "    make tier-super    Build supercomputer tier"
-	@echo "    make tier-test     Run all tier demos"
+	@echo "  Demo targets (display tier info):"
+	@echo "    make tier-all        Build all tier demos"
+	@echo "    make tier-calc       Run calculator demo"
+	@echo "    make tier-test       Run all tier demos"
+	@echo ""
+	@echo "  Shell targets (full interactive shells):"
+	@echo "    make tier-shell-all     Build all tier shells"
+	@echo "    make tier-shell-calc    Calculator shell (5 cmds)"
+	@echo "    make tier-shell-embed   Embedded shell (15 cmds)"
+	@echo "    make tier-shell-retro   Retro shell (25 cmds)"
+	@echo "    make tier-shell-desktop Desktop shell (35 cmds)"
+	@echo "    make tier-shell-server  Server shell (40 cmds)"
+	@echo "    make tier-shell-super   Supercomputer shell (45 cmds)"
 	@echo "================================================================"
 	@echo ""
 
@@ -854,6 +860,66 @@ tier-server: $(TIER_BUILD_DIR)/tbos_server
 
 tier-super: $(TIER_BUILD_DIR)/tbos_super
 	@$(TIER_BUILD_DIR)/tbos_super
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TIER-AWARE SHELLS (with actual commands, not just demos)
+# ─────────────────────────────────────────────────────────────────────────────
+
+tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIER_BUILD_DIR)/shell_retro $(TIER_BUILD_DIR)/shell_desktop $(TIER_BUILD_DIR)/shell_server $(TIER_BUILD_DIR)/shell_super
+	@echo ""
+	@echo "All tier shells built:"
+	@ls -la $(TIER_BUILD_DIR)/shell_*
+	@echo ""
+	@echo "Commands per tier:"
+	@echo "  shell_calc    (Tier 0):  5 commands  - help, echo, calc, karma, exit"
+	@echo "  shell_embed   (Tier 1): 15 commands  - + ls, cd, cat, mkdir, rm, etc."
+	@echo "  shell_retro   (Tier 2): 25 commands  - + head, grep, wc, history, etc."
+	@echo "  shell_desktop (Tier 3): 35 commands  - + meditate, sangha, dharma, ping"
+	@echo "  shell_server  (Tier 4): 40 commands  - + top, netstat, free, lscpu"
+	@echo "  shell_super   (Tier 5): 45 commands  - + cluster, consciousness, quantum"
+
+$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 0] Building Calculator Shell (5 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 1] Building Embedded Shell (15 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 2] Building Retro Shell (25 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 3] Building Desktop Shell (35 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 4] Building Server Shell (40 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
+
+$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
+	@echo "[Tier 5] Building Supercomputer Shell (45 commands)..."
+	@gcc -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
+
+# Run tier shells interactively
+tier-shell-calc: $(TIER_BUILD_DIR)/shell_calc
+	@$(TIER_BUILD_DIR)/shell_calc
+
+tier-shell-embed: $(TIER_BUILD_DIR)/shell_embed
+	@$(TIER_BUILD_DIR)/shell_embed
+
+tier-shell-retro: $(TIER_BUILD_DIR)/shell_retro
+	@$(TIER_BUILD_DIR)/shell_retro
+
+tier-shell-desktop: $(TIER_BUILD_DIR)/shell_desktop
+	@$(TIER_BUILD_DIR)/shell_desktop
+
+tier-shell-server: $(TIER_BUILD_DIR)/shell_server
+	@$(TIER_BUILD_DIR)/shell_server
+
+tier-shell-super: $(TIER_BUILD_DIR)/shell_super
+	@$(TIER_BUILD_DIR)/shell_super
 
 # ═══════════════════════════════════════════════════════════════════════════
 # TBOS COMPLETE SHELL (runs on any OS)
@@ -936,18 +1002,46 @@ tbos-clean:
 # CROSS-PLATFORM BUILDS (Windows, Android, iOS)
 # ═══════════════════════════════════════════════════════════════════════════
 
-.PHONY: tbos-windows tbos-android tbos-ios tbos-all-platforms
-.PHONY: android ios windows  # Shorthand aliases
+.PHONY: tbos-windows tbos-android tbos-ios tbos-macos tbos-all-platforms
+.PHONY: android ios windows macos  # Shorthand aliases
 
 # Shorthand aliases
 android: tbos-android
 ios: tbos-ios
 windows: tbos-windows
+macos: tbos-macos
 
 # Common source files for cross-platform builds
 TBOS_CROSS_SRCS := src/shell/tbos_complete_shell.c
 TBOS_CROSS_STEPPPS_SRCS := kernel/fs/steppps_vfs.c fs/pxfs_steppps.c
 TBOS_CROSS_INCLUDES := -I. -Iinclude
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MACOS (Native build)
+# ─────────────────────────────────────────────────────────────────────────────
+
+tbos-macos: build/macos/tbos build/macos/steppps
+	@echo ""
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  TBOS macOS Build Complete                                    ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  build/macos/tbos      - TBOS shell                           ║"
+	@echo "║  build/macos/steppps   - STEPPPS CLI                          ║"
+	@echo "╠═══════════════════════════════════════════════════════════════╣"
+	@echo "║  Run: ./build/macos/tbos                                      ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+
+build/macos/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
+	@mkdir -p build/macos
+	@echo "Building TBOS for macOS..."
+	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
+	@echo "macOS build complete!"
+
+build/macos/steppps: $(STEPPPS_V2_SRCS)
+	@mkdir -p build/macos
+	@echo "Building STEPPPS CLI for macOS..."
+	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
+	@echo "STEPPPS macOS build complete!"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WINDOWS (MinGW-w64 cross-compilation)
