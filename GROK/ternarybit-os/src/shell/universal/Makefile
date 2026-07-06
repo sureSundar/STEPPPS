@@ -1,7 +1,7 @@
 # TernaryBit OS - Universal Shell Makefile
 
 CC = gcc
-CFLAGS = -Wall -Wextra -g -I../../include -I../../core -I../common
+CFLAGS = -Wall -Wextra -g -DTBOS_HOSTED -I../../../include -I../../core -I../common
 LDFLAGS = -lm -liconv
 
 # Source files
@@ -22,13 +22,17 @@ SHELL_SRCS = \
     main_shell.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
-# Dependencies (stubs for now)
+# Dependencies (stubs + network + wow + dns)
 DEPS_SRCS = ../../core/stubs/tbos_ramdisk.c \
             ../../core/stubs/tbos_hal.c \
             ../../core/stubs/tbos_consciousness.c \
             ../../core/stubs/tbos_karma.c \
             ../../core/stubs/tbos_sangha.c \
-            ../../core/stubs/tbos_boot_stub.c
+            ../../core/stubs/tbos_boot_stub.c \
+            ../../network/tbos_net.c \
+            ../../network/wow/tbos_wow.c \
+            ../../network/dns/tbos_dns.c \
+            ../../../kernel/hal_hosted.c
 DEPS_OBJS = $(DEPS_SRCS:.c=.o)
 
 # Target

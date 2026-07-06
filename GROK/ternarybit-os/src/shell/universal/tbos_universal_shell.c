@@ -18,6 +18,22 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
+
+/* macOS compatibility for clock_gettime */
+#ifdef __APPLE__
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+static int clock_gettime(int clk_id, struct timespec *tp) {
+    (void)clk_id;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    tp->tv_sec = tv.tv_sec;
+    tp->tv_nsec = tv.tv_usec * 1000;
+    return 0;
+}
+#endif
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * GLOBAL STATE

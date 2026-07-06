@@ -1005,26 +1005,81 @@ int closedir(DIR* dirp) {
     return 0;
 }
 
+/* Global umask value */
+static mode_t g_umask = 022;  /* Default: remove group/other write */
+
 int stat(const char* path, struct stat* st) {
     if (!path || !st) {
         errno = EINVAL;
         return -1;
     }
+
+    /* Try the new vfs_stat first */
+    int result = vfs_stat(path, st);
+    if (result == 0) {
+        return 0;
+    }
+
+    /* Fall back to old behavior for filesystems without stat */
     if (!vfs_exists(path)) {
         errno = ENOENT;
         return -1;
     }
-    st->st_mode = vfs_type(path);
-    st->st_size = 0;
-    if (st->st_mode == VFS_NODE_FILE) {
+
+    /* Construct minimal stat from available info */
+    memset(st, 0, sizeof(*st));
+
+    vfs_node_type_t type = vfs_type(path);
+    if (type == VFS_NODE_DIR) {
+        st->st_mode = S_IFDIR | 0755;
+    } else {
+        st->st_mode = S_IFREG | 0644;
+    }
+
+    st->st_uid = 0;
+    st->st_gid = 0;
+    st->st_nlink = 1;
+
+    if (type == VFS_NODE_FILE) {
         size_t size = 0;
         const void* data = vfs_read_file_cstr(path, &size);
         if (data) {
             st->st_size = size;
-        } else {
-            errno = ENOSYS;
-            return -1;
         }
     }
     return 0;
+}
+
+int chmod(const char* path, mode_t mode) {
+    if (!path) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    int result = vfs_chmod(path, mode);
+    if (result < 0) {
+        errno = -result;
+        return -1;
+    }
+    return 0;
+}
+
+int chown(const char* path, uid_t uid, gid_t gid) {
+    if (!path) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    int result = vfs_chown(path, uid, gid);
+    if (result < 0) {
+        errno = -result;
+        return -1;
+    }
+    return 0;
+}
+
+mode_t umask(mode_t mask) {
+    mode_t old = g_umask;
+    g_umask = mask & 0777;
+    return old;
 }

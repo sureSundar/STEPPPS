@@ -1,10 +1,31 @@
 #include "tbos/vfs.h"
 #include "tbos/libc.h"
 #include "tbos/errno.h"
+#include "tbos/stdio.h"
+#include <time.h>
+
+/* Default permissions */
+#define RAMFS_DEFAULT_FILE_MODE  (S_IFREG | 0644)  /* rw-r--r-- */
+#define RAMFS_DEFAULT_DIR_MODE   (S_IFDIR | 0755)  /* rwxr-xr-x */
+#define RAMFS_DEFAULT_UID        0                  /* root */
+#define RAMFS_DEFAULT_GID        0                  /* root */
+
+/* Inode counter */
+static uint32_t g_next_ino = 1;
 
 typedef struct ramfs_node {
     char* name;
     vfs_node_type_t type;
+
+    /* Unix-style permissions (Phase 2) */
+    mode_t mode;       /* File type + permissions */
+    uid_t  uid;        /* Owner user ID */
+    gid_t  gid;        /* Owner group ID */
+    time_t mtime;      /* Last modification time */
+    time_t ctime;      /* Last status change time */
+    uint32_t ino;      /* Inode number */
+    uint16_t nlink;    /* Number of hard links */
+
     struct ramfs_node* parent;
     struct ramfs_node** children;
     size_t child_count;
@@ -18,6 +39,14 @@ typedef struct {
     ramfs_node_t* root;
 } ramfs_ctx_t;
 
+static time_t ramfs_get_time(void) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+        return ts.tv_sec;
+    }
+    return 0;
+}
+
 static ramfs_node_t* ramfs_node_create(const char* name, vfs_node_type_t type, ramfs_node_t* parent) {
     ramfs_node_t* node = malloc(sizeof(ramfs_node_t));
     if (!node) return NULL;
@@ -30,6 +59,20 @@ static ramfs_node_t* ramfs_node_create(const char* name, vfs_node_type_t type, r
     node->data = NULL;
     node->size = 0;
     node->capacity = 0;
+
+    /* Initialize permissions (Phase 2) */
+    if (type == VFS_NODE_DIR) {
+        node->mode = RAMFS_DEFAULT_DIR_MODE;
+    } else {
+        node->mode = RAMFS_DEFAULT_FILE_MODE;
+    }
+    node->uid = RAMFS_DEFAULT_UID;
+    node->gid = RAMFS_DEFAULT_GID;
+    node->mtime = ramfs_get_time();
+    node->ctime = node->mtime;
+    node->ino = g_next_ino++;
+    node->nlink = 1;
+
     return node;
 }
 
@@ -243,6 +286,10 @@ static int ramfs_write_file_impl(ramfs_ctx_t* ctx, const char* path, const void*
         memcpy(file->data, data, size);
         file->size = size;
     }
+
+    /* Update modification time */
+    file->mtime = ramfs_get_time();
+
     return 0;
 }
 
@@ -320,6 +367,57 @@ static int ramfs_list_dir(void* context, const char* path,
     return 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PERMISSION OPERATIONS (Phase 2)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static int ramfs_chmod(void* context, const char* path, uint32_t mode) {
+    ramfs_ctx_t* ctx = (ramfs_ctx_t*)context;
+    if (!ctx || !path || path[0] != '/') return -EINVAL;
+
+    ramfs_node_t* node = ramfs_traverse(ctx, path, false, NULL, NULL);
+    if (!node) return -ENOENT;
+
+    /* Preserve file type bits, update permission bits */
+    node->mode = (node->mode & S_IFMT) | (mode & ~S_IFMT);
+    node->ctime = ramfs_get_time();
+
+    return 0;
+}
+
+static int ramfs_chown(void* context, const char* path, uint32_t uid, uint32_t gid) {
+    ramfs_ctx_t* ctx = (ramfs_ctx_t*)context;
+    if (!ctx || !path || path[0] != '/') return -EINVAL;
+
+    ramfs_node_t* node = ramfs_traverse(ctx, path, false, NULL, NULL);
+    if (!node) return -ENOENT;
+
+    node->uid = uid;
+    node->gid = gid;
+    node->ctime = ramfs_get_time();
+
+    return 0;
+}
+
+static int ramfs_stat(void* context, const char* path, struct stat* st) {
+    ramfs_ctx_t* ctx = (ramfs_ctx_t*)context;
+    if (!ctx || !path || path[0] != '/' || !st) return -EINVAL;
+
+    ramfs_node_t* node = ramfs_traverse(ctx, path, false, NULL, NULL);
+    if (!node) return -ENOENT;
+
+    st->st_mode = node->mode;
+    st->st_uid = node->uid;
+    st->st_gid = node->gid;
+    st->st_size = node->size;
+    st->st_mtime = node->mtime;
+    st->st_ctime = node->ctime;
+    st->st_ino = node->ino;
+    st->st_nlink = node->nlink;
+
+    return 0;
+}
+
 static void* ramfs_init_ctx(void) {
     ramfs_ctx_t* ctx = malloc(sizeof(ramfs_ctx_t));
     if (!ctx) return NULL;
@@ -341,5 +439,9 @@ const vfs_driver_t ramfs_driver = {
     .remove = ramfs_remove,
     .exists = ramfs_exists,
     .type = ramfs_type,
-    .list_dir = ramfs_list_dir
+    .list_dir = ramfs_list_dir,
+    /* Permission operations (Phase 2) */
+    .chmod = ramfs_chmod,
+    .chown = ramfs_chown,
+    .stat = ramfs_stat
 };

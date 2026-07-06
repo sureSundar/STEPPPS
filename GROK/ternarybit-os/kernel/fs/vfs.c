@@ -1,7 +1,26 @@
 #include "tbos/vfs.h"
 #include "tbos/errno.h"
+#include "tbos/stdio.h"
+
+/* STEPPPS integration - only in kernel mode */
+#ifndef TBOS_HOSTED
+#include "tbos/steppps_vfs.h"
+#define STEPPPS_AVAILABLE 1
+#else
+#define STEPPPS_AVAILABLE 0
+/* Stub operation types for hosted mode */
+#define STEPPPS_OP_READ     0
+#define STEPPPS_OP_WRITE    1
+#define STEPPPS_OP_DELETE   2
+#define STEPPPS_OP_LIST     4
+#define STEPPPS_OP_CREATE   5
+#define STEPPPS_OP_CHMOD    7
+#endif
 
 #define MAX_MOUNTS 8
+
+/* STEPPPS integration flag - set to true to enable karma/consciousness checks */
+static bool g_steppps_enabled = false;
 
 typedef struct {
     char mount_point[64];
@@ -37,6 +56,37 @@ static const vfs_mount_t* vfs_find_mount(const char* path, const char** subpath)
 void vfs_init(void) {
     vfs_mount_count = 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STEPPPS INTEGRATION
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+void vfs_enable_steppps(bool enable) {
+    g_steppps_enabled = enable;
+#if STEPPPS_AVAILABLE
+    if (enable) {
+        steppps_vfs_init(STEPPPS_SECURITY_MODERATE);
+    }
+#endif
+}
+
+bool vfs_steppps_enabled(void) {
+    return g_steppps_enabled;
+}
+
+/* Security gate - returns 0 if allowed, -EACCES if denied */
+#if STEPPPS_AVAILABLE
+static int vfs_steppps_check(const char* path, steppps_op_t op) {
+    if (!g_steppps_enabled) return 0;
+    if (steppps_vfs_check(path, op) != 0) {
+        return -EACCES;
+    }
+    return 0;
+}
+#else
+/* Stub for hosted mode - STEPPPS checks disabled */
+#define vfs_steppps_check(path, op) (0)
+#endif
 
 static int vfs_mount_internal(const char* mount_point, const vfs_driver_t* driver, void* ctx) {
     if (!mount_point || mount_point[0] != '/' || !driver) return -EINVAL;
@@ -78,6 +128,8 @@ static int op_mkdir(const vfs_mount_t* mount, const char* subpath, void* arg) {
 }
 
 int vfs_mkdir(const char* path) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_CREATE);
+    if (rc != 0) return rc;
     return vfs_dispatch(path, op_mkdir, NULL);
 }
 
@@ -94,11 +146,15 @@ static int op_write(const vfs_mount_t* mount, const char* subpath, void* arg) {
 }
 
 int vfs_write_file(const char* path, const void* data, size_t size) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_WRITE);
+    if (rc != 0) return rc;
     write_args_t args = { data, size, false };
     return vfs_dispatch(path, op_write, &args);
 }
 
 int vfs_append_file(const char* path, const void* data, size_t size) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_WRITE);
+    if (rc != 0) return rc;
     write_args_t args = { data, size, true };
     return vfs_dispatch(path, op_write, &args);
 }
@@ -117,6 +173,8 @@ static int op_read(const vfs_mount_t* mount, const char* subpath, void* arg) {
 }
 
 int vfs_read_file(const char* path, void* buffer, size_t max_size, size_t* out_size) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_READ);
+    if (rc != 0) return rc;
     read_args_t args = { buffer, max_size, out_size, 0 };
     return vfs_dispatch(path, op_read, &args);
 }
@@ -135,6 +193,8 @@ static int op_remove(const vfs_mount_t* mount, const char* subpath, void* arg) {
 }
 
 int vfs_remove(const char* path, bool recursive) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_DELETE);
+    if (rc != 0) return rc;
     return vfs_dispatch(path, op_remove, recursive ? (void*)1 : NULL);
 }
 
@@ -176,6 +236,59 @@ static int op_list(const vfs_mount_t* mount, const char* subpath, void* arg) {
 }
 
 int vfs_list_dir(const char* path, int (*cb)(const char*, vfs_node_type_t, void*), void* user) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_LIST);
+    if (rc != 0) return rc;
     list_args_t args = { cb, user };
     return vfs_dispatch(path, op_list, &args);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PERMISSION OPERATIONS (Phase 2)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+typedef struct {
+    uint32_t mode;
+} chmod_args_t;
+
+static int op_chmod(const vfs_mount_t* mount, const char* subpath, void* arg) {
+    if (!mount->driver->chmod) return -ENOSYS;
+    chmod_args_t* ca = (chmod_args_t*)arg;
+    return mount->driver->chmod(mount->ctx, subpath, ca->mode);
+}
+
+int vfs_chmod(const char* path, uint32_t mode) {
+    int rc = vfs_steppps_check(path, STEPPPS_OP_CHMOD);
+    if (rc != 0) return rc;
+    chmod_args_t args = { mode };
+    return vfs_dispatch(path, op_chmod, &args);
+}
+
+typedef struct {
+    uint32_t uid;
+    uint32_t gid;
+} chown_args_t;
+
+static int op_chown(const vfs_mount_t* mount, const char* subpath, void* arg) {
+    if (!mount->driver->chown) return -ENOSYS;
+    chown_args_t* ca = (chown_args_t*)arg;
+    return mount->driver->chown(mount->ctx, subpath, ca->uid, ca->gid);
+}
+
+int vfs_chown(const char* path, uint32_t uid, uint32_t gid) {
+    /* chown requires same consciousness as chmod */
+    int rc = vfs_steppps_check(path, STEPPPS_OP_CHMOD);
+    if (rc != 0) return rc;
+    chown_args_t args = { uid, gid };
+    return vfs_dispatch(path, op_chown, &args);
+}
+
+static int op_stat(const vfs_mount_t* mount, const char* subpath, void* arg) {
+    if (!mount->driver->stat) return -ENOSYS;
+    struct stat* st = (struct stat*)arg;
+    return mount->driver->stat(mount->ctx, subpath, st);
+}
+
+int vfs_stat(const char* path, struct stat* st) {
+    if (!st) return -EINVAL;
+    return vfs_dispatch(path, op_stat, st);
 }
