@@ -553,6 +553,90 @@ def create_dev_action(
     return path
 
 
+def create_file_sidecar(source_path: Path, output_dir: Path) -> Path:
+    validate_file(source_path)
+    source = load_json(source_path)
+    if not isinstance(source, dict) or source.get("kind") != "file":
+        raise ValidationError(f"{source_path}: source must be a file entity")
+
+    file_id = source.get("id")
+    if not isinstance(file_id, str) or not file_id.startswith("steppps://file/"):
+        raise ValidationError(f"{source_path}: file entity must have steppps://file/ id")
+    sidecar_slug = safe_slug(file_id[len("steppps://file/"):])
+
+    space = source.get("S_space", {})
+    time = source.get("T_time", {})
+    event = source.get("E_event", {})
+    psychology = source.get("P_psychology", {})
+    prompt = source.get("P_prompt", {})
+    meta = source.get("meta", {})
+    source_path_value = space.get("path") if isinstance(space, dict) else None
+    if not isinstance(source_path_value, str) or not source_path_value:
+        raise ValidationError(f"{source_path}: file entity missing S_space.path")
+
+    now = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    sidecar = {
+        "steppps_version": "1.0",
+        "kind": "sidecar",
+        "id": f"steppps://sidecar/{sidecar_slug}",
+        "file": file_id,
+        "source_sha256": sha256_json(source),
+        "S_space": {
+            "realm": space.get("realm"),
+            "filesystem": space.get("filesystem"),
+            "path": source_path_value,
+            "sidecar_path": f"{source_path_value}.steppps",
+            "device": space.get("device"),
+            "sangha": space.get("sangha"),
+        },
+        "T_time": {
+            "created": now,
+            "source_created": time.get("created"),
+        },
+        "E_event": {
+            "source_creation_event": event.get("creation_event"),
+        },
+        "P_psychology": {
+            "consciousness_level": psychology.get("consciousness_level", "dormant"),
+            "purpose": "filesystem_identity_sidecar",
+        },
+        "P_pixel": {
+            "form": "sidecar",
+            "mime_type": "application/steppps+json",
+            "display_logic": "Render beside the source file as its STEPPPS identity, authority, and audit context.",
+        },
+        "P_prompt": {
+            "creation_prompt": prompt.get("creation_prompt", "Generated from file entity"),
+            "next_genai_prompt": "Use this sidecar to preserve file identity before adding FUSE runtime integration.",
+        },
+        "S_script": {
+            "acts_on": ["space", "time", "event", "psychology", "pixel", "prompt", "script"],
+            "generation": {
+                "tool": "tools/steppps_validate.py create-sidecar",
+                "source": relative_path(source_path),
+            },
+            "verification": [
+                "python3 tools/steppps_validate.py file <sidecar>",
+                "python3 tools/steppps_validate.py earth-examples",
+            ],
+        },
+        "meta": {
+            "owner": meta.get("owner"),
+            "authority": meta.get("authority"),
+            "nation": meta.get("nation"),
+            "contract": meta.get("contract"),
+        },
+    }
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"example-file-{sidecar_slug}.steppps.json"
+    with output_path.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(sidecar, indent=2, ensure_ascii=False))
+        f.write("\n")
+    validate_file(output_path)
+    return output_path
+
+
 def chain_path_for_registry(registry_dir: Path) -> Path:
     return registry_dir / "chain.jsonl"
 
@@ -759,6 +843,10 @@ def main() -> int:
     record_dev_cmd.add_argument("--registry", type=Path, default=DEV_REGISTRY_DIR)
     record_dev_cmd.add_argument("--replace", action="store_true")
 
+    sidecar_cmd = sub.add_parser("create-sidecar", help="generate a .steppps sidecar entity from one file entity")
+    sidecar_cmd.add_argument("source", type=Path)
+    sidecar_cmd.add_argument("--out-dir", type=Path, default=EARTH_EXAMPLES_DIR)
+
     args = parser.parse_args()
     try:
         if args.cmd == "file":
@@ -795,6 +883,9 @@ def main() -> int:
             )
             target = admit_dev_action(path, args.registry, args.replace, DEV_CONTRACT_PATH)
             print(f"OK recorded dev {path} -> {target}")
+        elif args.cmd == "create-sidecar":
+            path = create_file_sidecar(args.source, args.out_dir)
+            print(f"OK sidecar {args.source} -> {path}")
     except (OSError, json.JSONDecodeError, ValidationError) as exc:
         print(f"ERR {exc}", file=sys.stderr)
         return 1

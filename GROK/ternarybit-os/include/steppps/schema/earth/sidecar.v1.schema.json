@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/steppps/v1/earth/sidecar.schema.json",
+  "title": "Filesystem Sidecar Entity",
+  "description": "A .steppps sidecar that binds a filesystem object to its STEPPPS identity and governance context",
+  "type": "object",
+  "required": ["steppps_version", "kind", "id", "file", "source_sha256", "S_space", "T_time", "P_pixel", "S_script", "meta"],
+  "properties": {
+    "steppps_version": { "const": "1.0" },
+    "kind": { "const": "sidecar" },
+    "id": { "type": "string", "pattern": "^steppps://sidecar/" },
+    "file": { "type": "string", "pattern": "^steppps://file/" },
+    "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+
+    "S_space": {
+      "type": "object",
+      "required": ["realm", "filesystem", "path", "sidecar_path"],
+      "properties": {
+        "realm": { "type": "string", "enum": ["bhulok", "swarga", "patala"] },
+        "filesystem": { "type": "string", "enum": ["pxfs", "ucfs", "rf2s", "ramfs", "hostfs"] },
+        "path": { "type": "string", "minLength": 1 },
+        "sidecar_path": { "type": "string", "minLength": 1 },
+        "device": { "type": "string", "pattern": "^steppps://device/" },
+        "sangha": { "type": "string", "pattern": "^steppps://sangha/" }
+      }
+    },
+
+    "T_time": {
+      "type": "object",
+      "required": ["created"],
+      "properties": {
+        "created": { "type": "string", "format": "date-time" },
+        "source_created": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "E_event": {
+      "type": "object",
+      "properties": {
+        "creation_event": { "type": "string", "pattern": "^steppps://event/" },
+        "source_creation_event": { "type": "string", "pattern": "^steppps://event/" }
+      }
+    },
+
+    "P_psychology": {
+      "type": "object",
+      "properties": {
+        "consciousness_level": { "type": "string", "enum": ["dormant", "awakening", "aware", "compassionate", "enlightened"] },
+        "purpose": { "type": "string" }
+      }
+    },
+
+    "P_pixel": {
+      "type": "object",
+      "required": ["form", "display_logic"],
+      "properties": {
+        "form": { "const": "sidecar" },
+        "mime_type": { "type": "string" },
+        "display_logic": { "type": "string" }
+      }
+    },
+
+    "P_prompt": {
+      "type": "object",
+      "properties": {
+        "creation_prompt": { "type": "string" },
+        "next_genai_prompt": { "type": "string" }
+      }
+    },
+
+    "S_script": {
+      "type": "object",
+      "required": ["acts_on", "generation"],
+      "properties": {
+        "acts_on": { "type": "array", "items": { "type": "string" } },
+        "generation": {
+          "type": "object",
+          "required": ["tool", "source"],
+          "properties": {
+            "tool": { "type": "string" },
+            "source": { "type": "string" }
+          }
+        },
+        "verification": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "required": ["owner", "authority", "contract"],
+      "properties": {
+        "owner": { "type": "string", "pattern": "^steppps://human/" },
+        "authority": { "type": "string", "pattern": "^steppps://authority/" },
+        "nation": { "type": "string", "pattern": "^steppps://nation/" },
+        "contract": { "type": "string", "pattern": "^steppps://" }
+      }
+    }
+  }
+}

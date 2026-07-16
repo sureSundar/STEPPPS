@@ -4,7 +4,7 @@
   "applies_to": "earth-admission",
   "name": "Earth Entity Admission Contract",
   "description": "Validates Earth entities before admission to registry",
-  "allowed_kinds": ["human", "machine", "device", "place", "resource", "event", "authority", "file", "directory"],
+  "allowed_kinds": ["human", "machine", "device", "place", "resource", "event", "authority", "file", "directory", "sidecar"],
   "external_prefixes": ["steppps://nation/", "steppps://sangha/", "steppps://contract/"],
   "required_known_reference_paths": {
     "device": ["owner"],
@@ -13,7 +13,8 @@
     "event": ["actor"],
     "authority": ["holder"],
     "file": ["S_space.device", "E_event.creation_event", "meta.owner", "meta.authority"],
-    "directory": ["S_space.device", "E_event.creation_event", "meta.owner", "meta.authority"]
+    "directory": ["S_space.device", "E_event.creation_event", "meta.owner", "meta.authority"],
+    "sidecar": ["file", "S_space.device", "meta.owner", "meta.authority"]
   },
   "forbidden_scope_without_human_owner": ["shutdown", "isolate"]
 }

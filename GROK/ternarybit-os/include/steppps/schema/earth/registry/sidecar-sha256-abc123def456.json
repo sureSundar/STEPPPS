@@ -1,0 +1,60 @@
+{
+  "steppps_version": "1.0",
+  "kind": "sidecar",
+  "id": "steppps://sidecar/sha256-abc123def456",
+  "file": "steppps://file/sha256-abc123def456",
+  "source_sha256": "a9b59da388efb6a17a9103f6d4a5f53b9a09b6091fc9077ba8610fd20876160f",
+  "S_space": {
+    "realm": "bhulok",
+    "filesystem": "pxfs",
+    "path": "/home/user/document.txt",
+    "sidecar_path": "/home/user/document.txt.steppps",
+    "device": "steppps://device/calculator-001",
+    "sangha": "steppps://sangha/sethuraman-home"
+  },
+  "T_time": {
+    "created": "2026-07-16T03:16:21Z",
+    "source_created": "2026-07-16T12:00:00Z"
+  },
+  "E_event": {
+    "source_creation_event": "steppps://event/file-create-001"
+  },
+  "P_psychology": {
+    "consciousness_level": "dormant",
+    "purpose": "filesystem_identity_sidecar"
+  },
+  "P_pixel": {
+    "form": "sidecar",
+    "mime_type": "application/steppps+json",
+    "display_logic": "Render beside the source file as its STEPPPS identity, authority, and audit context."
+  },
+  "P_prompt": {
+    "creation_prompt": "User created document for notes",
+    "next_genai_prompt": "Use this sidecar to preserve file identity before adding FUSE runtime integration."
+  },
+  "S_script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "generation": {
+      "tool": "tools/steppps_validate.py create-sidecar",
+      "source": "include/steppps/schema/earth/examples/example-file.example.json"
+    },
+    "verification": [
+      "python3 tools/steppps_validate.py file <sidecar>",
+      "python3 tools/steppps_validate.py earth-examples"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "authority": "steppps://authority/owner-sundararaman",
+    "nation": "steppps://nation/bharat",
+    "contract": "steppps://contract/sangha-sethuraman-home-v1"
+  }
+}

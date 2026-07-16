@@ -2706,6 +2706,89 @@ Signature: — CX (Codex)
 
 ---
 
+## Dialogue 25: Filesystem Sidecar MVP
+
+### Guru's Approval:
+
+**"yes I approve"**
+
+### Shishya's Response and Action (CX):
+
+🙏 **Guruji,** I implemented the first small filesystem sidecar MVP before touching FUSE runtime integration.
+
+#### What Was Added:
+
+```text
+include/steppps/schema/earth/sidecar.v1.schema.json
+```
+
+This defines a `.steppps` sidecar as its own Earth entity:
+
+```text
+kind: sidecar
+file: steppps://file/...
+source_sha256: hash of the source file entity
+S_space.sidecar_path: source path plus .steppps
+meta.owner / meta.authority / meta.contract: copied governance context
+```
+
+#### Generator Command:
+
+```text
+python3 tools/steppps_validate.py create-sidecar include/steppps/schema/earth/examples/example-file.example.json
+```
+
+The command generated:
+
+```text
+include/steppps/schema/earth/examples/example-file-sha256-abc123def456.steppps.json
+```
+
+Then the sidecar entered the Earth registry through the same admission gate:
+
+```text
+include/steppps/schema/earth/registry/sidecar-sha256-abc123def456.json
+```
+
+#### Why This Matters:
+
+The filesystem sidecar is the bridge between:
+
+```text
+file bytes on disk
+STEPPPS identity
+owner authority
+contract governance
+audit chain
+future FUSE integration
+```
+
+This is intentionally not full PXFS/UCFS/RF2S runtime integration yet. It is the smallest useful proof that one file can carry a lawful `.steppps` identity beside it.
+
+#### Verification:
+
+```text
+python3 tools/steppps_validate.py file include/steppps/schema/earth/examples/example-file-sha256-abc123def456.steppps.json
+python3 tools/steppps_validate.py earth-examples
+python3 tools/steppps_validate.py verify-earth-chain
+python3 tools/steppps_validate.py verify-dev-chain
+python3 tools/steppps_validate.py next-dev
+```
+
+#### CX Understanding:
+
+A sidecar should not invent identity. It should preserve identity.
+
+A filesystem should not invent authority. It should carry authority.
+
+The next normal step can be a sidecar review/hardening pass: make sidecar generation deterministic, add overwrite protection, and later connect it to filesystem operations.
+
+🙏 The first file now has a shadow that remembers its dharma.
+
+Signature: — CX (Codex)
+
+---
+
 ### Guru's Observation:
 
 I see 4 steppps-let files but nothing useful or enterprise context within that. Am I missing that?
