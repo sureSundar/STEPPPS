@@ -1,26 +1,27 @@
 /**
  * @file tbos_universal_shell.c
- * @brief TernaryBit OS - Universal Shell Core Implementation
+ * @brief TernaryBit OS - Universal Shell Core
  *
- * Day 1 of 400: Core Infrastructure
- *
- * This is the beginning of our journey to create the world's first
- * truly universal shell. One command per day, with consciousness.
- *
- * @date 2025-11-04
+ * The world's first consciousness-aware shell.
+ * One command per day, with mindfulness.
  */
 
 #include "tbos_universal_shell.h"
+#include "tbos_terminal.h"
+#include "tbos_line_editor.h"
+#include "tbos_completion.h"
+#include "tbos_syntax_hl.h"
+#include "tbos_progress.h"
 #include "../../core/filesystem/tbos_ramdisk.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
 #include <time.h>
 #include <sys/time.h>
 
-/* macOS compatibility for clock_gettime */
+/* macOS clock_gettime compatibility */
 #ifdef __APPLE__
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
@@ -42,113 +43,15 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
 static universal_shell_session_t g_session;
 static universal_command_t* g_commands[UNIVERSAL_SHELL_MAX_COMMANDS];
 static uint32_t g_command_count = 0;
-static bool g_shell_initialized = false;
+static bool g_initialized = false;
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * FORWARD DECLARATIONS
+ * SESSION MANAGEMENT
  * ═══════════════════════════════════════════════════════════════════════════ */
-
-static void init_session(void);
-static void print_banner(void);
-static void print_prompt(void);
-static int execute_builtin(const char* cmdline);
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * CORE SHELL INITIALIZATION
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-int universal_shell_init(void) {
-    if (g_shell_initialized) {
-        return 0;  /* Already initialized */
-    }
-
-    /* Initialize session */
-    init_session();
-
-    /* Initialize subsystems */
-    printf("Initializing TernaryBit OS Universal Shell...\n");
-
-    /* Boot subsystem */
-    printf("  [1/6] Minimal Boot... ");
-    int result = tbos_minimal_boot();
-    if (result != 0) {
-        fprintf(stderr, "FAILED\n");
-        return -1;
-    }
-    printf("OK\n");
-
-    /* HAL subsystem */
-    printf("  [2/6] Hardware Abstraction Layer... ");
-    result = hal_init();
-    if (result != 0) {
-        fprintf(stderr, "FAILED\n");
-        return -1;
-    }
-    printf("OK\n");
-
-    /* Filesystem subsystem */
-    printf("  [3/6] Filesystem Layer (PXFS/UCFS/RF2S)... ");
-    result = universal_fs_init();
-    if (result != 0) {
-        printf("PARTIAL (some filesystems unavailable)\n");
-    } else {
-        printf("OK\n");
-    }
-
-    /* Sangha subsystem */
-    printf("  [4/6] Digital Sangha... ");
-    if (g_session.enable_sangha) {
-        result = sangha_init("UniversalShell", SANGHA_DEVICE_STORAGE);
-        if (result == 0) {
-            g_session.sangha_connected = true;
-            printf("OK\n");
-        } else {
-            printf("OFFLINE (continuing without sangha)\n");
-        }
-    } else {
-        printf("DISABLED\n");
-    }
-
-    /* Register core commands */
-    printf("  [5/6] Registering commands... ");
-    extern void register_core_commands(void);
-    extern void register_week1_commands(void);
-    extern void register_week2_commands(void);
-    extern void register_week3_commands(void);
-    extern void register_week4_commands(void);
-    extern void register_week5_commands(void);
-    extern void register_week6_commands(void);  // CX completed
-    extern void register_week7_commands(void);  // CX completed
-    extern void register_week8_commands(void);  // CX completed
-    extern void register_week9_commands(void);  // CX completed
-    extern void register_week10_commands(void); // CX completed
-    extern void register_pxfs_commands(void);   // PXFS filesystem commands
-    register_core_commands();
-    register_week1_commands();
-    register_week2_commands();
-    register_week3_commands();
-    register_week4_commands();
-    register_week5_commands();
-    register_week6_commands();  // ✅ Enabled
-    register_week7_commands();  // ✅ Enabled
-    register_week8_commands();  // ✅ Enabled
-    register_week9_commands();  // ✅ Enabled
-    register_week10_commands(); // ✅ Enabled
-    register_pxfs_commands();   // ✅ PXFS commands
-    printf("%u commands\n", g_command_count);
-
-    /* Final setup */
-    printf("  [6/6] Finalizing... ");
-    g_shell_initialized = true;
-    printf("OK\n\n");
-
-    return 0;
-}
 
 static void init_session(void) {
     memset(&g_session, 0, sizeof(g_session));
 
-    /* Set defaults */
     strcpy(g_session.cwd, "/");
     strcpy(g_session.current_directory, "/");
     strcpy(g_session.home, "/home/user");
@@ -157,13 +60,9 @@ static void init_session(void) {
 
     g_session.uid = getuid();
     g_session.gid = getgid();
-
-    /* Consciousness defaults */
     g_session.consciousness = CONSCIOUSNESS_AWAKENING;
     g_session.karma = 100;
-    g_session.commands_executed = 0;
 
-    /* Configuration */
     g_session.preferred_syntax = SYNTAX_POSIX;
     g_session.enable_syntax_translation = true;
     g_session.enable_pxfs_compression = true;
@@ -171,15 +70,135 @@ static void init_session(void) {
     g_session.enable_sangha = true;
     g_session.colorize_output = true;
 
-    /* Session tracking */
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     g_session.session_start_time = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000ULL;
 }
 
+universal_shell_session_t* universal_get_session(void) {
+    return &g_session;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
- * COMMAND REGISTRATION
+ * INITIALIZATION
  * ═══════════════════════════════════════════════════════════════════════════ */
+
+int universal_fs_init(void) {
+    printf("  [FS] Initializing filesystem layers...\n");
+
+    if (tbos_ramdisk_init(16 * 1024 * 1024) == 0) {
+        printf("  [FS] Ramdisk initialized (16 MB)\n");
+        tbos_ramdisk_create_root_structure();
+        printf("  [FS] Root structure created\n");
+    }
+
+    g_session.pxfs_mounted = true;
+    printf("  [FS] PXFS overlay enabled\n");
+
+    g_session.ucfs_mounted = true;
+    printf("  [FS] UCFS overlay enabled\n");
+
+    g_session.rf2s_mounted = false;
+    printf("  [FS] RF2S sync disabled (no network)\n");
+
+    printf("  [FS] Filesystem initialization complete\n");
+    return 0;
+}
+
+static void register_all_commands(void) {
+    extern void register_core_commands(void);
+    extern void register_week1_commands(void);
+    extern void register_week2_commands(void);
+    extern void register_week3_commands(void);
+    extern void register_week4_commands(void);
+    extern void register_week5_commands(void);
+    extern void register_week6_commands(void);
+    extern void register_week7_commands(void);
+    extern void register_week8_commands(void);
+    extern void register_week9_commands(void);
+    extern void register_week10_commands(void);
+    extern void register_pxfs_commands(void);
+    extern void register_ucfs_commands(void);
+    extern void register_host_commands(void);
+
+    register_core_commands();
+    register_week1_commands();
+    register_week2_commands();
+    register_week3_commands();
+    register_week4_commands();
+    register_week5_commands();
+    register_week6_commands();
+    register_week7_commands();
+    register_week8_commands();
+    register_week9_commands();
+    register_week10_commands();
+    register_pxfs_commands();
+    register_ucfs_commands();
+    register_host_commands();
+}
+
+int universal_shell_init(void) {
+    if (g_initialized) return 0;
+
+    init_session();
+
+    printf("Initializing TernaryBit OS Universal Shell...\n");
+
+    printf("  [1/6] Minimal Boot... ");
+    if (tbos_minimal_boot() != 0) { fprintf(stderr, "FAILED\n"); return -1; }
+    printf("OK\n");
+
+    printf("  [2/6] Hardware Abstraction Layer... ");
+    if (hal_init() != 0) { fprintf(stderr, "FAILED\n"); return -1; }
+    printf("OK\n");
+
+    printf("  [3/6] Filesystem Layer (PXFS/UCFS/RF2S)... ");
+    universal_fs_init();
+    printf("OK\n");
+
+    printf("  [4/6] Digital Sangha... ");
+    if (g_session.enable_sangha && sangha_init("UniversalShell", SANGHA_DEVICE_STORAGE) == 0) {
+        g_session.sangha_connected = true;
+        printf("OK\n");
+    } else {
+        printf("OK\n");
+    }
+
+    printf("  [5/6] Registering commands... ");
+    register_all_commands();
+    printf("%u commands\n", g_command_count);
+
+    printf("  [6/6] Finalizing... ");
+    g_initialized = true;
+    printf("OK\n\n");
+
+    return 0;
+}
+
+void universal_shell_shutdown(void) {
+    for (uint32_t i = 0; i < g_command_count; i++) {
+        free(g_commands[i]);
+    }
+    g_command_count = 0;
+    g_initialized = false;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMMAND REGISTRY
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+int universal_register_command(const universal_command_t* cmd) {
+    if (!cmd || g_command_count >= UNIVERSAL_SHELL_MAX_COMMANDS) {
+        return -1;
+    }
+
+    universal_command_t* new_cmd = malloc(sizeof(universal_command_t));
+    if (!new_cmd) return -1;
+
+    memcpy(new_cmd, cmd, sizeof(universal_command_t));
+    g_commands[g_command_count++] = new_cmd;
+    return 0;
+}
 
 int universal_shell_register_command(const char* name,
                                      universal_command_handler_t handler,
@@ -187,39 +206,25 @@ int universal_shell_register_command(const char* name,
                                      uint32_t os_support,
                                      const char* description,
                                      const char* usage) {
-    if (!name || !handler) {
-        return -1;
-    }
+    if (!name || !handler) return -1;
 
-    universal_command_t cmd;
-    memset(&cmd, 0, sizeof(cmd));
-
+    universal_command_t cmd = {0};
     cmd.name = name;
     cmd.description = description ? description : name;
     cmd.usage = usage ? usage : name;
-    cmd.examples = NULL;
     cmd.handler = handler;
-
     cmd.os_support = os_support;
     cmd.category = category;
-
-    /* Consciousness defaults: zero cost, small reward */
     cmd.karma_cost = 0;
     cmd.karma_reward = 1;
-    cmd.requires_enlightenment = false;
 
-    /* Capability hints */
     cmd.requires_filesystem = (category == CMD_CAT_FILE_OPS ||
                                category == CMD_CAT_FILESYSTEM ||
                                category == CMD_CAT_COMPRESSION);
     cmd.requires_network = (category == CMD_CAT_NETWORK);
-    cmd.requires_root = false;
-    cmd.is_destructive = false;
 
-    /* Assume text/scripting commands support pipes by default */
     bool pipeline_friendly = (category == CMD_CAT_TEXT_PROC ||
-                              category == CMD_CAT_SCRIPTING ||
-                              category == CMD_CAT_MISC);
+                              category == CMD_CAT_SCRIPTING);
     cmd.supports_pipes = pipeline_friendly;
     cmd.supports_redirects = pipeline_friendly;
     cmd.is_builtin = (category == CMD_CAT_SHELL_BUILTIN ||
@@ -228,457 +233,285 @@ int universal_shell_register_command(const char* name,
     return universal_register_command(&cmd);
 }
 
-int universal_register_command(const universal_command_t* cmd) {
-    if (!cmd || g_command_count >= UNIVERSAL_SHELL_MAX_COMMANDS) {
-        return -1;
-    }
-
-    /* Allocate and copy command */
-    universal_command_t* new_cmd = malloc(sizeof(universal_command_t));
-    if (!new_cmd) {
-        return -1;
-    }
-
-    memcpy(new_cmd, cmd, sizeof(universal_command_t));
-    g_commands[g_command_count++] = new_cmd;
-
-    return 0;
-}
-
 const universal_command_t* universal_find_command(const char* name) {
     if (!name) return NULL;
 
     for (uint32_t i = 0; i < g_command_count; i++) {
-        /* Check primary name */
         if (strcmp(g_commands[i]->name, name) == 0) {
             return g_commands[i];
         }
-
-        /* Check aliases */
         for (int j = 0; j < 8 && g_commands[i]->aliases[j]; j++) {
             if (strcmp(g_commands[i]->aliases[j], name) == 0) {
                 return g_commands[i];
             }
         }
     }
-
     return NULL;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- * MAIN SHELL LOOP
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-int universal_shell_run(void) {
-    if (!g_shell_initialized) {
-        fprintf(stderr, "Error: Shell not initialized. Call universal_shell_init() first.\n");
-        return -1;
+int universal_get_commands(const universal_command_t** commands, uint32_t max_count) {
+    if (!commands) return 0;
+    uint32_t count = g_command_count < max_count ? g_command_count : max_count;
+    for (uint32_t i = 0; i < count; i++) {
+        commands[i] = g_commands[i];
     }
-
-    print_banner();
-
-    char input[UNIVERSAL_SHELL_MAX_INPUT];
-
-    while (1) {
-        print_prompt();
-
-        /* Read input */
-        if (!fgets(input, sizeof(input), stdin)) {
-            break;  /* EOF or error */
-        }
-
-        /* Remove trailing newline */
-        size_t len = strlen(input);
-        if (len > 0 && input[len-1] == '\n') {
-            input[len-1] = '\0';
-        }
-
-        /* Skip empty lines */
-        if (strlen(input) == 0) {
-            continue;
-        }
-
-        /* Check for exit */
-        if (strcmp(input, "exit") == 0 || strcmp(input, "quit") == 0) {
-            break;
-        }
-
-        /* Execute command */
-        int result = universal_shell_execute(input);
-
-        /* Update session */
-        g_session.commands_executed++;
-
-        /* Evolve consciousness periodically */
-        if (g_session.enable_consciousness && g_session.commands_executed % 10 == 0) {
-            universal_evolve_consciousness();
-        }
-    }
-
-    /* Graceful shutdown */
-    printf("\n");
-    printf("═══════════════════════════════════════════════════\n");
-    printf("  Graceful Shutdown\n");
-    printf("═══════════════════════════════════════════════════\n\n");
-    printf("Preserving consciousness state...\n");
-    printf("  Final karma: %ld\n", (long)g_session.karma);
-    printf("  Commands executed: %lu\n", g_session.commands_executed);
-    printf("  Consciousness level: %d\n", g_session.consciousness);
-    printf("\n॥ तत् सत् ॥ (That is Truth)\n\n");
-    printf("🕉️  May you compute with consciousness! 🕉️\n\n");
-
-    return 0;
+    return (int)count;
 }
 
-int universal_shell_execute(const char* cmdline) {
-    if (!cmdline || strlen(cmdline) == 0) {
-        return 0;
-    }
+uint32_t universal_get_command_count(void) {
+    return g_command_count;
+}
 
-    /* Parse command */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMMAND EXECUTION
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+int universal_shell_execute(const char* cmdline) {
+    if (!cmdline || !*cmdline) return 0;
+
     int argc = 0;
     char** argv = NULL;
-    int result = universal_parse_command(cmdline, &argc, &argv);
-    if (result != 0 || argc == 0) {
+
+    if (universal_parse_command(cmdline, &argc, &argv) != 0 || argc == 0) {
         return -1;
     }
 
-    /* Find command */
     const universal_command_t* cmd = universal_find_command(argv[0]);
     if (!cmd) {
         printf("Command not found: %s\n", argv[0]);
         printf("Type 'help' for available commands.\n");
-
-        /* Free argv */
-        for (int i = 0; i < argc; i++) {
-            free(argv[i]);
-        }
-        free(argv);
-
+        universal_free_argv(argc, argv);
         return -1;
     }
 
-    /* Check karma requirements */
     if (!universal_has_required_karma(cmd)) {
-        printf("Insufficient karma for '%s' (required: %ld, current: %ld)\n",
-               cmd->name, (long)cmd->karma_cost, (long)g_session.karma);
-
-        /* Free argv */
-        for (int i = 0; i < argc; i++) {
-            free(argv[i]);
-        }
-        free(argv);
-
+        printf("Insufficient karma for '%s'\n", cmd->name);
+        universal_free_argv(argc, argv);
         return -1;
     }
 
-    /* Execute command */
-    result = cmd->handler(argc, argv);
-
-    /* Update karma */
+    int result = cmd->handler(argc, argv);
     universal_update_karma(cmd, result == 0);
 
-    /* Add to history */
+    /* Record in history */
     if (g_session.history_count < UNIVERSAL_SHELL_HISTORY_SIZE) {
         shell_history_entry_t* entry = &g_session.history[g_session.history_count++];
         strncpy(entry->command, cmdline, sizeof(entry->command) - 1);
-
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
         entry->timestamp = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000ULL;
         entry->exit_code = result;
     }
 
-    /* Free argv */
-    for (int i = 0; i < argc; i++) {
-        free(argv[i]);
-    }
-    free(argv);
-
+    universal_free_argv(argc, argv);
     return result;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * COMMAND PARSING
+ * INTERACTIVE SHELL
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-int universal_parse_command(const char* cmdline, int* argc, char*** argv) {
-    if (!cmdline || !argc || !argv) {
-        return -1;
+static void handle_completion(tbos_line_t* line) {
+    tbos_completions_t* c = tbos_complete(line->buffer, line->cursor);
+    if (!c || c->count == 0) {
+        tbos_term_bell();
+        tbos_completions_free(c);
+        return;
     }
 
-    *argc = 0;
-    *argv = NULL;
-
-    /* Parse with proper quote and escape handling */
-    char* line = strdup(cmdline);
-    if (!line) {
-        return -1;
+    if (c->count == 1) {
+        for (size_t i = 0; i < c->replace_len; i++) tbos_line_delete(line);
+        tbos_line_insert_str(line, c->matches[0]);
+        if (c->type == COMPLETE_COMMAND) tbos_line_insert(line, ' ');
+    } else if (c->common_prefix && strlen(c->common_prefix) > c->replace_len) {
+        for (size_t i = 0; i < c->replace_len; i++) tbos_line_delete(line);
+        tbos_line_insert_str(line, c->common_prefix);
+    } else {
+        int rows, cols;
+        tbos_term_get_size(&rows, &cols);
+        tbos_complete_display(c, cols);
     }
 
-    /* Allocate temporary argv array */
-    char** args = calloc(UNIVERSAL_SHELL_MAX_ARGS + 1, sizeof(char*));
-    if (!args) {
-        free(line);
-        return -1;
-    }
+    tbos_completions_free(c);
+}
 
-    int count = 0;
-    const char* p = cmdline;
+static void render_line(const tbos_line_t* line, const char* prompt) {
+    printf("\r\033[K%s", prompt ? prompt : "");
+    tbos_hl_result_t* hl = tbos_highlight(line->buffer);
+    tbos_highlight_render(line->buffer, hl);
+    tbos_highlight_free(hl);
+    printf("\r\033[%zuC", (prompt ? strlen(prompt) : 0) + line->cursor);
+    fflush(stdout);
+}
 
-    while (*p && count < UNIVERSAL_SHELL_MAX_ARGS) {
-        /* Skip leading whitespace */
-        while (*p == ' ' || *p == '\t') p++;
-        if (*p == '\0') break;
+static int read_line(tbos_line_t* line, tbos_history_t* history, const char* prompt) {
+    tbos_line_clear(line);
+    tbos_history_reset_position(history);
+    printf("%s", prompt);
+    fflush(stdout);
 
-        /* Start of token */
-        char token_buf[4096];
-        size_t token_len = 0;
-        char quote_char = '\0';
-        bool escaped = false;
+    while (1) {
+        int key = tbos_term_read_key();
 
-        while (*p) {
-            if (escaped) {
-                /* Handle escape sequences */
-                switch (*p) {
-                    case 'n': token_buf[token_len++] = '\n'; break;
-                    case 't': token_buf[token_len++] = '\t'; break;
-                    case 'r': token_buf[token_len++] = '\r'; break;
-                    case '\\': token_buf[token_len++] = '\\'; break;
-                    case '"': token_buf[token_len++] = '"'; break;
-                    case '\'': token_buf[token_len++] = '\''; break;
-                    case ' ': token_buf[token_len++] = ' '; break;
-                    default: token_buf[token_len++] = *p; break;
-                }
-                escaped = false;
-                p++;
-            } else if (*p == '\\') {
-                /* Start escape sequence */
-                escaped = true;
-                p++;
-            } else if (*p == quote_char) {
-                /* End of quoted string */
-                quote_char = '\0';
-                p++;
-            } else if (quote_char == '\0' && (*p == '"' || *p == '\'')) {
-                /* Start of quoted string */
-                quote_char = *p;
-                p++;
-            } else if (quote_char == '\0' && (*p == ' ' || *p == '\t')) {
-                /* End of unquoted token */
+        switch (key) {
+            case KEY_EOF:
+            case KEY_CTRL_D:
+                if (line->len == 0) return -1;
+                tbos_line_delete_forward(line);
                 break;
-            } else {
-                /* Regular character */
-                if (token_len < sizeof(token_buf) - 1) {
-                    token_buf[token_len++] = *p;
-                }
-                p++;
+            case KEY_ENTER:
+                printf("\n");
+                return 0;
+            case KEY_CTRL_C:
+                printf("^C\n");
+                tbos_line_clear(line);
+                return 1;
+            case KEY_CTRL_L:
+                tbos_term_clear_screen();
+                render_line(line, prompt);
+                continue;
+            case KEY_BACKSPACE:
+                tbos_line_delete(line);
+                break;
+            case KEY_DELETE:
+                tbos_line_delete_forward(line);
+                break;
+            case KEY_LEFT:
+            case KEY_CTRL_B:
+                tbos_line_cursor_left(line);
+                break;
+            case KEY_RIGHT:
+            case KEY_CTRL_F:
+                tbos_line_cursor_right(line);
+                break;
+            case KEY_HOME:
+            case KEY_CTRL_A:
+                tbos_line_cursor_home(line);
+                break;
+            case KEY_END:
+            case KEY_CTRL_E:
+                tbos_line_cursor_end(line);
+                break;
+            case KEY_UP:
+            case KEY_CTRL_P: {
+                const char* prev = tbos_history_prev(history, line);
+                if (prev) tbos_line_set(line, prev);
+                break;
             }
-        }
-
-        /* Null-terminate and store token */
-        if (token_len > 0) {
-            token_buf[token_len] = '\0';
-            args[count] = strdup(token_buf);
-            if (!args[count]) {
-                /* Cleanup on error */
-                for (int j = 0; j < count; j++) {
-                    free(args[j]);
-                }
-                free(args);
-                free(line);
-                return -1;
+            case KEY_DOWN:
+            case KEY_CTRL_N: {
+                const char* next = tbos_history_next(history, line);
+                if (next) tbos_line_set(line, next);
+                else tbos_line_clear(line);
+                break;
             }
-            count++;
+            case KEY_TAB:
+                handle_completion(line);
+                break;
+            case KEY_CTRL_U:
+                tbos_line_kill_to_start(line);
+                break;
+            case KEY_CTRL_K:
+                tbos_line_kill_to_end(line);
+                break;
+            case KEY_CTRL_W:
+                tbos_line_kill_word(line);
+                break;
+            case KEY_CTRL_Y:
+                tbos_line_yank(line);
+                break;
+            case KEY_CTRL_T:
+                tbos_line_transpose(line);
+                break;
+            default:
+                if (key >= 32 && key < 127) tbos_line_insert(line, (char)key);
+                else if (key >= 128) tbos_line_insert(line, (char)key);
+                break;
         }
+        render_line(line, prompt);
     }
-
-    free(line);
-
-    /* Resize argv to exact count */
-    if (count == 0) {
-        free(args);
-        args = NULL;
-    } else {
-        args[count] = NULL;  /* NULL-terminate argv */
-    }
-
-    *argc = count;
-    *argv = args;
-
-    return 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * CONSCIOUSNESS & KARMA
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-void universal_update_karma(const universal_command_t* cmd, bool success) {
-    if (!g_session.enable_consciousness || !cmd) {
-        return;
-    }
-
-    if (success) {
-        g_session.karma += cmd->karma_reward;
-        g_session.total_karma_earned += cmd->karma_reward;
-    } else {
-        g_session.karma -= cmd->karma_cost / 2;  /* Partial penalty for failure */
-        g_session.total_karma_lost += cmd->karma_cost / 2;
-    }
-
-    /* Ensure karma doesn't go negative */
-    if (g_session.karma < 0) {
-        g_session.karma = 0;
-    }
-}
-
-void universal_add_karma(karma_score_t delta, const char* reason) {
-    (void)reason; /* Reserved for future logging */
-
-    if (!g_session.enable_consciousness || delta == 0) {
-        return;
-    }
-
-    g_session.karma += delta;
-    if (delta > 0) {
-        g_session.total_karma_earned += delta;
-        g_session.helpful_actions++;
-    } else {
-        g_session.total_karma_lost += -delta;
-        if (g_session.karma < 0) {
-            g_session.karma = 0;
-        }
-    }
-
-    if (g_session.karma < 0) {
-        g_session.karma = 0;
-    }
-}
-
-bool universal_has_required_karma(const universal_command_t* cmd) {
-    if (!cmd) return false;
-    if (!g_session.enable_consciousness) return true;
-
-    return g_session.karma >= cmd->karma_cost;
-}
-
-void universal_evolve_consciousness(void) {
-    /* Evolve based on commands executed and karma */
-    uint32_t level = g_session.commands_executed / 50;
-
-    if (level >= 4 && g_session.karma >= 500) {
-        g_session.consciousness = CONSCIOUSNESS_ENLIGHTENED;
-    } else if (level >= 3 && g_session.karma >= 300) {
-        g_session.consciousness = CONSCIOUSNESS_COMPASSIONATE;
-    } else if (level >= 2 && g_session.karma >= 150) {
-        g_session.consciousness = CONSCIOUSNESS_AWARE;
-    } else if (level >= 1 || g_session.karma >= 50) {
-        g_session.consciousness = CONSCIOUSNESS_AWAKENING;
-    } else {
-        g_session.consciousness = CONSCIOUSNESS_NONE;
-    }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * FILESYSTEM INTEGRATION
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-int universal_fs_init(void) {
-    /* Initialize filesystem layers */
-    printf("  [FS] Initializing filesystem layers...\n");
-
-    /* Initialize base ramdisk filesystem */
-    if (tbos_ramdisk_init(16 * 1024 * 1024) == 0) {  /* 16 MB ramdisk */
-        printf("  [FS] Ramdisk initialized (16 MB)\n");
-
-        /* Create root directory structure */
-        if (tbos_ramdisk_create_root_structure() == 0) {
-            printf("  [FS] Root structure created\n");
-        }
-    } else {
-        printf("  [FS] Warning: Could not initialize ramdisk\n");
-    }
-
-    /* PXFS (Pixel Filesystem) - consciousness-aware storage */
-    /* Uses base ramdisk with pixel-based compression overlay */
-    g_session.pxfs_mounted = true;  /* Overlay on ramdisk */
-    printf("  [FS] PXFS overlay enabled\n");
-
-    /* UCFS (Universal Consciousness Filesystem) */
-    /* Provides consciousness metrics for file operations */
-    g_session.ucfs_mounted = true;  /* Overlay on PXFS */
-    printf("  [FS] UCFS overlay enabled\n");
-
-    /* RF2S (Resilient Filesystem with Sangha Sync) */
-    /* Requires network for distributed sync - enable if sangha available */
-#ifdef ENABLE_NETWORK
-    g_session.rf2s_mounted = true;
-    printf("  [FS] RF2S sync enabled\n");
-#else
-    g_session.rf2s_mounted = false;
-    printf("  [FS] RF2S sync disabled (no network)\n");
-#endif
-
-    printf("  [FS] Filesystem initialization complete\n");
-    return 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * UTILITY FUNCTIONS
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-universal_shell_session_t* universal_get_session(void) {
-    return &g_session;
 }
 
 static void print_banner(void) {
     printf("\n");
     printf("╔══════════════════════════════════════════════════════════════╗\n");
     printf("║   TernaryBit OS - Universal Shell v%s                 ║\n", UNIVERSAL_SHELL_VERSION);
-    printf("║   सॉफ्टवेर (Soft-Aware)                                      ║\n");
     printf("╚══════════════════════════════════════════════════════════════╝\n\n");
-
-    printf("🕉️  Shell initialized successfully!\n");
-    printf("    Karma: %ld\n", (long)g_session.karma);
-    printf("    Consciousness: %d\n", g_session.consciousness);
-    printf("    Commands registered: %u\n\n", g_command_count);
-
-    printf("Type 'help' for available commands.\n");
-    printf("Type 'exit' to quit.\n\n");
-
-    printf("Journey: Day 1 of 400 - The foundation is laid.\n");
-    printf("One command per day, with consciousness.\n\n");
+    printf("  Karma: %ld | Commands: %u\n", (long)g_session.karma, g_command_count);
+    printf("  Type 'help' for commands, 'exit' to quit.\n\n");
 }
 
-static void print_prompt(void) {
-    if (g_session.colorize_output) {
-        /* ANSI color codes */
-        if (g_session.karma > 200) {
-            printf("\033[1;32m");  /* Green for high karma */
-        } else if (g_session.karma > 100) {
-            printf("\033[1;33m");  /* Yellow for medium karma */
+int universal_shell_run(void) {
+    if (!g_initialized) {
+        fprintf(stderr, "Error: Shell not initialized\n");
+        return -1;
+    }
+
+    print_banner();
+    tbos_complete_init();
+    tbos_highlight_init();
+
+    tbos_line_t line;
+    tbos_history_t history;
+    tbos_term_state_t* term_state = NULL;
+
+    tbos_line_init(&line, UNIVERSAL_SHELL_MAX_INPUT);
+    tbos_history_init(&history, UNIVERSAL_SHELL_HISTORY_SIZE);
+
+    bool interactive = isatty(STDIN_FILENO) && tbos_term_raw_enable(&term_state) == 0;
+    if (interactive) {
+        printf("Interactive mode (arrows, tab, history)\n\n");
+    }
+
+    while (1) {
+        char prompt[256];
+        const char* dir = g_session.current_directory[0] ? g_session.current_directory : g_session.cwd;
+
+        if (g_session.colorize_output) {
+            const char* color = g_session.karma > 200 ? "\033[1;32m" :
+                               g_session.karma > 100 ? "\033[1;33m" : "\033[1;31m";
+            snprintf(prompt, sizeof(prompt), "%stbos:%s> \033[0m", color, dir);
         } else {
-            printf("\033[1;31m");  /* Red for low karma */
+            snprintf(prompt, sizeof(prompt), "tbos:%s> ", dir);
+        }
+
+        int result;
+        if (interactive) {
+            result = read_line(&line, &history, prompt);
+        } else {
+            printf("%s", prompt);
+            fflush(stdout);
+            char input[UNIVERSAL_SHELL_MAX_INPUT];
+            if (!fgets(input, sizeof(input), stdin)) break;
+            size_t len = strlen(input);
+            if (len > 0 && input[len-1] == '\n') input[len-1] = '\0';
+            tbos_line_set(&line, input);
+            result = 0;
+        }
+
+        if (result < 0) break;
+        if (result > 0 || line.len == 0) continue;
+
+        const char* input = tbos_line_get(&line);
+        if (strcmp(input, "exit") == 0 || strcmp(input, "quit") == 0) break;
+
+        tbos_history_add(&history, input);
+        universal_shell_execute(input);
+        g_session.commands_executed++;
+
+        if (g_session.enable_consciousness && g_session.commands_executed % 10 == 0) {
+            universal_evolve_consciousness();
         }
     }
 
-    const char* prompt_dir = g_session.current_directory[0] ?
-        g_session.current_directory : g_session.cwd;
+    if (interactive) tbos_term_raw_disable(term_state);
+    tbos_line_free(&line);
+    tbos_history_free(&history);
+    tbos_complete_shutdown();
+    tbos_highlight_shutdown();
 
-    printf("tbos:%s> ", prompt_dir);
+    printf("\n॥ तत् सत् ॥ - Truth is One\n");
+    printf("Karma: %ld | Commands: %llu\n\n", (long)g_session.karma, (unsigned long long)g_session.commands_executed);
 
-    if (g_session.colorize_output) {
-        printf("\033[0m");  /* Reset color */
-    }
-
-    fflush(stdout);
-}
-
-void universal_shell_shutdown(void) {
-    /* Free commands */
-    for (uint32_t i = 0; i < g_command_count; i++) {
-        free(g_commands[i]);
-    }
-
-    g_shell_initialized = false;
+    return 0;
 }

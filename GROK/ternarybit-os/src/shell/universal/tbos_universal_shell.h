@@ -34,6 +34,39 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PLATFORM-SPECIFIC TYPE DEFINITIONS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+#if defined(_WIN32) || defined(TBOS_ARCH_WINDOWS)
+    /* Windows doesn't have POSIX uid_t/gid_t */
+    #ifndef _UID_T_DEFINED
+        typedef uint32_t uid_t;
+        #define _UID_T_DEFINED
+    #endif
+    #ifndef _GID_T_DEFINED
+        typedef uint32_t gid_t;
+        #define _GID_T_DEFINED
+    #endif
+    /* MinGW defines ssize_t, so don't redefine it */
+    #define getuid() (0)
+    #define getgid() (0)
+    #define geteuid() (0)
+    #define getegid() (0)
+#elif defined(__ANDROID__) || defined(TBOS_ARCH_ANDROID)
+    #include <sys/types.h>
+    #include <unistd.h>
+#elif defined(__EMSCRIPTEN__) || defined(TBOS_ARCH_WASM)
+    /* WebAssembly - minimal POSIX-like types */
+    typedef uint32_t uid_t;
+    typedef uint32_t gid_t;
+    #define getuid() (0)
+    #define getgid() (0)
+#else
+    /* POSIX systems (Linux, macOS, BSD) */
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
+
 /* Type definitions */
 typedef int64_t karma_score_t;
 
@@ -271,6 +304,11 @@ void universal_shell_shutdown(void);
  * @return 0 on success, negative on error
  */
 int universal_parse_command(const char* cmdline, int* argc, char*** argv);
+
+/**
+ * @brief Free argv array from universal_parse_command
+ */
+void universal_free_argv(int argc, char** argv);
 
 /**
  * @brief Detect command syntax type

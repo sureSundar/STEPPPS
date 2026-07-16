@@ -1013,35 +1013,29 @@ macos: tbos-macos
 
 # Common source files for cross-platform builds
 TBOS_CROSS_SRCS := src/shell/tbos_complete_shell.c
-TBOS_CROSS_STEPPPS_SRCS := kernel/fs/steppps_vfs.c fs/pxfs_steppps.c
+TBOS_CROSS_STEPPPS_SRCS := kernel/fs/steppps_vfs.c fs/pxfs_steppps.c steppps/v2/steppps_runtime.c src/core/filesystem/ucfs_codec.c
 TBOS_CROSS_INCLUDES := -I. -Iinclude
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MACOS (Native build)
 # ─────────────────────────────────────────────────────────────────────────────
 
-tbos-macos: build/macos/tbos build/macos/steppps
+tbos-macos: build/macos/tbos
 	@echo ""
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
 	@echo "║  TBOS macOS Build Complete                                    ║"
 	@echo "╠═══════════════════════════════════════════════════════════════╣"
-	@echo "║  build/macos/tbos      - TBOS shell                           ║"
-	@echo "║  build/macos/steppps   - STEPPPS CLI                          ║"
+	@echo "║  build/macos/tbos - TBOS + STEPPPS integrated shell           ║"
 	@echo "╠═══════════════════════════════════════════════════════════════╣"
 	@echo "║  Run: ./build/macos/tbos                                      ║"
+	@echo "║  STEPPPS: steppps show/run/verify <file> (inside shell)       ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 
 build/macos/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
 	@mkdir -p build/macos
-	@echo "Building TBOS for macOS..."
-	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
+	@echo "Building TBOS + STEPPPS integrated shell for macOS..."
+	@gcc -DHOST_BUILD -DSTEPPPS_INTEGRATED -DUCFS_INTEGRATED -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
 	@echo "macOS build complete!"
-
-build/macos/steppps: $(STEPPPS_V2_SRCS)
-	@mkdir -p build/macos
-	@echo "Building STEPPPS CLI for macOS..."
-	@gcc -DHOST_BUILD -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES)
-	@echo "STEPPPS macOS build complete!"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WINDOWS (MinGW-w64 cross-compilation)

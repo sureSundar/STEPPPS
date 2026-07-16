@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TernaryBit OS - Web Shell</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #21262d;
+            --term-bg: #0a0e14;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+            --blue: #58a6ff;
+            --purple: #bc8cff;
+            --cyan: #39c5cf;
+            --orange: #f0883e;
+            --border: #30363d;
+            --highlight: rgba(56, 139, 253, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Liberation Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            filter: drop-shadow(0 0 8px var(--cyan));
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(90deg, var(--cyan), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected { background: var(--green); }
+        .status-dot.disconnected { background: var(--red); }
+        .status-dot.loading { background: var(--yellow); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main content */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .toolbar button:hover {
+            background: var(--border);
+            border-color: var(--cyan);
+        }
+
+        .toolbar button:active {
+            transform: scale(0.98);
+        }
+
+        /* Terminal */
+        #terminal {
+            flex: 1;
+            background: var(--term-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .output-line {
+            margin-bottom: 4px;
+        }
+
+        .prompt {
+            color: var(--cyan);
+            user-select: none;
+        }
+
+        .cmd-text {
+            color: var(--green);
+        }
+
+        .output {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .error {
+            color: var(--red);
+        }
+
+        /* Syntax highlighting classes */
+        .c-red { color: var(--red); }
+        .c-green { color: var(--green); }
+        .c-yellow { color: var(--yellow); }
+        .c-blue { color: var(--blue); }
+        .c-purple { color: var(--purple); }
+        .c-cyan { color: var(--cyan); }
+        .c-orange { color: var(--orange); }
+        .c-bold { font-weight: bold; }
+
+        /* Tables */
+        .tbos-table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .tbos-table th,
+        .tbos-table td {
+            padding: 6px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tbos-table th {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        /* Lists */
+        .tbos-list {
+            list-style: none;
+            padding-left: 16px;
+        }
+
+        .tbos-list li::before {
+            content: "•";
+            color: var(--cyan);
+            margin-right: 8px;
+        }
+
+        /* Key-value */
+        .tbos-kv dt {
+            color: var(--cyan);
+            font-weight: 600;
+            display: inline;
+        }
+
+        .tbos-kv dd {
+            display: inline;
+            margin-left: 8px;
+        }
+
+        /* Input area */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding-top: 12px;
+        }
+
+        #cmd-input {
+            flex: 1;
+            background: var(--term-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        #cmd-input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(57, 197, 207, 0.1);
+        }
+
+        #cmd-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        #send-btn {
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            border: none;
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+
+        #send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(57, 197, 207, 0.3);
+        }
+
+        #send-btn:active {
+            transform: translateY(0);
+        }
+
+        #send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg2);
+            border-top: 1px solid var(--border);
+            padding: 8px 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .footer-hint kbd {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon">🕉️</span>
+            <h1>TernaryBit OS Web Shell</h1>
+        </div>
+        <div class="status">
+            <span class="status-dot connected" id="status-dot"></span>
+            <span id="status-text">Connected</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="toolbar">
+            <button onclick="runCommand('help')">Help</button>
+            <button onclick="runCommand('ls')">List Files</button>
+            <button onclick="runCommand('pwd')">PWD</button>
+            <button onclick="runCommand('karma')">Karma</button>
+            <button onclick="runCommand('uname -a')">System</button>
+            <button onclick="runCommand('ps')">Processes</button>
+            <button onclick="clearTerminal()">Clear</button>
+        </div>
+
+        <div id="terminal"></div>
+
+        <div class="input-area">
+            <input type="text" id="cmd-input" placeholder="Enter command..." autocomplete="off" autofocus>
+            <button id="send-btn" onclick="sendCommand()">Run</button>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-hint">
+            <kbd>Enter</kbd> to run &nbsp;|&nbsp;
+            <kbd>↑</kbd><kbd>↓</kbd> for history &nbsp;|&nbsp;
+            <kbd>Ctrl+L</kbd> to clear
+        </div>
+        <div>TBOS API v1.0</div>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:9000';
+        const terminal = document.getElementById('terminal');
+        const cmdInput = document.getElementById('cmd-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+
+        const history = [];
+        let historyIndex = -1;
+
+        // Connection status
+        function setStatus(status) {
+            statusDot.className = 'status-dot ' + status;
+            statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        // Append to terminal
+        function appendLine(html, className = '') {
+            const div = document.createElement('div');
+            div.className = 'output-line ' + className;
+            div.innerHTML = html;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function appendCommand(cmd) {
+            appendLine(`<span class="prompt">tbos:/&gt; </span><span class="cmd-text">${escapeHtml(cmd)}</span>`);
+        }
+
+        function appendOutput(text) {
+            appendLine(`<span class="output">${escapeHtml(text)}</span>`);
+        }
+
+        function appendHtml(html) {
+            appendLine(html, 'output');
+        }
+
+        function appendError(msg) {
+            appendLine(`<span class="error">Error: ${escapeHtml(msg)}</span>`);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function clearTerminal() {
+            terminal.innerHTML = '';
+        }
+
+        // Run a predefined command
+        function runCommand(cmd) {
+            cmdInput.value = cmd;
+            sendCommand();
+        }
+
+        // Send command to API
+        async function sendCommand() {
+            const cmd = cmdInput.value.trim();
+            if (!cmd) return;
+
+            // Add to history
+            if (history[history.length - 1] !== cmd) {
+                history.push(cmd);
+            }
+            historyIndex = history.length;
+
+            appendCommand(cmd);
+            cmdInput.value = '';
+            sendBtn.disabled = true;
+            setStatus('loading');
+
+            try {
+                const response = await fetch(`${API_URL}/api/cmd`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cmd: cmd })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    if (data.type === 'text' && data.output) {
+                        appendOutput(data.output);
+                    } else if (data.type === 'table') {
+                        renderTable(data.headers, data.rows);
+                    } else if (data.type === 'list') {
+                        renderList(data.items);
+                    } else if (data.type === 'keyval') {
+                        renderKeyVal(data.data);
+                    }
+                } else {
+                    appendError(data.error || 'Unknown error');
+                }
+
+                setStatus('connected');
+            } catch (err) {
+                appendError(`Connection failed: ${err.message}`);
+                setStatus('disconnected');
+            }
+
+            sendBtn.disabled = false;
+            cmdInput.focus();
+        }
+
+        // Render structured data
+        function renderTable(headers, rows) {
+            let html = '<table class="tbos-table"><thead><tr>';
+            for (const h of headers) {
+                html += `<th>${escapeHtml(h)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            for (const row of rows) {
+                html += '<tr>';
+                for (const cell of row) {
+                    html += `<td>${escapeHtml(cell)}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            appendHtml(html);
+        }
+
+        function renderList(items) {
+            let html = '<ul class="tbos-list">';
+            for (const item of items) {
+                html += `<li>${escapeHtml(item)}</li>`;
+            }
+            html += '</ul>';
+            appendHtml(html);
+        }
+
+        function renderKeyVal(data) {
+            let html = '<dl class="tbos-kv">';
+            for (const [key, val] of Object.entries(data)) {
+                html += `<dt>${escapeHtml(key)}:</dt><dd>${escapeHtml(val)}</dd><br>`;
+            }
+            html += '</dl>';
+            appendHtml(html);
+        }
+
+        // Keyboard handling
+        cmdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendCommand();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    cmdInput.value = history[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    cmdInput.value = history[historyIndex];
+                } else {
+                    historyIndex = history.length;
+                    cmdInput.value = '';
+                }
+            } else if (e.key === 'l' && e.ctrlKey) {
+                e.preventDefault();
+                clearTerminal();
+            }
+        });
+
+        // Check API health on load
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    setStatus('connected');
+                    appendLine('<span class="c-green">Connected to TBOS API Server</span>');
+                    appendLine('<span class="c-cyan">Type "help" for available commands</span>');
+                }
+            } catch (err) {
+                setStatus('disconnected');
+                appendError('Cannot connect to API server. Make sure tbos_api_server is running on port 8080.');
+            }
+        }
+
+        checkHealth();
+    </script>
+</body>
+</html>

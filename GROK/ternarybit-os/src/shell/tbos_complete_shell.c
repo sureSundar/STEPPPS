@@ -31,6 +31,22 @@
 /* Cross-platform support */
 #include "tbos/platform.h"
 
+/* STEPPPS integration */
+#ifdef STEPPPS_INTEGRATED
+#include "steppps/v2/steppps.h"
+#endif
+
+/* UCFS integration */
+#ifdef UCFS_INTEGRATED
+#include "fs/ucfs_codec.h"
+#endif
+
+/* Virtual filesystem mount point */
+#define TBOS_VFS_PREFIX "/tbos"
+#define VFS_MAX_NODES 256
+#define VFS_MAX_NAME 256
+#define VFS_MAX_DATA 65536
+
 #ifdef TBOS_PLATFORM_WINDOWS
     #include <io.h>
     #include <process.h>
@@ -52,6 +68,8 @@
     #include <sys/stat.h>
     #include <dirent.h>
     #include <fcntl.h>
+    #include <termios.h>
+    #include <sys/ioctl.h>
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -121,6 +139,591 @@ static int g_history_count = 0;
 
 /* Forward declarations */
 static int execute_via_host_shell(const char* line);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SIMPLE IN-MEMORY VIRTUAL FILESYSTEM
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+typedef enum { VFS_DIR, VFS_FILE } vfs_type_t;
+
+typedef struct vfs_node {
+    char name[VFS_MAX_NAME];
+    vfs_type_t type;
+    unsigned int mode;      /* Unix permissions (0755, 0644, etc.) */
+    unsigned int uid;       /* Owner user ID */
+    unsigned int gid;       /* Owner group ID */
+    time_t mtime;           /* Modification time */
+    char* data;
+    size_t size;
+    size_t capacity;
+    struct vfs_node* parent;
+    struct vfs_node* children[64];
+    int child_count;
+} vfs_node_t;
+
+static vfs_node_t* g_vfs_root = NULL;
+static int g_vfs_initialized = 0;
+
+static vfs_node_t* vfs_create_node(const char* name, vfs_type_t type, vfs_node_t* parent) {
+    vfs_node_t* node = (vfs_node_t*)calloc(1, sizeof(vfs_node_t));
+    if (!node) return NULL;
+    strncpy(node->name, name, VFS_MAX_NAME - 1);
+    node->type = type;
+    node->mode = (type == VFS_DIR) ? 0755 : 0644;  /* Default permissions */
+    node->uid = 0;  /* root */
+    node->gid = 0;  /* root */
+    node->mtime = time(NULL);
+    node->parent = parent;
+    if (parent && parent->child_count < 64) {
+        parent->children[parent->child_count++] = node;
+    }
+    return node;
+}
+
+static vfs_node_t* vfs_find_node(const char* path) {
+    if (!g_vfs_root || !path) return NULL;
+
+    /* Skip prefix */
+    if (strncmp(path, TBOS_VFS_PREFIX, strlen(TBOS_VFS_PREFIX)) == 0) {
+        path += strlen(TBOS_VFS_PREFIX);
+    }
+    if (*path == '/') path++;
+    if (*path == '\0') return g_vfs_root;
+
+    vfs_node_t* current = g_vfs_root;
+    char component[VFS_MAX_NAME];
+
+    while (*path && current) {
+        const char* slash = strchr(path, '/');
+        size_t len = slash ? (size_t)(slash - path) : strlen(path);
+        if (len >= VFS_MAX_NAME) return NULL;
+        strncpy(component, path, len);
+        component[len] = '\0';
+
+        vfs_node_t* found = NULL;
+        for (int i = 0; i < current->child_count; i++) {
+            if (strcmp(current->children[i]->name, component) == 0) {
+                found = current->children[i];
+                break;
+            }
+        }
+        if (!found) return NULL;
+        current = found;
+        path = slash ? slash + 1 : path + len;
+    }
+    return current;
+}
+
+static int vfs_mkdir(const char* path) {
+    if (!g_vfs_root) return -1;
+
+    /* Find parent */
+    char parent_path[MAX_PATH];
+    strncpy(parent_path, path, MAX_PATH - 1);
+    char* last_slash = strrchr(parent_path, '/');
+    if (!last_slash) return -1;
+
+    const char* name = last_slash + 1;
+    *last_slash = '\0';
+
+    vfs_node_t* parent = vfs_find_node(parent_path);
+    if (!parent || parent->type != VFS_DIR) return -1;
+
+    /* Check if already exists */
+    for (int i = 0; i < parent->child_count; i++) {
+        if (strcmp(parent->children[i]->name, name) == 0) return 0;
+    }
+
+    vfs_node_t* dir = vfs_create_node(name, VFS_DIR, parent);
+    return dir ? 0 : -1;
+}
+
+static int vfs_write_file(const char* path, const void* data, size_t size) {
+    if (!g_vfs_root) return -1;
+
+    vfs_node_t* node = vfs_find_node(path);
+    if (node && node->type == VFS_FILE) {
+        /* Overwrite */
+        if (size > node->capacity) {
+            char* new_data = (char*)realloc(node->data, size + 1);
+            if (!new_data) return -1;
+            node->data = new_data;
+            node->capacity = size;
+        }
+        memcpy(node->data, data, size);
+        node->data[size] = '\0';
+        node->size = size;
+        return 0;
+    }
+
+    /* Create new file */
+    char parent_path[MAX_PATH];
+    strncpy(parent_path, path, MAX_PATH - 1);
+    char* last_slash = strrchr(parent_path, '/');
+    if (!last_slash) return -1;
+
+    const char* name = last_slash + 1;
+    *last_slash = '\0';
+
+    vfs_node_t* parent = vfs_find_node(parent_path);
+    if (!parent || parent->type != VFS_DIR) return -1;
+
+    node = vfs_create_node(name, VFS_FILE, parent);
+    if (!node) return -1;
+
+    if (size > 0) {
+        node->data = (char*)malloc(size + 1);
+        if (!node->data) return -1;
+        memcpy(node->data, data, size);
+        node->data[size] = '\0';
+        node->size = size;
+        node->capacity = size;
+    }
+    return 0;
+}
+
+static const void* vfs_read_file_cstr(const char* path, size_t* out_size) {
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node || node->type != VFS_FILE) return NULL;
+    if (out_size) *out_size = node->size;
+    return node->data ? node->data : "";
+}
+
+static int vfs_remove(const char* path, int recursive) {
+    (void)recursive;
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node || node == g_vfs_root) return -1;
+
+    /* Remove from parent */
+    vfs_node_t* parent = node->parent;
+    if (parent) {
+        for (int i = 0; i < parent->child_count; i++) {
+            if (parent->children[i] == node) {
+                memmove(&parent->children[i], &parent->children[i+1],
+                        (parent->child_count - i - 1) * sizeof(vfs_node_t*));
+                parent->child_count--;
+                break;
+            }
+        }
+    }
+    if (node->data) free(node->data);
+    free(node);
+    return 0;
+}
+
+typedef int (*vfs_list_cb)(const char* name, int is_dir, void* user);
+
+static int vfs_list_dir(const char* path, vfs_list_cb cb, void* user) {
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node || node->type != VFS_DIR) return -1;
+
+    for (int i = 0; i < node->child_count; i++) {
+        cb(node->children[i]->name, node->children[i]->type == VFS_DIR, user);
+    }
+    return 0;
+}
+
+static int vfs_chmod(const char* path, unsigned int mode) {
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node) return -1;
+    node->mode = mode & 07777;  /* Only permission bits */
+    return 0;
+}
+
+static int vfs_chown(const char* path, unsigned int uid, unsigned int gid) {
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node) return -1;
+    node->uid = uid;
+    node->gid = gid;
+    return 0;
+}
+
+typedef struct {
+    vfs_type_t type;
+    unsigned int mode;
+    unsigned int uid;
+    unsigned int gid;
+    size_t size;
+    time_t mtime;
+} vfs_stat_t;
+
+static int vfs_stat(const char* path, vfs_stat_t* st) {
+    vfs_node_t* node = vfs_find_node(path);
+    if (!node || !st) return -1;
+    st->type = node->type;
+    st->mode = node->mode;
+    st->uid = node->uid;
+    st->gid = node->gid;
+    st->size = node->size;
+    st->mtime = node->mtime;
+    return 0;
+}
+
+/* Check if path is in virtual filesystem */
+static int is_vfs_path(const char* path) {
+    if (!path) return 0;
+    size_t prefix_len = strlen(TBOS_VFS_PREFIX);
+    return (strncmp(path, TBOS_VFS_PREFIX, prefix_len) == 0 &&
+            (path[prefix_len] == '/' || path[prefix_len] == '\0'));
+}
+
+/* Initialize in-memory VFS */
+static void init_vfs(void) {
+    if (g_vfs_initialized) return;
+
+    g_vfs_root = vfs_create_node("tbos", VFS_DIR, NULL);
+    if (!g_vfs_root) return;
+
+    g_vfs_initialized = 1;
+
+    /* Create default directories */
+    vfs_mkdir(TBOS_VFS_PREFIX "/home");
+    vfs_mkdir(TBOS_VFS_PREFIX "/tmp");
+    vfs_mkdir(TBOS_VFS_PREFIX "/bin");
+    vfs_mkdir(TBOS_VFS_PREFIX "/etc");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * LINE EDITOR WITH ESCAPE KEY HANDLING
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#ifndef TBOS_PLATFORM_WINDOWS
+
+/* Terminal state */
+static struct termios g_orig_termios;
+static int g_raw_mode = 0;
+
+/* Key codes */
+#define KEY_NULL     0
+#define KEY_CTRL_A   1
+#define KEY_CTRL_B   2
+#define KEY_CTRL_C   3
+#define KEY_CTRL_D   4
+#define KEY_CTRL_E   5
+#define KEY_CTRL_F   6
+#define KEY_CTRL_H   8
+#define KEY_TAB      9
+#define KEY_CTRL_K   11
+#define KEY_CTRL_L   12
+#define KEY_ENTER    13
+#define KEY_CTRL_N   14
+#define KEY_CTRL_P   16
+#define KEY_CTRL_U   21
+#define KEY_CTRL_W   23
+#define KEY_ESC      27
+#define KEY_BACKSPACE 127
+
+/* Special keys (values > 256 to distinguish from regular chars) */
+#define KEY_ARROW_UP    1000
+#define KEY_ARROW_DOWN  1001
+#define KEY_ARROW_RIGHT 1002
+#define KEY_ARROW_LEFT  1003
+#define KEY_HOME        1004
+#define KEY_END         1005
+#define KEY_DELETE      1006
+#define KEY_PAGE_UP     1007
+#define KEY_PAGE_DOWN   1008
+
+static void disable_raw_mode(void) {
+    if (g_raw_mode) {
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
+        g_raw_mode = 0;
+    }
+}
+
+static int g_force_line_mode = 1;  /* Default to line mode for compatibility */
+
+static int enable_raw_mode(void) {
+    /* Skip raw mode if forced to line mode or not a real TTY */
+    if (g_force_line_mode) return -1;
+    if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) return -1;
+
+    if (g_raw_mode) return 0;
+
+    /* Try to get current terminal settings - if this fails, not a real terminal */
+    if (tcgetattr(STDIN_FILENO, &g_orig_termios) == -1) return -1;
+
+    /* Check if canonical mode is already off (unlikely for real terminal) */
+    if (!(g_orig_termios.c_lflag & ICANON)) return -1;
+
+    struct termios raw = g_orig_termios;
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_oflag &= ~(OPOST);
+    raw.c_cflag |= (CS8);
+    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) return -1;
+    g_raw_mode = 1;
+    return 0;
+}
+
+static int read_key(void) {
+    char c;
+    ssize_t nread;
+
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        if (nread == -1 && errno != EAGAIN) return -1;
+    }
+
+    if (c == KEY_ESC) {
+        char seq[3];
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return KEY_ESC;
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return KEY_ESC;
+
+        if (seq[0] == '[') {
+            if (seq[1] >= '0' && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return KEY_ESC;
+                if (seq[2] == '~') {
+                    switch (seq[1]) {
+                        case '1': return KEY_HOME;
+                        case '3': return KEY_DELETE;
+                        case '4': return KEY_END;
+                        case '5': return KEY_PAGE_UP;
+                        case '6': return KEY_PAGE_DOWN;
+                        case '7': return KEY_HOME;
+                        case '8': return KEY_END;
+                    }
+                }
+            } else {
+                switch (seq[1]) {
+                    case 'A': return KEY_ARROW_UP;
+                    case 'B': return KEY_ARROW_DOWN;
+                    case 'C': return KEY_ARROW_RIGHT;
+                    case 'D': return KEY_ARROW_LEFT;
+                    case 'H': return KEY_HOME;
+                    case 'F': return KEY_END;
+                }
+            }
+        } else if (seq[0] == 'O') {
+            switch (seq[1]) {
+                case 'H': return KEY_HOME;
+                case 'F': return KEY_END;
+            }
+        }
+        return KEY_ESC;
+    }
+    return (unsigned char)c;
+}
+
+static void refresh_line(const char* prompt, char* buf, size_t len, size_t pos) {
+    char seq[64];
+    size_t plen = strlen(prompt);
+
+    /* Move cursor to left edge */
+    snprintf(seq, sizeof(seq), "\r");
+    write(STDOUT_FILENO, seq, strlen(seq));
+
+    /* Write prompt */
+    write(STDOUT_FILENO, prompt, plen);
+
+    /* Write buffer */
+    write(STDOUT_FILENO, buf, len);
+
+    /* Erase to right */
+    snprintf(seq, sizeof(seq), "\033[K");
+    write(STDOUT_FILENO, seq, strlen(seq));
+
+    /* Move cursor to position */
+    snprintf(seq, sizeof(seq), "\r\033[%zuC", plen + pos);
+    write(STDOUT_FILENO, seq, strlen(seq));
+}
+
+static int tbos_readline(const char* prompt, char* buf, size_t buflen) {
+    size_t len = 0;
+    size_t pos = 0;
+    int history_index = g_history_count;
+    char history_save[MAX_INPUT] = {0};
+
+    buf[0] = '\0';
+
+    if (enable_raw_mode() == -1) {
+        /* Fallback to fgets if raw mode fails */
+        write(STDOUT_FILENO, prompt, strlen(prompt));
+        if (!fgets(buf, buflen, stdin)) return -1;
+        size_t slen = strlen(buf);
+        if (slen > 0 && buf[slen-1] == '\n') buf[slen-1] = '\0';
+        return strlen(buf);
+    }
+
+    write(STDOUT_FILENO, prompt, strlen(prompt));
+
+    while (1) {
+        int c = read_key();
+
+        switch (c) {
+            case KEY_ENTER:
+            case '\n':  /* Handle both CR and LF as enter */
+                disable_raw_mode();
+                write(STDOUT_FILENO, "\n", 1);
+                return len;
+
+            case KEY_CTRL_C:
+                disable_raw_mode();
+                write(STDOUT_FILENO, "^C\n", 3);
+                buf[0] = '\0';
+                return 0;
+
+            case KEY_CTRL_D:
+                if (len == 0) {
+                    disable_raw_mode();
+                    return -1;  /* EOF */
+                }
+                break;
+
+            case KEY_BACKSPACE:
+            case KEY_CTRL_H:
+                if (pos > 0) {
+                    memmove(buf + pos - 1, buf + pos, len - pos);
+                    pos--;
+                    len--;
+                    buf[len] = '\0';
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_DELETE:
+                if (pos < len) {
+                    memmove(buf + pos, buf + pos + 1, len - pos - 1);
+                    len--;
+                    buf[len] = '\0';
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_ARROW_LEFT:
+            case KEY_CTRL_B:
+                if (pos > 0) {
+                    pos--;
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_ARROW_RIGHT:
+            case KEY_CTRL_F:
+                if (pos < len) {
+                    pos++;
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_HOME:
+            case KEY_CTRL_A:
+                pos = 0;
+                refresh_line(prompt, buf, len, pos);
+                break;
+
+            case KEY_END:
+            case KEY_CTRL_E:
+                pos = len;
+                refresh_line(prompt, buf, len, pos);
+                break;
+
+            case KEY_ARROW_UP:
+            case KEY_CTRL_P:
+                if (history_index > 0) {
+                    if (history_index == g_history_count) {
+                        strncpy(history_save, buf, MAX_INPUT - 1);
+                    }
+                    history_index--;
+                    strncpy(buf, g_history[history_index], buflen - 1);
+                    len = strlen(buf);
+                    pos = len;
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_ARROW_DOWN:
+            case KEY_CTRL_N:
+                if (history_index < g_history_count) {
+                    history_index++;
+                    if (history_index == g_history_count) {
+                        strncpy(buf, history_save, buflen - 1);
+                    } else {
+                        strncpy(buf, g_history[history_index], buflen - 1);
+                    }
+                    len = strlen(buf);
+                    pos = len;
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_CTRL_U:
+                /* Clear line before cursor */
+                memmove(buf, buf + pos, len - pos);
+                len -= pos;
+                pos = 0;
+                buf[len] = '\0';
+                refresh_line(prompt, buf, len, pos);
+                break;
+
+            case KEY_CTRL_K:
+                /* Clear line after cursor */
+                len = pos;
+                buf[len] = '\0';
+                refresh_line(prompt, buf, len, pos);
+                break;
+
+            case KEY_CTRL_W:
+                /* Delete word before cursor */
+                if (pos > 0) {
+                    size_t old_pos = pos;
+                    while (pos > 0 && buf[pos-1] == ' ') pos--;
+                    while (pos > 0 && buf[pos-1] != ' ') pos--;
+                    memmove(buf + pos, buf + old_pos, len - old_pos);
+                    len -= (old_pos - pos);
+                    buf[len] = '\0';
+                    refresh_line(prompt, buf, len, pos);
+                }
+                break;
+
+            case KEY_CTRL_L:
+                /* Clear screen */
+                write(STDOUT_FILENO, "\033[H\033[2J", 7);
+                refresh_line(prompt, buf, len, pos);
+                break;
+
+            case KEY_TAB:
+                /* Tab completion placeholder */
+                break;
+
+            default:
+                if (c >= 32 && c < 127) {
+                    if (len < buflen - 1) {
+                        if (pos == len) {
+                            buf[len] = c;
+                            len++;
+                            pos++;
+                            buf[len] = '\0';
+                            write(STDOUT_FILENO, &(char){c}, 1);
+                        } else {
+                            memmove(buf + pos + 1, buf + pos, len - pos);
+                            buf[pos] = c;
+                            len++;
+                            pos++;
+                            buf[len] = '\0';
+                            refresh_line(prompt, buf, len, pos);
+                        }
+                    }
+                }
+                break;
+        }
+    }
+}
+
+#else /* TBOS_PLATFORM_WINDOWS */
+
+static int tbos_readline(const char* prompt, char* buf, size_t buflen) {
+    printf("%s", prompt);
+    fflush(stdout);
+    if (!fgets(buf, buflen, stdin)) return -1;
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
+    return strlen(buf);
+}
+
+#endif /* TBOS_PLATFORM_WINDOWS */
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * CONSCIOUSNESS SYSTEM
@@ -324,8 +927,84 @@ static int cmd_hostinfo(int argc, char** argv) {
  * FILE COMMANDS
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Format mode string like ls -l */
+static void format_mode(unsigned int mode, int is_dir, char* buf) {
+    buf[0] = is_dir ? 'd' : '-';
+    buf[1] = (mode & 0400) ? 'r' : '-';
+    buf[2] = (mode & 0200) ? 'w' : '-';
+    buf[3] = (mode & 0100) ? 'x' : '-';
+    buf[4] = (mode & 0040) ? 'r' : '-';
+    buf[5] = (mode & 0020) ? 'w' : '-';
+    buf[6] = (mode & 0010) ? 'x' : '-';
+    buf[7] = (mode & 0004) ? 'r' : '-';
+    buf[8] = (mode & 0002) ? 'w' : '-';
+    buf[9] = (mode & 0001) ? 'x' : '-';
+    buf[10] = '\0';
+}
+
+/* VFS list callback for cmd_ls */
+static int vfs_ls_callback(const char* name, int is_dir, void* user) {
+    (void)user;
+    if (is_dir) {
+        printf("\033[1;34m%s/\033[0m\n", name);
+    } else {
+        printf("%s\n", name);
+    }
+    return 0;
+}
+
+/* Long listing callback with permissions */
+static int vfs_ls_long_callback(const char* name, int is_dir, void* user) {
+    const char* base_path = (const char*)user;
+    char full_path[MAX_PATH];
+    snprintf(full_path, sizeof(full_path), "%s/%s", base_path, name);
+
+    vfs_stat_t st;
+    if (vfs_stat(full_path, &st) == 0) {
+        char mode_str[12];
+        format_mode(st.mode, is_dir, mode_str);
+        if (is_dir) {
+            printf("%s %3u %3u %6zu  \033[1;34m%s/\033[0m\n",
+                   mode_str, st.uid, st.gid, st.size, name);
+        } else {
+            printf("%s %3u %3u %6zu  %s\n",
+                   mode_str, st.uid, st.gid, st.size, name);
+        }
+    }
+    return 0;
+}
+
 static int cmd_ls(int argc, char** argv) {
-    const char* path = (argc > 1) ? argv[1] : ".";
+    int long_format = 0;
+    const char* path = ".";
+
+    /* Parse arguments */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "-la") == 0 ||
+            strcmp(argv[i], "-al") == 0) {
+            long_format = 1;
+        } else if (argv[i][0] != '-') {
+            path = argv[i];
+        }
+    }
+
+    /* Check for VFS path */
+    if (is_vfs_path(path)) {
+        if (long_format) {
+            if (vfs_list_dir(path, vfs_ls_long_callback, (void*)path) != 0) {
+                fprintf(stderr, "ls: cannot access '%s'\n", path);
+                return 1;
+            }
+        } else {
+            if (vfs_list_dir(path, vfs_ls_callback, NULL) != 0) {
+                fprintf(stderr, "ls: cannot access '%s'\n", path);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    /* Host filesystem */
     tbos_dir_t* dir = tbos_opendir(path);
     if (!dir) {
         perror("ls");
@@ -372,6 +1051,19 @@ static int cmd_cat(int argc, char** argv) {
         return 1;
     }
 
+    /* Check for VFS path */
+    if (is_vfs_path(argv[1])) {
+        size_t size = 0;
+        const void* data = vfs_read_file_cstr(argv[1], &size);
+        if (!data) {
+            fprintf(stderr, "cat: cannot read '%s'\n", argv[1]);
+            return 1;
+        }
+        fwrite(data, 1, size, stdout);
+        return 0;
+    }
+
+    /* Host filesystem */
     FILE* f = fopen(argv[1], "r");
     if (!f) {
         perror("cat");
@@ -393,9 +1085,16 @@ static int cmd_mkdir(int argc, char** argv) {
         return 1;
     }
 
-    if (mkdir(argv[1], 0755) != 0) {
-        perror("mkdir");
-        return 1;
+    if (is_vfs_path(argv[1])) {
+        if (vfs_mkdir(argv[1]) != 0) {
+            fprintf(stderr, "mkdir: cannot create directory '%s'\n", argv[1]);
+            return 1;
+        }
+    } else {
+        if (mkdir(argv[1], 0755) != 0) {
+            perror("mkdir");
+            return 1;
+        }
     }
 
     add_karma(1, "Created directory");
@@ -408,13 +1107,61 @@ static int cmd_touch(int argc, char** argv) {
         return 1;
     }
 
-    FILE* f = fopen(argv[1], "a");
-    if (!f) {
-        perror("touch");
+    if (is_vfs_path(argv[1])) {
+        /* Create empty file in VFS */
+        if (vfs_write_file(argv[1], "", 0) != 0) {
+            fprintf(stderr, "touch: cannot create file '%s'\n", argv[1]);
+            return 1;
+        }
+    } else {
+        FILE* f = fopen(argv[1], "a");
+        if (!f) {
+            perror("touch");
+            return 1;
+        }
+        fclose(f);
+    }
+
+    return 0;
+}
+
+static int cmd_write(int argc, char** argv) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: write <file> <content>\n");
+        fprintf(stderr, "       write /tbos/myfile.txt 'Hello World'\n");
         return 1;
     }
-    fclose(f);
 
+    /* Join remaining args as content */
+    char content[4096] = {0};
+    size_t offset = 0;
+    for (int i = 2; i < argc && offset < sizeof(content) - 1; i++) {
+        if (i > 2) content[offset++] = ' ';
+        size_t len = strlen(argv[i]);
+        if (offset + len >= sizeof(content)) break;
+        memcpy(content + offset, argv[i], len);
+        offset += len;
+    }
+    content[offset] = '\0';
+
+    if (is_vfs_path(argv[1])) {
+        if (vfs_write_file(argv[1], content, offset) != 0) {
+            fprintf(stderr, "write: cannot write to '%s'\n", argv[1]);
+            return 1;
+        }
+        add_karma(1, "Wrote to virtual file");
+        return 0;
+    }
+
+    /* Host filesystem */
+    FILE* f = fopen(argv[1], "w");
+    if (!f) {
+        perror("write");
+        return 1;
+    }
+    fwrite(content, 1, offset, f);
+    fclose(f);
+    add_karma(1, "Wrote to file");
     return 0;
 }
 
@@ -422,6 +1169,14 @@ static int cmd_rm(int argc, char** argv) {
     if (argc < 2) {
         fprintf(stderr, "Usage: rm <file>\n");
         return 1;
+    }
+
+    if (is_vfs_path(argv[1])) {
+        if (vfs_remove(argv[1], false) != 0) {
+            fprintf(stderr, "rm: cannot remove '%s'\n", argv[1]);
+            return 1;
+        }
+        return 0;
     }
 
     if (unlink(argv[1]) != 0) {
@@ -826,12 +1581,62 @@ static int cmd_cp(int argc, char** argv) { return delegate_to_host(argc, argv); 
 static int cmd_mv(int argc, char** argv) { return delegate_to_host(argc, argv); }
 static int cmd_rmdir(int argc, char** argv) { return delegate_to_host(argc, argv); }
 static int cmd_ln(int argc, char** argv) { return delegate_to_host(argc, argv); }
-static int cmd_chmod(int argc, char** argv) { return delegate_to_host(argc, argv); }
-static int cmd_chown(int argc, char** argv) { return delegate_to_host(argc, argv); }
+static int cmd_chmod(int argc, char** argv) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: chmod <mode> <file>\n");
+        return 1;
+    }
+    if (is_vfs_path(argv[2])) {
+        unsigned int mode = (unsigned int)strtol(argv[1], NULL, 8);
+        if (vfs_chmod(argv[2], mode) != 0) {
+            fprintf(stderr, "chmod: cannot change '%s'\n", argv[2]);
+            return 1;
+        }
+        return 0;
+    }
+    return delegate_to_host(argc, argv);
+}
+
+static int cmd_chown(int argc, char** argv) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: chown <uid> <file>\n");
+        return 1;
+    }
+    if (is_vfs_path(argv[2])) {
+        unsigned int uid = (unsigned int)atoi(argv[1]);
+        if (vfs_chown(argv[2], uid, 0) != 0) {
+            fprintf(stderr, "chown: cannot change '%s'\n", argv[2]);
+            return 1;
+        }
+        return 0;
+    }
+    return delegate_to_host(argc, argv);
+}
+
 static int cmd_chgrp(int argc, char** argv) { return delegate_to_host(argc, argv); }
 
 /* File info - Week 3 */
-static int cmd_stat(int argc, char** argv) { return delegate_to_host(argc, argv); }
+static int cmd_stat(int argc, char** argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: stat <file>\n");
+        return 1;
+    }
+    if (is_vfs_path(argv[1])) {
+        vfs_stat_t st;
+        if (vfs_stat(argv[1], &st) != 0) {
+            fprintf(stderr, "stat: cannot stat '%s'\n", argv[1]);
+            return 1;
+        }
+        char mode_str[12];
+        format_mode(st.mode, st.type == VFS_DIR, mode_str);
+        printf("  File: %s\n", argv[1]);
+        printf("  Size: %zu\n", st.size);
+        printf("Access: (%04o/%s)  Uid: %u  Gid: %u\n", st.mode, mode_str, st.uid, st.gid);
+        printf("Modify: %s", ctime(&st.mtime));
+        return 0;
+    }
+    return delegate_to_host(argc, argv);
+}
 static int cmd_du(int argc, char** argv) { return delegate_to_host(argc, argv); }
 static int cmd_df(int argc, char** argv) { return delegate_to_host(argc, argv); }
 static int cmd_file(int argc, char** argv) { return delegate_to_host(argc, argv); }
@@ -1064,6 +1869,242 @@ static int cmd_dharma(int argc, char** argv) {
     return 0;
 }
 
+/* STEPPPS integrated command */
+#ifdef STEPPPS_INTEGRATED
+static int cmd_steppps(int argc, char** argv) {
+    if (argc < 2) {
+        printf("\n");
+        printf("\033[1;35m╔════════════════════════════════════════════════════════════╗\033[0m\n");
+        printf("\033[1;35m║  STEPPPS - Secure Trust-verified Executable Programs       ║\033[0m\n");
+        printf("\033[1;35m╠════════════════════════════════════════════════════════════╣\033[0m\n");
+        printf("║  Usage: steppps <command> [file]                            ║\n");
+        printf("║                                                              ║\n");
+        printf("║  Commands:                                                   ║\n");
+        printf("║    show <file>     - Display STEPPPS info                    ║\n");
+        printf("║    run <file>      - Execute with security checks            ║\n");
+        printf("║    verify <file>   - Verify signature and trust              ║\n");
+        printf("║    prompt <file>   - Show AI prompt                          ║\n");
+        printf("║    audit           - Show execution audit log                ║\n");
+        printf("║                                                              ║\n");
+        printf("║  Sandbox Levels (based on karma & signature):                ║\n");
+        printf("║    0 DISPLAY  - View only, no execution                      ║\n");
+        printf("║    1 PURE     - Pure computation, no I/O                     ║\n");
+        printf("║    2 READ     - Read local files                             ║\n");
+        printf("║    3 WRITE    - Write local files                            ║\n");
+        printf("║    4 NETWORK  - Network access                               ║\n");
+        printf("║    5 SYSTEM   - System commands                              ║\n");
+        printf("║    6 TRUSTED  - Unrestricted (karma >= 50000)                ║\n");
+        printf("\033[1;35m╚════════════════════════════════════════════════════════════╝\033[0m\n");
+        return 0;
+    }
+
+    const char* cmd = argv[1];
+    const char* file = argc > 2 ? argv[2] : NULL;
+
+    if (strcmp(cmd, "show") == 0 && file) {
+        steppps_t s;
+        if (steppps_load(file, &s) != 0) {
+            printf("Error: Failed to load %s\n", file);
+            return 1;
+        }
+        steppps_display(&s);
+        steppps_free(&s);
+        add_karma(2, "Examined STEPPPS");
+        return 0;
+    }
+    else if (strcmp(cmd, "run") == 0 && file) {
+        steppps_t s;
+        if (steppps_load(file, &s) != 0) {
+            printf("Error: Failed to load %s\n", file);
+            return 1;
+        }
+        steppps_display(&s);
+        int rc = steppps_run(&s);
+        printf("\n--- Exit code: %d ---\n", rc);
+        steppps_free(&s);
+        add_karma(5, "Executed STEPPPS");
+        return rc;
+    }
+    else if (strcmp(cmd, "verify") == 0 && file) {
+        steppps_t s;
+        if (steppps_load(file, &s) != 0) {
+            printf("Error: Failed to load %s\n", file);
+            return 1;
+        }
+        printf("STEPPPS: %s\n", s.id);
+        printf("Hash:    %s\n", s.security.hash);
+        if (steppps_verify(&s) != 0) {
+            printf("Status:  \033[1;31mFAILED\033[0m (blacklisted or invalid)\n");
+            steppps_free(&s);
+            return 1;
+        }
+        printf("Signed:  %s\n", s.security.is_signed ? "Yes" : "No");
+        if (s.security.is_signed) {
+            printf("Author:  %s\n", s.security.author);
+            printf("Karma:   %lld\n", (long long)s.security.author_karma);
+            printf("Sig OK:  %s\n", s.security.sig_valid ? "\033[1;32mYes\033[0m" : "\033[1;31mNo\033[0m");
+        }
+        printf("Max Sandbox: %s\n", steppps_sandbox_name(s.security.max_sandbox));
+        printf("Safe:    %s\n", steppps_is_safe(&s) ? "\033[1;32mYes\033[0m" : "\033[1;31mNo\033[0m");
+        steppps_free(&s);
+        add_karma(3, "Verified STEPPPS");
+        return 0;
+    }
+    else if (strcmp(cmd, "prompt") == 0 && file) {
+        steppps_t s;
+        if (steppps_load(file, &s) != 0) {
+            printf("Error: Failed to load %s\n", file);
+            return 1;
+        }
+        printf("\n\033[1;36m=== AI Prompt ===\033[0m\n\n");
+        if (s.prompt.system[0]) {
+            printf("\033[1;33mSystem:\033[0m\n%s\n\n", s.prompt.system);
+        }
+        if (s.prompt.user[0]) {
+            printf("\033[1;33mUser:\033[0m\n%s\n", s.prompt.user);
+        }
+        if (!s.prompt.system[0] && !s.prompt.user[0]) {
+            printf("(no prompt defined)\n");
+        }
+        steppps_free(&s);
+        return 0;
+    }
+    else if (strcmp(cmd, "audit") == 0) {
+        printf("\n\033[1;35m=== STEPPPS Audit Log ===\033[0m\n\n");
+        printf("Audit logging not yet implemented.\n");
+        printf("Use 'steppps verify <file>' to verify individual files.\n");
+        return 0;
+    }
+    else {
+        printf("Unknown steppps command: %s\n", cmd);
+        printf("Use 'steppps' without arguments for help.\n");
+        return 1;
+    }
+}
+#endif /* STEPPPS_INTEGRATED */
+
+/* UCFS integrated command */
+#ifdef UCFS_INTEGRATED
+static int cmd_ucfs(int argc, char** argv) {
+    if (argc < 2) {
+        printf("\n");
+        printf("\033[1;36m╔════════════════════════════════════════════════════════════╗\033[0m\n");
+        printf("\033[1;36m║  UCFS - Unicode Character File System                      ║\033[0m\n");
+        printf("\033[1;36m╠════════════════════════════════════════════════════════════╣\033[0m\n");
+        printf("║  Usage: ucfs <command> [path]                               ║\n");
+        printf("║                                                              ║\n");
+        printf("║  Commands:                                                   ║\n");
+        printf("║    parse <path>   - Parse UCFS path, show components         ║\n");
+        printf("║    canon <path>   - Convert to canonical POSIX path          ║\n");
+        printf("║    ls <path>      - List directory using UCFS path           ║\n");
+        printf("║    cat <path>     - Read file using UCFS path                ║\n");
+        printf("║    roots          - Show available UCFS roots                ║\n");
+        printf("║                                                              ║\n");
+        printf("║  Examples:                                                   ║\n");
+        printf("║    ucfs parse '🕉️/music/chants'                              ║\n");
+        printf("║    ucfs canon '🌍/docs/readme.txt'                           ║\n");
+        printf("║    ucfs ls '📁/projects'                                     ║\n");
+        printf("\033[1;36m╚════════════════════════════════════════════════════════════╝\033[0m\n");
+        printf("\n");
+        return 0;
+    }
+
+    const char* cmd = argv[1];
+    const char* path = argc > 2 ? argv[2] : NULL;
+
+    if (strcmp(cmd, "parse") == 0 && path) {
+        ucfs_path_t parsed;
+        int ret = ucfs_parse(path, &parsed);
+        if (ret != 0) {
+            printf("Error: Invalid UCFS path (code %d)\n", ret);
+            printf("UCFS paths start with a Unicode character as root.\n");
+            printf("Example: 🕉️/music/chants or 📁/docs/file.txt\n");
+            return 1;
+        }
+        printf("\n\033[1;36m=== UCFS Path Parsed ===\033[0m\n\n");
+        printf("Root delimiter: %s (U+%04X)\n", parsed.delimiter_utf8, parsed.delimiter);
+        printf("Components (%zu):\n", parsed.component_count);
+        for (size_t i = 0; i < parsed.component_count; i++) {
+            printf("  [%zu] %s\n", i, parsed.components[i]);
+        }
+        ucfs_free(&parsed);
+        add_karma(1, "Parsed UCFS path");
+        return 0;
+    }
+    else if (strcmp(cmd, "canon") == 0 && path) {
+        ucfs_path_t parsed;
+        int ret = ucfs_parse(path, &parsed);
+        if (ret != 0) {
+            printf("Error: Invalid UCFS path\n");
+            return 1;
+        }
+        char canonical[1024];
+        ret = ucfs_to_canonical(&parsed, canonical, sizeof(canonical));
+        if (ret != 0) {
+            printf("Error: Failed to canonicalize path\n");
+            ucfs_free(&parsed);
+            return 1;
+        }
+        printf("%s\n", canonical);
+        ucfs_free(&parsed);
+        return 0;
+    }
+    else if (strcmp(cmd, "ls") == 0 && path) {
+        ucfs_path_t parsed;
+        int ret = ucfs_parse(path, &parsed);
+        if (ret != 0) {
+            printf("Error: Invalid UCFS path\n");
+            return 1;
+        }
+        char canonical[1024];
+        ret = ucfs_to_canonical(&parsed, canonical, sizeof(canonical));
+        ucfs_free(&parsed);
+        if (ret != 0) {
+            printf("Error: Failed to canonicalize path\n");
+            return 1;
+        }
+        char* ls_argv[] = {"ls", "-la", canonical, NULL};
+        return delegate_to_host(3, ls_argv);
+    }
+    else if (strcmp(cmd, "cat") == 0 && path) {
+        ucfs_path_t parsed;
+        int ret = ucfs_parse(path, &parsed);
+        if (ret != 0) {
+            printf("Error: Invalid UCFS path\n");
+            return 1;
+        }
+        char canonical[1024];
+        ret = ucfs_to_canonical(&parsed, canonical, sizeof(canonical));
+        ucfs_free(&parsed);
+        if (ret != 0) {
+            printf("Error: Failed to canonicalize path\n");
+            return 1;
+        }
+        char* cat_argv[] = {"cat", canonical, NULL};
+        return delegate_to_host(2, cat_argv);
+    }
+    else if (strcmp(cmd, "roots") == 0) {
+        printf("\n\033[1;36m=== UCFS Roots ===\033[0m\n\n");
+        printf("  🕉️   - Spiritual/meditation content\n");
+        printf("  📁  - Documents and files\n");
+        printf("  🎵  - Music and audio\n");
+        printf("  🎬  - Video content\n");
+        printf("  🌍  - Global/shared content\n");
+        printf("  🏠  - Home directory\n");
+        printf("  💼  - Work/projects\n");
+        printf("  🔧  - System/config\n");
+        printf("\nAny Unicode character can be a root.\n");
+        printf("Example: ucfs ls '🕉️/mantras'\n");
+        return 0;
+    }
+    else {
+        printf("Unknown ucfs command: %s\n", cmd);
+        printf("Use 'ucfs' without arguments for help.\n");
+        return 1;
+    }
+}
+#endif /* UCFS_INTEGRATED */
+
 /* Alias for common commands */
 static int cmd_ll(int argc, char** argv) {
     char* new_argv[] = {"ls", "-la", NULL, NULL};
@@ -1101,6 +2142,7 @@ static void register_all_commands(void) {
     register_command("cp",       "Copy files",                  cmd_cp,       CMD_CAT_FILE, 1);
     register_command("mv",       "Move/rename files",           cmd_mv,       CMD_CAT_FILE, 1);
     register_command("touch",    "Create/update file",          cmd_touch,    CMD_CAT_FILE, 1);
+    register_command("write",    "Write content to file",       cmd_write,    CMD_CAT_FILE, 2);
     register_command("ln",       "Create links",                cmd_ln,       CMD_CAT_FILE, 1);
     register_command("chmod",    "Change permissions",          cmd_chmod,    CMD_CAT_FILE, 1);
     register_command("chown",    "Change owner",                cmd_chown,    CMD_CAT_FILE, 1);
@@ -1228,6 +2270,12 @@ static void register_all_commands(void) {
     register_command("reflect",  "Reflect on your journey",     cmd_reflect,  CMD_CAT_CONSCIOUSNESS, 0);
     register_command("sangha",   "Digital sangha network",      cmd_sangha,   CMD_CAT_CONSCIOUSNESS, 0);
     register_command("dharma",   "The Dharma of Computing",     cmd_dharma,   CMD_CAT_CONSCIOUSNESS, 0);
+#ifdef STEPPPS_INTEGRATED
+    register_command("steppps",  "STEPPPS secure runtime",      cmd_steppps,  CMD_CAT_CONSCIOUSNESS, 0);
+#endif
+#ifdef UCFS_INTEGRATED
+    register_command("ucfs",     "Unicode Character FS",        cmd_ucfs,     CMD_CAT_FILE, 0);
+#endif
 
     /* Host integration */
     register_command("ubuntu",   "Enter Ubuntu shell",          cmd_ubuntu,   CMD_CAT_HOST, 0);
@@ -1345,11 +2393,16 @@ static void print_banner(void) {
     printf("\n");
 }
 
-static void print_prompt(void) {
-    printf("\033[1;36mtbos\033[0m:%s[%d]\033[0m:\033[1;34m%s\033[0m$ ",
-           get_karma_color(), g_karma, g_cwd);
-    fflush(stdout);
+static char g_prompt[512];
+
+static const char* get_prompt(void) {
+    snprintf(g_prompt, sizeof(g_prompt),
+             "\033[1;36mtbos\033[0m:%s[%d]\033[0m:\033[1;34m%s\033[0m$ ",
+             get_karma_color(), g_karma, g_cwd);
+    return g_prompt;
 }
+
+/* print_prompt() removed - now using tbos_readline(get_prompt(), ...) */
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * MAIN
@@ -1386,25 +2439,32 @@ int main(int argc, char** argv) {
     strncpy(g_username, getenv("USER") ? getenv("USER") : "user", sizeof(g_username) - 1);
     g_session_start = time(NULL);
 
+#ifndef TBOS_PLATFORM_WINDOWS
+    /* Detect piped/redirected input - use line mode instead of raw mode */
+    {
+        int pending = 0;
+        if (ioctl(STDIN_FILENO, FIONREAD, &pending) == 0 && pending > 0) {
+            g_force_line_mode = 1;  /* Input already buffered */
+        }
+    }
+#endif
+
     /* Register commands */
     register_all_commands();
+
+    /* Initialize virtual filesystem */
+    init_vfs();
 
     /* Banner */
     print_banner();
 
     /* Main loop */
     while (g_running) {
-        print_prompt();
+        int result = tbos_readline(get_prompt(), input, sizeof(input));
 
-        if (!fgets(input, sizeof(input), stdin)) {
+        if (result < 0) {
             printf("\n");
             break;
-        }
-
-        /* Remove newline */
-        size_t len = strlen(input);
-        if (len > 0 && input[len-1] == '\n') {
-            input[len-1] = '\0';
         }
 
         /* Skip empty lines */
