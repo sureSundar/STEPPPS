@@ -1,0 +1,189 @@
+#!/bin/sh
+# mount.pxfs - PXFS mount helper
+#
+# Called by mount(8) when using: mount -t pxfs <device> <mountpoint>
+# Also usable directly: mount.pxfs [options] <device> <mountpoint>
+#
+# PXFS - Pixel eXchange FileSystem v2.0
+# Achieves up to 1365:1 compression for structured data
+
+PXFS_FUSE="/usr/bin/pxfs.fuse"
+PXFS_FUSE_ALT="/usr/local/bin/pxfs.fuse"
+
+# Find the FUSE binary
+find_fuse_binary() {
+    if [ -x "$PXFS_FUSE" ]; then
+        echo "$PXFS_FUSE"
+    elif [ -x "$PXFS_FUSE_ALT" ]; then
+        echo "$PXFS_FUSE_ALT"
+    elif [ -x "$(dirname "$0")/pxfs.fuse" ]; then
+        echo "$(dirname "$0")/pxfs.fuse"
+    elif [ -x "./pxfs.fuse" ]; then
+        echo "./pxfs.fuse"
+    else
+        return 1
+    fi
+}
+
+usage() {
+    cat <<EOF
+Usage: mount.pxfs [options] <device> <mountpoint>
+       mount -t pxfs [options] <device> <mountpoint>
+
+Options:
+  -o <options>    Mount options (comma-separated)
+  -r              Mount read-only
+  -n              No compression
+  -m <mode>       Compression mode: raw, fractal, quantum, auto (default)
+  -f              Foreground mode
+  -d              Debug mode
+  -h              Show this help
+
+Mount options (-o):
+  ro              Read-only
+  rw              Read-write (default)
+  nocompress      Disable compression
+  mode=<mode>     Compression mode
+  foreground      Run in foreground
+  debug           Enable debug output
+
+Examples:
+  mount.pxfs /dev/sda1 /mnt/pxfs
+  mount.pxfs -m quantum /path/to/image.pxfs /mnt/pxfs
+  mount -t pxfs -o mode=quantum /dev/sdb1 /mnt/data
+
+PXFS Compression Modes:
+  raw      - No compression (1:1 ratio)
+  fractal  - RLE/LZ compression (~2:1 ratio)
+  quantum  - Pattern-based extreme compression (up to 1365:1)
+  auto     - Automatically select best mode (default)
+
+EOF
+}
+
+# Parse mount options string
+parse_options() {
+    local opts="$1"
+    IFS=','
+    for opt in $opts; do
+        case "$opt" in
+            ro)
+                READONLY=1
+                ;;
+            rw)
+                READONLY=0
+                ;;
+            nocompress)
+                NOCOMPRESS=1
+                ;;
+            mode=*)
+                MODE="${opt#mode=}"
+                ;;
+            foreground)
+                FOREGROUND=1
+                ;;
+            debug)
+                DEBUG=1
+                ;;
+            *)
+                # Pass unknown options to FUSE
+                FUSE_OPTS="$FUSE_OPTS,$opt"
+                ;;
+        esac
+    done
+    unset IFS
+}
+
+# Main
+READONLY=0
+NOCOMPRESS=0
+MODE="auto"
+FOREGROUND=0
+DEBUG=0
+FUSE_OPTS=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o)
+            shift
+            parse_options "$1"
+            ;;
+        -r)
+            READONLY=1
+            ;;
+        -n)
+            NOCOMPRESS=1
+            ;;
+        -m)
+            shift
+            MODE="$1"
+            ;;
+        -f)
+            FOREGROUND=1
+            ;;
+        -d)
+            DEBUG=1
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+        *)
+            if [ -z "$DEVICE" ]; then
+                DEVICE="$1"
+            elif [ -z "$MOUNTPOINT" ]; then
+                MOUNTPOINT="$1"
+            else
+                echo "Too many arguments" >&2
+                usage >&2
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$DEVICE" ] || [ -z "$MOUNTPOINT" ]; then
+    echo "Error: device and mountpoint required" >&2
+    usage >&2
+    exit 1
+fi
+
+# Verify device exists
+if [ ! -e "$DEVICE" ]; then
+    echo "Error: device not found: $DEVICE" >&2
+    exit 1
+fi
+
+# Verify mountpoint exists
+if [ ! -d "$MOUNTPOINT" ]; then
+    echo "Error: mountpoint not found: $MOUNTPOINT" >&2
+    exit 1
+fi
+
+# Find FUSE binary
+FUSE_BIN=$(find_fuse_binary)
+if [ -z "$FUSE_BIN" ]; then
+    echo "Error: pxfs.fuse not found" >&2
+    echo "Install PXFS FUSE driver or set PATH" >&2
+    exit 1
+fi
+
+# Build command
+CMD="$FUSE_BIN"
+
+[ "$READONLY" = "1" ] && CMD="$CMD -r"
+[ "$NOCOMPRESS" = "1" ] && CMD="$CMD -n"
+[ "$MODE" != "auto" ] && CMD="$CMD -m $MODE"
+[ "$FOREGROUND" = "1" ] && CMD="$CMD -f"
+[ "$DEBUG" = "1" ] && CMD="$CMD -d"
+
+CMD="$CMD $DEVICE $MOUNTPOINT"
+
+# Execute
+exec $CMD
