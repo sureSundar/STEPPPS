@@ -1,0 +1,10 @@
+{
+  "template_version": "1.0",
+  "kind": "authority",
+  "id": "steppps://authority/owner-calculator-radio",
+  "authority_class": "owner",
+  "holder": "steppps://human/sundararaman",
+  "target": "steppps://device/calculator-001",
+  "scope": ["read", "write", "operate", "audit", "isolate", "shutdown"],
+  "constraints": ["no_harm", "consent_required", "human_review", "logged"]
+}

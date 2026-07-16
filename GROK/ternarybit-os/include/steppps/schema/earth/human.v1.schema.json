@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/include/steppps/schema/earth/human.v1.schema.json",
+  "title": "TBOS Earth Human Template v1",
+  "description": "Real Earth human identity template for a specialized STEPPPS-let.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_version", "kind", "id", "display_name", "consent"],
+  "properties": {
+    "template_version": { "const": "1.0" },
+    "kind": { "const": "human" },
+    "id": { "$ref": "#/$defs/steppps_ref" },
+    "display_name": { "type": "string", "minLength": 1 },
+    "legal_name": { "type": "string" },
+    "preferred_languages": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["owner", "guardian", "operator", "citizen", "teacher", "student", "healer", "observer"]
+      }
+    },
+    "home_sangha": { "$ref": "#/$defs/steppps_ref" },
+    "nation": { "$ref": "#/$defs/steppps_ref" },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_use_allowed", "machine_interaction_allowed"],
+      "properties": {
+        "data_use_allowed": { "type": "boolean" },
+        "machine_interaction_allowed": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "steppps_ref": {
+      "type": "string",
+      "pattern": "^steppps://.+"
+    }
+  }
+}

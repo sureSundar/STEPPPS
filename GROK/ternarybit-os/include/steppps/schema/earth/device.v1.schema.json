@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/include/steppps/schema/earth/device.v1.schema.json",
+  "title": "TBOS Earth Device Template v1",
+  "description": "Real Earth device template for calculators, radios, sensors, screens, batteries, and IO endpoints.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_version", "kind", "id", "device_class", "owner"],
+  "properties": {
+    "template_version": { "const": "1.0" },
+    "kind": { "const": "device" },
+    "id": { "$ref": "#/$defs/steppps_ref" },
+    "device_class": {
+      "type": "string",
+      "enum": ["calculator", "radio", "sensor", "actuator", "display", "battery", "storage", "network", "compute", "other"]
+    },
+    "owner": { "$ref": "#/$defs/steppps_ref" },
+    "parent_machine": { "$ref": "#/$defs/steppps_ref" },
+    "interfaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["gpio", "serial", "usb", "rf", "wifi", "bluetooth", "audio", "visual", "manual", "none"]
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["unknown", "active", "idle", "fasting", "hibernating", "shutdown", "failed"]
+    }
+  },
+  "$defs": {
+    "steppps_ref": {
+      "type": "string",
+      "pattern": "^steppps://.+"
+    }
+  }
+}

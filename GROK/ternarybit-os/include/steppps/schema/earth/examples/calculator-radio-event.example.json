@@ -1,0 +1,17 @@
+{
+  "template_version": "1.0",
+  "kind": "event",
+  "id": "steppps://event/calculator-radio-first-link",
+  "event_class": "operation",
+  "timestamp": "2026-07-15T00:00:00Z",
+  "actor": "steppps://human/sundararaman",
+  "target": "steppps://device/calculator-001",
+  "place": "steppps://place/sethuraman-home",
+  "karma_delta": 1,
+  "severity": "info",
+  "evidence": [
+    "steppps://device/radio-001",
+    "steppps://resource/car-battery-001",
+    "steppps://authority/owner-calculator-radio"
+  ]
+}

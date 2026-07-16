@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/include/steppps/schema/dev/dev-action.v1.schema.json",
+  "title": "TBOS STEPPPS Development Action v1",
+  "description": "A lightweight STEPPPS record for TBOS development work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "steppps_version",
+    "kind",
+    "id",
+    "space",
+    "time",
+    "event",
+    "psychology",
+    "pixel",
+    "prompt",
+    "script",
+    "meta"
+  ],
+  "properties": {
+    "steppps_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "dev-action"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^steppps://dev-action/[A-Za-z0-9._-]+$"
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["realm", "repo", "paths"],
+      "properties": {
+        "realm": {
+          "type": "string",
+          "enum": ["bhulok", "virtual", "hybrid"]
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created"],
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "intent"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["design", "implement", "validate", "document", "review", "release"]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "psychology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consciousness_level", "karma"],
+      "properties": {
+        "consciousness_level": {
+          "type": "string",
+          "enum": ["dormant", "awakening", "aware", "compassionate", "enlightened"]
+        },
+        "karma": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total"],
+          "properties": {
+            "total": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "pixel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "display_logic"],
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["json", "markdown", "code", "test-output"]
+        },
+        "display_logic": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "text", "next_genai_prompt"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["guru", "cx", "cc", "ws", "system"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_genai_prompt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "script": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands", "verification", "acts_on"],
+      "properties": {
+        "acts_on": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["space", "time", "event", "psychology", "pixel", "prompt", "script"]
+          }
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "verification": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "contract"],
+      "properties": {
+        "owner": {
+          "type": "string",
+          "pattern": "^steppps://.+"
+        },
+        "contract": {
+          "type": "string",
+          "pattern": "^steppps://contract/.+"
+        }
+      }
+    }
+  }
+}

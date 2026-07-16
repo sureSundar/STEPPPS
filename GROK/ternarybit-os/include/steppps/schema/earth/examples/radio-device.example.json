@@ -1,0 +1,10 @@
+{
+  "template_version": "1.0",
+  "kind": "device",
+  "id": "steppps://device/radio-001",
+  "device_class": "radio",
+  "owner": "steppps://human/sundararaman",
+  "interfaces": ["rf", "audio", "manual"],
+  "capabilities": ["receive", "transmit", "synchronize"],
+  "status": "active"
+}

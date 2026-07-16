@@ -1,0 +1,15 @@
+{
+  "template_version": "1.0",
+  "kind": "human",
+  "id": "steppps://human/sundararaman",
+  "display_name": "Sundararaman Sethuraman",
+  "preferred_languages": ["ta", "sa", "en"],
+  "roles": ["owner", "guardian", "operator", "teacher"],
+  "home_sangha": "steppps://place/sethuraman-home",
+  "nation": "steppps://nation/bharat",
+  "consent": {
+    "data_use_allowed": true,
+    "machine_interaction_allowed": true,
+    "notes": "Owner consent for the local TBOS Earth model."
+  }
+}

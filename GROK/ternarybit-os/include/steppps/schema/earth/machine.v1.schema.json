@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/include/steppps/schema/earth/machine.v1.schema.json",
+  "title": "TBOS Earth Machine Template v1",
+  "description": "Real Earth machine template for systems that compute, actuate, communicate, or assist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_version", "kind", "id", "machine_class", "owner", "safety"],
+  "properties": {
+    "template_version": { "const": "1.0" },
+    "kind": { "const": "machine" },
+    "id": { "$ref": "#/$defs/steppps_ref" },
+    "machine_class": {
+      "type": "string",
+      "enum": ["computer", "vehicle", "robot", "appliance", "industrial", "medical", "unknown"]
+    },
+    "owner": { "$ref": "#/$defs/steppps_ref" },
+    "operator": { "$ref": "#/$defs/steppps_ref" },
+    "devices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/steppps_ref" }
+    },
+    "power_source": { "$ref": "#/$defs/steppps_ref" },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_override_required", "rogue_shutdown_supported"],
+      "properties": {
+        "human_override_required": { "type": "boolean" },
+        "rogue_shutdown_supported": { "type": "boolean" },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "steppps_ref": {
+      "type": "string",
+      "pattern": "^steppps://.+"
+    }
+  }
+}

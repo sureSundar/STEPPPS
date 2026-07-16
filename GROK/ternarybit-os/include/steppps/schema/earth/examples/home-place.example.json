@@ -1,0 +1,9 @@
+{
+  "template_version": "1.0",
+  "kind": "place",
+  "id": "steppps://place/sethuraman-home",
+  "place_class": "home",
+  "name": "Sethuraman Home Sangha",
+  "sangha": "steppps://sangha/sethuraman-home",
+  "access": "private"
+}

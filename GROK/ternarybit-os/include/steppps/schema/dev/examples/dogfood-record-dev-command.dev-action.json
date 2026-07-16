@@ -1,0 +1,51 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/dogfood-record-dev-command",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "tools/steppps_validate.py",
+      "include/steppps/schema/dev/registry/README.md"
+    ]
+  },
+  "time": {
+    "created": "2026-07-15T16:41:35Z"
+  },
+  "event": {
+    "action": "implement",
+    "intent": "Add an agile record-dev command so TBOS development can be captured as STEPPPS with one command.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "consciousness_level": "aware",
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render the record-dev shortcut as a compact JSON development action."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "Eat your own dogfood: all following TBOS development should be in STEPPPS.",
+    "next_genai_prompt": "Record every future TBOS development step with record-dev, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": ["space", "time", "event", "psychology", "pixel", "prompt", "script"],
+    "commands": [
+      "python3 tools/steppps_validate.py record-dev dogfood-record-dev-command"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://agent/cx",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

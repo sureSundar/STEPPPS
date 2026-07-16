@@ -1,0 +1,50 @@
+{
+  "contract_version": "1.0",
+  "id": "steppps://contract/earth-admission-owner-v1",
+  "name": "Earth Admission Owner Contract",
+  "applies_to": "earth-admission",
+  "description": "Deterministic smart-contract rules for admitting Earth entities into the local TBOS registry.",
+  "allowed_kinds": [
+    "human",
+    "machine",
+    "device",
+    "place",
+    "resource",
+    "event",
+    "authority"
+  ],
+  "external_prefixes": [
+    "steppps://nation/",
+    "steppps://sangha/"
+  ],
+  "required_known_reference_paths": {
+    "authority": [
+      "holder",
+      "target"
+    ],
+    "device": [
+      "owner"
+    ],
+    "event": [
+      "actor",
+      "target",
+      "place",
+      "evidence[]"
+    ],
+    "human": [],
+    "machine": [
+      "owner"
+    ],
+    "place": [],
+    "resource": [
+      "owner",
+      "location",
+      "sharing.contract"
+    ]
+  },
+  "forbidden_scope_without_human_owner": [
+    "shutdown",
+    "isolate",
+    "audit"
+  ]
+}

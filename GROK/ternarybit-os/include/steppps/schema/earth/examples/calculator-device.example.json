@@ -1,0 +1,10 @@
+{
+  "template_version": "1.0",
+  "kind": "device",
+  "id": "steppps://device/calculator-001",
+  "device_class": "calculator",
+  "owner": "steppps://human/sundararaman",
+  "interfaces": ["manual", "visual"],
+  "capabilities": ["compute", "display", "memory"],
+  "status": "active"
+}

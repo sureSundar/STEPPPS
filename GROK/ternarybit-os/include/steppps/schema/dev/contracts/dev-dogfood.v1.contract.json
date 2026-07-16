@@ -1,0 +1,29 @@
+{
+  "contract_version": "1.0",
+  "id": "steppps://contract/dev-dogfood-v1",
+  "name": "TBOS Development Dogfood Contract",
+  "applies_to": "dev-action",
+  "description": "Every TBOS development action should be represented as a small STEPPPS record before it is treated as admitted development memory.",
+  "allowed_actions": [
+    "design",
+    "implement",
+    "validate",
+    "document",
+    "review",
+    "release"
+  ],
+  "required_dimensions": [
+    "space",
+    "time",
+    "event",
+    "psychology",
+    "pixel",
+    "prompt",
+    "script"
+  ],
+  "required_owner_prefixes": [
+    "steppps://human/",
+    "steppps://agent/"
+  ],
+  "minimum_verification_commands": 1
+}

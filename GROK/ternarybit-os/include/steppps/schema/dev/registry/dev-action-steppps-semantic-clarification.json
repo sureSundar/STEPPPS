@@ -1,0 +1,60 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/steppps-semantic-clarification",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "include/steppps/schema/SEMANTICS.md",
+      "include/steppps/schema/dev/dev-action.v1.schema.json",
+      "tools/steppps_validate.py"
+    ]
+  },
+  "time": {
+    "created": "2026-07-15T16:49:47Z"
+  },
+  "event": {
+    "action": "implement",
+    "intent": "Encode Guru's STEPPPS semantics: Script acts on dimensions, Pixel carries display logic, Prompt carries next GenAI prompt.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "consciousness_level": "aware",
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "STEPPPS - script will act on other STEPPS; Pixel will contain display logic; Prompt will have next GenAI prompt.",
+    "next_genai_prompt": "Continue the next TBOS change by creating or updating a STEPPPS dev-action, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "python3 tools/steppps_validate.py record-dev steppps-semantic-clarification"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://agent/cx",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

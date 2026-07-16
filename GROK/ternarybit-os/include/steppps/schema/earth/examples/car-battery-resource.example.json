@@ -1,0 +1,17 @@
+{
+  "template_version": "1.0",
+  "kind": "resource",
+  "id": "steppps://resource/car-battery-001",
+  "resource_class": "power",
+  "owner": "steppps://human/sundararaman",
+  "location": "steppps://place/sethuraman-home",
+  "capacity": {
+    "value": 600,
+    "unit": "Wh"
+  },
+  "sharing": {
+    "shareable": true,
+    "requires_consent": true,
+    "contract": "steppps://authority/owner-calculator-radio"
+  }
+}

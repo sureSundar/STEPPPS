@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/include/steppps/schema/earth/event.v1.schema.json",
+  "title": "TBOS Earth Event Template v1",
+  "description": "Real Earth event template for lifecycle, karma, safety, governance, and operational events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_version", "kind", "id", "event_class", "timestamp", "actor"],
+  "properties": {
+    "template_version": { "const": "1.0" },
+    "kind": { "const": "event" },
+    "id": { "$ref": "#/$defs/steppps_ref" },
+    "event_class": {
+      "type": "string",
+      "enum": ["birth", "operation", "karma", "consent", "contract_violation", "shutdown", "audit", "ascension_request", "other"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": { "$ref": "#/$defs/steppps_ref" },
+    "target": { "$ref": "#/$defs/steppps_ref" },
+    "place": { "$ref": "#/$defs/steppps_ref" },
+    "karma_delta": { "type": "integer" },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/steppps_ref" }
+    }
+  },
+  "$defs": {
+    "steppps_ref": {
+      "type": "string",
+      "pattern": "^steppps://.+"
+    }
+  }
+}
