@@ -862,3 +862,241 @@ tbos_pid_t tbos_process_waitpid(tbos_pid_t pid, int* status, int options) {
     if (options & TBOS_WNOHANG) return 0;
     return TBOS_PID_INVALID;
 }
+
+/* ========================================================================= */
+/* PROCESS EXECUTION (Phase 3)                                                */
+/* ========================================================================= */
+
+/**
+ * @brief Run a process by executing its entry function
+ *
+ * This function actually executes the process entry point.
+ * The process transitions through RUNNING -> ZOMBIE states.
+ *
+ * @param proc Process to run
+ * @return Exit code from the process entry function
+ */
+int tbos_process_run(tbos_process_t* proc) {
+    if (!proc) {
+        printf("[PROCESS] Cannot run: NULL process\n");
+        return -1;
+    }
+
+    if (!proc->entry) {
+        printf("[PROCESS] Cannot run %s (PID %u): no entry point\n",
+               proc->name, proc->pid);
+        return -1;
+    }
+
+    if (proc->state != PROC_STATE_READY && proc->state != PROC_STATE_CREATED) {
+        printf("[PROCESS] Cannot run %s (PID %u): not ready (state=%s)\n",
+               proc->name, proc->pid, tbos_process_state_name(proc->state));
+        return -1;
+    }
+
+    /* Transition to RUNNING */
+    if (proc->state == PROC_STATE_READY) {
+        g_scheduler_stats.ready_processes--;
+    }
+    proc->state = PROC_STATE_RUNNING;
+    proc->start_time = get_time_us();
+    proc->last_scheduled_time = proc->start_time;
+    g_scheduler_stats.running_processes++;
+
+    tbos_pid_t old_current = g_current_pid;
+    g_current_pid = proc->pid;
+
+    printf("[PROCESS] Running %s (PID %u, karma: %ld, awareness: %d)\n",
+           proc->name, proc->pid, proc->karma, proc->awareness);
+
+    /* Actually call the entry point */
+    int result = proc->entry(proc->argc, (char**)proc->argv);
+
+    /* Calculate CPU time */
+    uint64_t end_time = get_time_us();
+    proc->stats.cpu_time_us += (end_time - proc->start_time);
+
+    /* Transition to ZOMBIE */
+    proc->exit_code = result;
+    proc->state = PROC_STATE_ZOMBIE;
+    proc->end_time = end_time;
+    g_scheduler_stats.running_processes--;
+
+    g_current_pid = old_current;
+
+    printf("[PROCESS] %s (PID %u) exited with code %d (CPU time: %lu us)\n",
+           proc->name, proc->pid, result, proc->stats.cpu_time_us);
+
+    return result;
+}
+
+/**
+ * @brief Spawn a new process and optionally run it immediately
+ *
+ * Simplified process creation helper that combines create + optional run.
+ *
+ * @param name Process name
+ * @param entry Entry point function
+ * @param argc Argument count
+ * @param argv Argument array
+ * @param run_now If true, run the process immediately
+ * @return Process ID on success, TBOS_PID_INVALID on error
+ */
+tbos_pid_t tbos_spawn(const char* name, tbos_process_entry_t entry,
+                       int argc, char** argv, bool run_now) {
+    if (!name || !entry) {
+        printf("[SPAWN] Invalid arguments\n");
+        return TBOS_PID_INVALID;
+    }
+
+    tbos_process_create_params_t params = {
+        .name = name,
+        .entry = entry,
+        .argc = argc,
+        .argv = argv,
+        .parent_pid = g_current_pid,
+        .priority = TBOS_PRIORITY_NORMAL,
+        .stack_size = TBOS_PROCESS_STACK_SIZE,
+        .initial_awareness = CONSCIOUSNESS_AWARE
+    };
+
+    tbos_pid_t pid = tbos_process_create(&params);
+    if (pid == TBOS_PID_INVALID) {
+        printf("[SPAWN] Failed to create process %s\n", name);
+        return TBOS_PID_INVALID;
+    }
+
+    if (run_now) {
+        tbos_process_t* proc = tbos_process_get(pid);
+        if (proc) {
+            tbos_process_run(proc);
+        }
+    }
+
+    return pid;
+}
+
+/* ========================================================================= */
+/* SCHEDULER EXECUTION LOOP (Phase 3)                                         */
+/* ========================================================================= */
+
+static volatile bool g_scheduler_loop_running = false;
+
+/**
+ * @brief Main scheduler execution loop
+ *
+ * Continuously selects and runs processes until stopped.
+ * Uses karma-based selection algorithm.
+ */
+void tbos_scheduler_loop(void) {
+    if (!g_process_initialized) {
+        tbos_process_init();
+    }
+
+    printf("[SCHEDULER] Starting execution loop\n");
+    g_scheduler_loop_running = true;
+
+    while (g_scheduler_loop_running) {
+        /* Select next process using karma-based algorithm */
+        tbos_process_t* next = NULL;
+        float best_score = -1.0f;
+
+        for (int i = 0; i < TBOS_MAX_PROCESSES; i++) {
+            tbos_process_t* proc = &g_process_table[i];
+
+            if (proc->state != PROC_STATE_READY) {
+                continue;
+            }
+
+            /* Skip kernel and init processes in the loop */
+            if (proc->pid == TBOS_PID_KERNEL || proc->pid == TBOS_PID_INIT) {
+                continue;
+            }
+
+            /* Calculate karma-based scheduling score */
+            float karma_factor = (float)(proc->karma + 100);  /* Baseline karma */
+            float consciousness_factor = (float)(proc->awareness + 1);
+            float priority_factor = 1.0f / (float)(proc->priority + 1);
+            float compassion_bonus = proc->is_compassionate ? 1.5f : 1.0f;
+
+            float score = karma_factor * consciousness_factor * priority_factor * compassion_bonus;
+
+            if (score > best_score) {
+                best_score = score;
+                next = proc;
+            }
+        }
+
+        if (next) {
+            /* Run the selected process */
+            g_scheduler_stats.total_context_switches++;
+            int result = tbos_process_run(next);
+
+            /* Reap zombie process */
+            if (next->state == PROC_STATE_ZOMBIE) {
+                printf("[SCHEDULER] Reaping zombie: %s (PID %u)\n",
+                       next->name, next->pid);
+                next->state = PROC_STATE_INVALID;
+                g_scheduler_stats.total_processes--;
+            }
+
+            (void)result;
+        } else {
+            /* No ready processes, stop loop */
+            printf("[SCHEDULER] No more ready processes\n");
+            break;
+        }
+    }
+
+    printf("[SCHEDULER] Execution loop stopped\n");
+    g_scheduler_loop_running = false;
+}
+
+/**
+ * @brief Stop the scheduler loop
+ */
+void tbos_scheduler_loop_stop(void) {
+    g_scheduler_loop_running = false;
+}
+
+/**
+ * @brief Check if scheduler loop is running
+ */
+bool tbos_scheduler_loop_running(void) {
+    return g_scheduler_loop_running;
+}
+
+/**
+ * @brief Deliver pending signals to a process
+ */
+void tbos_signal_deliver(tbos_process_t* proc) {
+    if (!proc) return;
+
+    int slot = get_process_slot(proc->pid);
+    if (slot < 0) return;
+
+    uint64_t pending = g_pending_signals[slot];
+    if (pending == 0) return;
+
+    for (int sig = 1; sig < 64; sig++) {
+        if (pending & (1ULL << sig)) {
+            /* Clear pending flag */
+            g_pending_signals[slot] &= ~(1ULL << sig);
+
+            printf("[SIGNAL] Delivering signal %d to %s (PID %u)\n",
+                   sig, proc->name, proc->pid);
+
+            /* Handle special signals */
+            if (sig == TBOS_SIGTERM) {
+                tbos_process_terminate(proc->pid, 0);
+                return;
+            } else if (sig == TBOS_SIGKILL) {
+                tbos_process_terminate(proc->pid, 128 + sig);
+                return;
+            }
+
+            /* For other signals, just log that they were delivered */
+            /* In a real implementation, would call registered handlers */
+        }
+    }
+}

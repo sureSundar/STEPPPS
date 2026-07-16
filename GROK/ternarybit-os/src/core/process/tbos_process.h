@@ -338,6 +338,61 @@ bool tbos_process_is_compassionate(tbos_pid_t pid);
  */
 int tbos_process_help(tbos_pid_t helper_pid, tbos_pid_t helped_pid);
 
+/* ========================================================================= */
+/* PROCESS EXECUTION (Phase 3)                                               */
+/* ========================================================================= */
+
+/**
+ * @brief Run a process by executing its entry function
+ *
+ * This function actually executes the process entry point.
+ * The process transitions through RUNNING -> ZOMBIE states.
+ *
+ * @param proc Process to run
+ * @return Exit code from the process entry function
+ */
+int tbos_process_run(tbos_process_t* proc);
+
+/**
+ * @brief Spawn a new process and optionally run it immediately
+ *
+ * Simplified process creation helper that combines create + optional run.
+ *
+ * @param name Process name
+ * @param entry Entry point function
+ * @param argc Argument count
+ * @param argv Argument array
+ * @param run_now If true, run the process immediately
+ * @return Process ID on success, TBOS_PID_INVALID on error
+ */
+tbos_pid_t tbos_spawn(const char* name, tbos_process_entry_t entry,
+                       int argc, char** argv, bool run_now);
+
+/**
+ * @brief Main scheduler execution loop
+ *
+ * Continuously selects and runs processes until stopped or no processes ready.
+ * Uses karma-based selection algorithm.
+ */
+void tbos_scheduler_loop(void);
+
+/**
+ * @brief Stop the scheduler loop
+ */
+void tbos_scheduler_loop_stop(void);
+
+/**
+ * @brief Check if scheduler loop is running
+ */
+bool tbos_scheduler_loop_running(void);
+
+/**
+ * @brief Deliver pending signals to a process
+ *
+ * @param proc Process to deliver signals to
+ */
+void tbos_signal_deliver(tbos_process_t* proc);
+
 #ifdef __cplusplus
 }
 #endif
