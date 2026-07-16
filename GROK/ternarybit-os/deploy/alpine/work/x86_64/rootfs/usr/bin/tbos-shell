@@ -1,0 +1,155 @@
+#!/bin/sh
+# TBOS unified CLI placeholder. Keep it tiny and POSIX-y.
+# Map commands so the same UX can exist on Linux and tiny RTOS tiers.
+
+set -eu
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+# Persona detection (default | tiny | calc)
+PERSONA="default"
+if [ -f /run/tbos/shell_persona ]; then
+  PERSONA=$(cat /run/tbos/shell_persona 2>/dev/null || echo default)
+fi
+
+motd() {
+  echo "=== TBOS Shell (${PERSONA}) ==="
+  echo "Type 'help' for commands. BusyBox utilities available."
+}
+motd
+
+help() {
+  if [ "$PERSONA" = "calc" ]; then
+    cat <<'HLP'
+Calc Persona Commands:
+  help            - this help
+  calc <expr>     - evaluate arithmetic expression (e.g., 2+2*5)
+  mode default    - switch to default persona
+  exit            - quit shell (reboot if PID 1)
+HLP
+    return
+  fi
+  if [ "$PERSONA" = "tiny" ]; then
+    cat <<'HLP'
+Tiny Persona Commands:
+  help           - this help
+  ipinfo         - IP and routes (compact)
+  mounts         - show mounts
+  psx            - process list (compact)
+  steppps        - STEPPPS tools (if present)
+  mode default   - switch to default persona
+  exit           - quit shell (reboot if PID 1)
+HLP
+    return
+  fi
+  cat <<'HLP'
+Default Commands:
+  help           - this help
+  ipinfo         - show IP and routes
+  nettest <host> - ping a host
+  psx            - process list
+  dmesg          - show kernel log tail
+  mounts         - show mounts
+  steppps        - STEPPPS tools (if present)
+  mode tiny|calc - switch persona
+  exit           - quit shell (reboot if PID 1)
+HLP
+}
+
+ipinfo() {
+  ip addr 2>/dev/null || ifconfig -a 2>/dev/null || true
+  echo ---
+  ip route 2>/dev/null || route -n 2>/dev/null || true
+}
+
+nettest() {
+  HOST=${1:-1.1.1.1}
+  ping -c1 "$HOST" 2>/dev/null || (command -v wget >/dev/null && wget -qO- "http://$HOST" | head -n1) || true
+}
+
+psx() {
+  ps aux 2>/dev/null || ps 2>/dev/null || true
+}
+
+mounts() {
+  cat /proc/mounts
+}
+
+steppps() {
+  # Sub-dispatch to steppps-tools if present
+  if command -v steppps-tools >/dev/null 2>&1; then
+    steppps-tools "$@"
+  else
+    echo "STEPPPS tools not present."
+  fi
+}
+
+calc_eval() {
+  # very simple bc-based calculator if available, else awk
+  EXPR="$*"
+  if command -v bc >/dev/null 2>&1; then
+    echo "$EXPR" | bc -l
+    return
+  fi
+  awk "BEGIN { print ($EXPR) }"
+}
+
+main() {
+  while :; do
+    if [ "$PERSONA" = "calc" ]; then
+      printf "calc> "
+    elif [ "$PERSONA" = "tiny" ]; then
+      printf "tiny> "
+    else
+      printf "tbos> "
+    fi
+    if ! read -r line; then
+      break
+    fi
+    set -- $line
+    cmd=${1:-}
+    shift || true
+    case "$cmd" in
+      help|'') help ;;
+      mode)
+        case "${1:-}" in
+          default|tiny|calc)
+            echo "$1" > /run/tbos/shell_persona
+            PERSONA="$1"
+            motd
+            ;;
+          *) echo "usage: mode [default|tiny|calc]" ;;
+        esac
+        ;;
+      calc)
+        if [ "$PERSONA" = "calc" ]; then
+          calc_eval "$@"
+        else
+          echo "switch to calc persona: 'mode calc'" >&2
+        fi
+        ;;
+      ipinfo) ipinfo ;;
+      nettest) nettest "$@" ;;
+      psx) psx ;;
+      dmesg) dmesg | tail -n 100 ;;
+      mounts) mounts ;;
+      steppps) steppps ;;
+      exit|quit) break ;;
+      *)
+        # Try executing directly
+        if command -v "$cmd" >/dev/null 2>&1; then
+          "$cmd" "$@"
+        else
+          echo "unknown: $cmd" >&2
+        fi
+        ;;
+    esac
+  done
+
+  # If we are PID 1, reboot on exit to avoid a dead system
+  if [ "$(cut -d' ' -f4 /proc/1/stat 2>/dev/null || echo 0)" = "0" ]; then
+    echo "[tbos-shell] exiting PID1, rebooting..."
+    sync; reboot -f
+  fi
+}
+
+main "$@"

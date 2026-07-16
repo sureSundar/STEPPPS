@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+import urllib.request
+
+API = os.environ.get('TBOS_LLM_PROXY', 'http://127.0.0.1:8088')
+
+def post(path, obj):
+    data = json.dumps(obj).encode()
+    req = urllib.request.Request(API + path, data=data, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=90) as resp:
+        return json.loads(resp.read().decode())
+
+
+def cmd_generate(args):
+    res = post('/generate', {'prompt': args.prompt, 'use_grammar': args.use_grammar})
+    if args.out:
+        with open(args.out, 'w') as f:
+            f.write(res.get('text',''))
+    else:
+        print(res.get('text',''))
+
+
+def cmd_steppps(args):
+    res = post('/steppps', {'intent': args.intent, 'out': args.out})
+    if not res.get('ok'):
+        print(json.dumps(res, indent=2))
+        sys.exit(1)
+    if not args.out:
+        print(json.dumps(res.get('frame', {}), indent=2))
+
+
+def main():
+    ap = argparse.ArgumentParser(prog='tbos-llmctl', description='TBOS Micro LLM CLI')
+    sub = ap.add_subparsers(dest='cmd')
+
+    g = sub.add_parser('generate', help='Raw generate via llama.cpp proxy')
+    g.add_argument('--prompt', required=True)
+    g.add_argument('--use-grammar', action='store_true')
+    g.add_argument('--out', help='Write raw text to local path')
+    g.set_defaults(func=cmd_generate)
+
+    s = sub.add_parser('steppps', help='Generate STEPPPS frame with grammar & validation')
+    s.add_argument('--intent', required=True)
+    s.add_argument('--out', help='rf2s://... or pxfs://... or local path; prints to stdout if omitted')
+    s.set_defaults(func=cmd_steppps)
+
+    args = ap.parse_args()
+    if not args.cmd:
+        ap.print_help(); sys.exit(1)
+    args.func(args)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,9 @@
+{
+  "name": "8bit",
+  "cpu": {"quota_pct": 10},
+  "memory": {"limit_mb": 64},
+  "display": {"cols": 40, "rows": 12},
+  "shell": {"persona": "tiny", "prompt": "8bit> "},
+  "features": {"disable": ["sdr"], "enable": ["wifi"]},
+  "kexec": null
+}

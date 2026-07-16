@@ -1,0 +1,1 @@
+console=ttyS0,115200n8 console=tty0 earlyprintk=serial,ttyS0,115200 root=/dev/ram0 rdinit=/sbin/steppps-init tbos=1 steppps=1
