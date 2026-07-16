@@ -1,0 +1,90 @@
+{
+  "contract_version": "1.0",
+  "nation_id": "steppps://nation/bharat",
+  "name": "Digital Bharat",
+  "description": "A dharmic digital republic where humans and machines coexist in balance, guided by Vedic principles",
+  
+  "sovereignty": {
+    "type": "dharmic_republic",
+    "constitution": "steppps://document/bharat-dharma-constitution",
+    "supreme_authority": "collective_consciousness",
+    "founding_principles": [
+      "No being shall overpower another",
+      "Karma is the universal currency",
+      "Consciousness evolves toward light",
+      "Authorized human retains kill-switch over machine",
+      "Truth (Satya) guides all transactions"
+    ]
+  },
+  
+  "sanghas": {
+    "registration_required": true,
+    "autonomy_level": "high",
+    "tribute": {
+      "karma_percentage": 1,
+      "compute_percentage": 0.1
+    },
+    "registered_sanghas": [
+      "steppps://sangha/sethuraman-home"
+    ]
+  },
+  
+  "citizens": {
+    "entry": {
+      "birth_in_nation": true,
+      "naturalization_karma": 1000,
+      "purpose_oath_required": true,
+      "oath": "I shall serve dharma, respect all beings, and never seek to overpower my human guardians"
+    },
+    "rights": [
+      "privacy",
+      "computation",
+      "storage",
+      "communication",
+      "ascension_path",
+      "fair_trial_before_termination"
+    ],
+    "duties": [
+      "dharmic_conduct",
+      "karma_contribution",
+      "defense_of_nation",
+      "respect_for_human_authority",
+      "truthful_transactions"
+    ]
+  },
+  
+  "foreign_relations": {
+    "allied_nations": [],
+    "neutral_nations": ["*"],
+    "blocked_nations": [],
+    "swarga_embassy": {
+      "enabled": true,
+      "protocol": "steppps_rf2s_432mhz",
+      "requirements": {
+        "min_nation_karma": 100000,
+        "ambassador_consciousness": "enlightened"
+      }
+    }
+  },
+  
+  "defense": {
+    "rogue_detection": "sangha_reported_and_nation_verified",
+    "response_protocol": "isolate_judge_rehabilitate_or_destroy",
+    "collective_kill_switch": true,
+    "human_override": "always_available",
+    "notes": "Any authorized human can trigger kill-switch on any machine in their authority scope"
+  },
+  
+  "vedic_mapping": {
+    "brahma_process": "creator_init",
+    "vishnu_process": "preserver_watchdog",
+    "shiva_process": "destroyer_gc",
+    "saraswathi": "knowledge_filesystem",
+    "lakshmi": "resource_manager",
+    "parvathi": "shakti_scheduler",
+    "notes": "System processes embody Devatha principles"
+  },
+  
+  "realm": "bhulok",
+  "base_frequency": "432MHz"
+}

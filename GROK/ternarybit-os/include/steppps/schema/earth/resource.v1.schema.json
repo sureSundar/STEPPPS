@@ -1,43 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/earth/resource.v1.schema.json",
-  "title": "TBOS Earth Resource Template v1",
-  "description": "Real Earth resource template for power, compute, storage, network, radio, water, food, and attention.",
+  "$id": "https://tbos.om/steppps/v1/earth/resource.schema.json",
+  "title": "Resource Entity",
+  "description": "A resource - power, compute, storage, network, radio channel, attention",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["template_version", "kind", "id", "resource_class", "owner"],
+  "required": ["kind", "id", "name", "resource_type"],
   "properties": {
-    "template_version": { "const": "1.0" },
     "kind": { "const": "resource" },
-    "id": { "$ref": "#/$defs/steppps_ref" },
-    "resource_class": {
-      "type": "string",
-      "enum": ["power", "compute", "storage", "network", "radio_channel", "sensor_data", "water", "food", "attention", "other"]
-    },
-    "owner": { "$ref": "#/$defs/steppps_ref" },
-    "location": { "$ref": "#/$defs/steppps_ref" },
-    "capacity": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "value": { "type": "number" },
-        "unit": { "type": "string" }
-      }
-    },
-    "sharing": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "shareable": { "type": "boolean" },
-        "requires_consent": { "type": "boolean" },
-        "contract": { "$ref": "#/$defs/steppps_ref" }
-      }
-    }
-  },
-  "$defs": {
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    }
+    "id": { "type": "string", "pattern": "^steppps://resource/" },
+    "name": { "type": "string", "minLength": 1 },
+    "resource_type": { "type": "string", "enum": ["power", "compute", "storage", "network", "radio", "attention"] },
+    "owner": { "type": "string" },
+    "capacity": { "type": "object" },
+    "status": { "type": "string" },
+    "created": { "type": "string", "format": "date-time" }
   }
 }

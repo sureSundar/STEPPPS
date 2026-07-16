@@ -1,33 +1,60 @@
 # STEPPPS Semantics
 
-STEPPPS dimensions are active meanings, not generic metadata labels.
+## The Seven Dimensions
 
-- **Space**: where the entity or development action lives. For TBOS
-  development this means repo, paths, realm, and locality.
-- **Time**: when the entity or action exists. This includes creation time,
-  ordering, lifecycle, and chain position.
-- **Event**: what happened. This captures the action, intent, trigger, and
-  consequences.
-- **Psychology**: the awareness state behind the action. This includes
-  consciousness level, karma, trust, and focus.
-- **Pixel**: display logic. It says how the entity/action should become visible,
-  inspectable, renderable, or understandable to a human or machine viewer.
-- **Prompt**: next GenAI prompt. It preserves the human/agent instruction that
-  caused the current step and the prompt that should guide the next intelligent
-  action.
-- **Script**: action logic. It acts on the other STEPPPS dimensions through
-  commands, automations, validations, transformations, or enforcement steps.
+STEPPPS is not seven labels attached to an object. It is seven cooperating organs.
 
-Design rule:
+| Dimension | Symbol | Function | Meaning |
+|-----------|--------|----------|---------|
+| **Space** | S | Locates | Where the entity exists (device, realm, sangha) |
+| **Time** | T | Orders | When events occurred, pranan (breath) allocation |
+| **Event** | E | Records | What happened, karma triggers, samskaras |
+| **Psychology** | P | Interprets | Consciousness level, mana_ottam, karma balance |
+| **Pixel** | P | Displays | Visual representation, display logic |
+| **Prompt** | P | Guides | Next GenAI prompt, voice, interface |
+| **Script** | S | Acts | Executable dharma, acts on other dimensions |
 
-```text
-Script acts.
-Pixel displays.
-Prompt guides.
-Space locates.
-Time orders.
-Event records.
-Psychology interprets.
+## Key Insights
+
+### Script Acts on Other STEPPPS
+Script is not merely shell commands. Script is the actor. It operates on and transforms other STEPPPS dimensions.
+
+### Pixel Contains Display Logic
+Pixel is not merely output format. Pixel is the display logic - how the entity renders itself.
+
+### Prompt Guides Next AI Loop
+Prompt is not merely past instruction. Prompt carries the next GenAI prompt - the seed for continuation.
+
+### Space Locates in Multiple Realms
+Space encompasses physical location, device fingerprint, and realm (bhulok/swarga/patala).
+
+### Time Includes Pranan (Life Force)
+Time is not just timestamps. It includes pranan - finite breaths that deplete with activity.
+
+### Event Preserves Samskaras
+Event records history and maintains dormant samskaras - memories that can activate under triggers.
+
+### Psychology Tracks Consciousness Evolution
+Psychology monitors the entity's journey: dormant -> awakening -> aware -> compassionate -> enlightened.
+
+## Contract Hierarchy
+
+```
+Universal Contract (Immutable Dharmic Principles)
+    |
+    +-- Realm Contract (Bhulok, Swarga, Patala)
+            |
+            +-- Nation Contract (Federation governance)
+                    |
+                    +-- Sangha Contract (Community governance)
+                            |
+                            +-- STEPPPS-let (Individual entity)
 ```
 
-Signature: CX
+## The Dharmic Balance
+
+- No being shall overpower another
+- Karma is the universal currency
+- Consciousness evolves toward light
+- All realms are sovereign
+- Authorized human can shutdown rogue machine's atma

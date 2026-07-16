@@ -1,0 +1,63 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/observe-genai-steppps-loop-3",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "tools/steppps_validate.py",
+      "include/steppps/schema/dev/examples/observe-genai-steppps-loop-2.dev-action.json",
+      "include/steppps/schema/dev/registry/chain.jsonl"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T01:33:24Z"
+  },
+  "event": {
+    "action": "test",
+    "intent": "Improve next-dev so GenAI receives explicit intent and Guru prompt context during STEPPPS continuation loops.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "After two guard loops, preserve Guru's specific observation request by surfacing event.intent and prompt.text in next-dev and by generating context-bearing next prompts.",
+    "next_genai_prompt": "Continue from this STEPPPS context: Improve next-dev so GenAI receives explicit intent and Guru prompt context during STEPPPS continuation loops. Create or update the next dev-action, preserve all seven dimensions, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "python3 tools/steppps_validate.py next-dev",
+      "python3 tools/steppps_validate.py record-dev observe-genai-steppps-loop-3"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain",
+      "python3 tools/steppps_validate.py file include/steppps/schema/dev/examples/observe-genai-steppps-loop-3.dev-action.json --schema include/steppps/schema/dev/dev-action.v1.schema.json"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://agent/cx",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

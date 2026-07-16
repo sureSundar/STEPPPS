@@ -1,188 +1,78 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/dev/dev-action.v1.schema.json",
-  "title": "TBOS STEPPPS Development Action v1",
-  "description": "A lightweight STEPPPS record for TBOS development work.",
+  "$id": "https://tbos.om/steppps/v1/dev/dev-action.schema.json",
+  "title": "Development Action",
+  "description": "A TBOS development action with full STEPPPS dimensions and enterprise context",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "steppps_version",
-    "kind",
-    "id",
-    "space",
-    "time",
-    "event",
-    "psychology",
-    "pixel",
-    "prompt",
-    "script",
-    "meta"
-  ],
+  "required": ["kind", "id", "space", "time", "event", "psychology", "pixel", "prompt", "script"],
   "properties": {
-    "steppps_version": {
-      "const": "1.0"
-    },
-    "kind": {
-      "const": "dev-action"
-    },
-    "id": {
-      "type": "string",
-      "pattern": "^steppps://dev-action/[A-Za-z0-9._-]+$"
-    },
+    "kind": { "const": "dev-action" },
+    "id": { "type": "string", "pattern": "^steppps://dev-action/" },
     "space": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["realm", "repo", "paths"],
+      "required": ["repo", "paths"],
       "properties": {
-        "realm": {
-          "type": "string",
-          "enum": ["bhulok", "virtual", "hybrid"]
-        },
-        "repo": {
-          "type": "string",
-          "minLength": 1
-        },
-        "paths": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "repo": { "type": "string" },
+        "paths": { "type": "array", "items": { "type": "string" } }
       }
     },
     "time": {
       "type": "object",
-      "additionalProperties": false,
       "required": ["created"],
       "properties": {
-        "created": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "created": { "type": "string", "format": "date-time" }
       }
     },
     "event": {
       "type": "object",
-      "additionalProperties": false,
       "required": ["action", "intent"],
       "properties": {
-        "action": {
-          "type": "string",
-          "enum": ["design", "implement", "validate", "document", "review", "release"]
-        },
-        "intent": {
-          "type": "string",
-          "minLength": 1
-        },
-        "links": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "action": { "type": "string", "enum": ["create", "modify", "delete", "refactor", "fix", "test", "document"] },
+        "intent": { "type": "string" }
       }
     },
     "psychology": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["consciousness_level", "karma"],
+      "required": ["awareness"],
       "properties": {
-        "consciousness_level": {
-          "type": "string",
-          "enum": ["dormant", "awakening", "aware", "compassionate", "enlightened"]
-        },
-        "karma": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["total"],
-          "properties": {
-            "total": {
-              "type": "integer"
-            }
-          }
-        }
+        "awareness": { "type": "string" },
+        "karma_delta": { "type": "integer" }
       }
     },
     "pixel": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["form", "display_logic"],
+      "required": ["display_logic"],
       "properties": {
-        "form": {
-          "type": "string",
-          "enum": ["json", "markdown", "code", "test-output"]
-        },
-        "display_logic": {
-          "type": "string",
-          "minLength": 1
-        }
+        "display_logic": { "type": "string" }
       }
     },
     "prompt": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["source", "text", "next_genai_prompt"],
+      "required": ["next_genai_prompt"],
       "properties": {
-        "source": {
-          "type": "string",
-          "enum": ["guru", "cx", "cc", "ws", "system"]
-        },
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "next_genai_prompt": {
-          "type": "string",
-          "minLength": 1
-        }
+        "source": { "type": "string" },
+        "next_genai_prompt": { "type": "string" }
       }
     },
     "script": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["commands", "verification", "acts_on"],
+      "required": ["acts_on", "verification"],
       "properties": {
-        "acts_on": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "enum": ["space", "time", "event", "psychology", "pixel", "prompt", "script"]
-          }
-        },
-        "commands": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "verification": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "acts_on": { "type": "array", "items": { "type": "string", "enum": ["space", "time", "event", "psychology", "pixel", "prompt", "script"] } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "verification": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "meta": {
+    "enterprise_context": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["owner", "contract"],
+      "required": ["capability", "stakeholders", "business_value", "risk", "acceptance_criteria", "operational_controls"],
       "properties": {
-        "owner": {
-          "type": "string",
-          "pattern": "^steppps://.+"
-        },
-        "contract": {
-          "type": "string",
-          "pattern": "^steppps://contract/.+"
-        }
+        "capability": { "type": "string", "minLength": 1 },
+        "stakeholders": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "business_value": { "type": "string", "minLength": 1 },
+        "risk": { "type": "string", "minLength": 1 },
+        "acceptance_criteria": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "operational_controls": { "type": "array", "minItems": 1, "items": { "type": "string" } }
       }
     }
   }

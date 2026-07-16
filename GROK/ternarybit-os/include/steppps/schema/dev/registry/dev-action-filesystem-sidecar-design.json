@@ -1,0 +1,82 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/filesystem-sidecar-design",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "wisdom.md",
+      "include/steppps/schema/earth/file.v1.schema.json"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T02:27:28Z"
+  },
+  "event": {
+    "action": "document",
+    "intent": "Design .steppps sidecar architecture for PXFS/UCFS/RF2S filesystem integration",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "CX directed: filesystem sidecars should include machine-valid dimensions and human-readable Guru prompt",
+    "next_genai_prompt": "Continue from this STEPPPS context: Design .steppps sidecar architecture for PXFS/UCFS/RF2S filesystem integration Create or update the next dev-action, preserve all seven dimensions, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "Edit wisdom.md with sidecar design"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain"
+    ]
+  },
+  "enterprise_context": {
+    "capability": "development-governance",
+    "stakeholders": [
+      "owner",
+      "agent",
+      "future-operator"
+    ],
+    "business_value": "Keep TBOS development auditable, restartable, and connected to the current intent: Design .steppps sidecar architecture for PXFS/UCFS/RF2S filesystem integration",
+    "risk": "Agents may generate structurally valid but context-poor STEPPPS actions.",
+    "acceptance_criteria": [
+      "The dev-action names concrete files or registry paths.",
+      "The intent explains why the change matters.",
+      "The next prompt preserves enterprise context for the next agent.",
+      "Verification proves schema and chain integrity."
+    ],
+    "operational_controls": [
+      "audit-chain",
+      "git-review",
+      "human-owner-review",
+      "schema-validation"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

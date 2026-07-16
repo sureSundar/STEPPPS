@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tbos.om/steppps/v1/earth/directory.schema.json",
+  "title": "Directory Entity",
+  "description": "A directory with STEPPPS soul - containers inherit governance from parent",
+  "type": "object",
+  "required": ["kind", "id", "S_space", "T_time", "P_pixel", "meta"],
+  "properties": {
+    "steppps_version": { "const": "1.0" },
+    "kind": { "const": "directory" },
+    "id": { "type": "string", "pattern": "^steppps://directory/" },
+
+    "S_space": {
+      "type": "object",
+      "required": ["realm", "filesystem", "path"],
+      "properties": {
+        "realm": { "type": "string", "enum": ["bhulok", "swarga", "patala"] },
+        "filesystem": { "type": "string", "enum": ["pxfs", "ucfs", "rf2s", "ramfs", "hostfs"] },
+        "path": { "type": "string", "minLength": 1 },
+        "device": { "type": "string", "pattern": "^steppps://device/" },
+        "sangha": { "type": "string", "pattern": "^steppps://sangha/" },
+        "parent": { "type": "string", "pattern": "^steppps://directory/" }
+      }
+    },
+
+    "T_time": {
+      "type": "object",
+      "required": ["created"],
+      "properties": {
+        "created": { "type": "string", "format": "date-time" },
+        "modified": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "E_event": {
+      "type": "object",
+      "properties": {
+        "creation_event": { "type": "string", "pattern": "^steppps://event/" },
+        "last_modifier": { "type": "string", "pattern": "^steppps://" }
+      }
+    },
+
+    "P_psychology": {
+      "type": "object",
+      "properties": {
+        "consciousness_level": { "type": "string", "enum": ["dormant", "awakening", "aware", "compassionate", "enlightened"] },
+        "karma": { "type": "integer" },
+        "purpose": { "type": "string" }
+      }
+    },
+
+    "P_pixel": {
+      "type": "object",
+      "required": ["form"],
+      "properties": {
+        "form": { "const": "directory" },
+        "child_count": { "type": "integer", "minimum": 0 },
+        "total_size_bytes": { "type": "integer", "minimum": 0 },
+        "display_logic": { "type": "string" }
+      }
+    },
+
+    "P_prompt": {
+      "type": "object",
+      "properties": {
+        "creation_prompt": { "type": "string" },
+        "next_genai_prompt": { "type": "string" }
+      }
+    },
+
+    "S_script": {
+      "type": "object",
+      "properties": {
+        "acts_on": { "type": "array", "items": { "type": "string" } },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "read": { "type": "array", "items": { "type": "string" } },
+            "write": { "type": "array", "items": { "type": "string" } },
+            "execute": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "inherit_permissions": { "type": "boolean" },
+        "intents": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "meta": {
+      "type": "object",
+      "required": ["owner"],
+      "properties": {
+        "owner": { "type": "string", "pattern": "^steppps://human/" },
+        "authority": { "type": "string", "pattern": "^steppps://authority/" },
+        "nation": { "type": "string", "pattern": "^steppps://nation/" },
+        "contract": { "type": "string", "pattern": "^steppps://" },
+        "signature": { "type": "string" }
+      }
+    }
+  }
+}

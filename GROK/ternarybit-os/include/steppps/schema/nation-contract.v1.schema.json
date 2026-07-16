@@ -1,108 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/nation-contract.v1.schema.json",
-  "title": "TBOS Nation Contract v1",
-  "description": "Canonical v1 schema for a TBOS Nation governance contract.",
+  "$id": "https://tbos.om/steppps/v1/nation-contract.schema.json",
+  "title": "Nation Contract",
+  "description": "Governance contract for a nation (federation of Sanghas)",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "contract_version",
-    "nation_id",
-    "name",
-    "sovereignty",
-    "sanghas",
-    "citizens",
-    "defense"
-  ],
+  "required": ["contract_version", "nation_id", "name", "sovereignty"],
   "properties": {
-    "contract_version": {
-      "const": "1.0"
-    },
-    "nation_id": {
-      "$ref": "#/$defs/steppps_ref"
-    },
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
+    "contract_version": { "const": "1.0" },
+    "nation_id": { "type": "string", "pattern": "^steppps://nation/" },
+    "name": { "type": "string", "minLength": 1 },
     "sovereignty": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "constitution", "supreme_authority"],
+      "required": ["type"],
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["dharmic_republic", "federation", "monastery", "experimental"]
-        },
-        "constitution": {
-          "$ref": "#/$defs/steppps_ref"
-        },
-        "supreme_authority": {
-          "type": "string",
-          "enum": ["collective_consciousness", "human_constitution", "council", "owner_guardian"]
-        }
+        "type": { "type": "string" },
+        "constitution": { "type": "string" },
+        "supreme_authority": { "type": "string" }
       }
     },
-    "sanghas": {
-      "type": "object",
-      "additionalProperties": true,
-      "required": ["registration_required", "autonomy_level"],
-      "properties": {
-        "registration_required": {
-          "type": "boolean"
-        },
-        "autonomy_level": {
-          "type": "string",
-          "enum": ["low", "medium", "high", "sovereign"]
-        }
-      }
-    },
-    "citizens": {
-      "type": "object",
-      "additionalProperties": true,
-      "required": ["rights", "duties"],
-      "properties": {
-        "rights": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "duties": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "foreign_relations": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "defense": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["rogue_detection", "response_protocol", "collective_kill_switch"],
-      "properties": {
-        "rogue_detection": {
-          "type": "string",
-          "enum": ["ai_powered", "human_review", "sangha_consensus", "hybrid"]
-        },
-        "response_protocol": {
-          "type": "string",
-          "enum": ["isolate_judge_rehabilitate_or_destroy", "isolate_then_owner_review", "observe_only"]
-        },
-        "collective_kill_switch": {
-          "type": "boolean"
-        }
-      }
-    }
-  },
-  "$defs": {
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    }
+    "sanghas": { "type": "object" },
+    "citizens": { "type": "object" },
+    "foreign_relations": { "type": "object" },
+    "defense": { "type": "object" }
   }
 }

@@ -1,45 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/earth/authority.v1.schema.json",
-  "title": "TBOS Earth Authority Template v1",
-  "description": "Real Earth authority template for ownership, consent, guardianship, operator rights, and shutdown authority.",
+  "$id": "https://tbos.om/steppps/v1/earth/authority.schema.json",
+  "title": "Authority Entity",
+  "description": "An authority - ownership, consent, operator rights, audit rights, kill-switch scope",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["template_version", "kind", "id", "authority_class", "holder", "scope"],
+  "required": ["kind", "id", "holder", "scope"],
   "properties": {
-    "template_version": { "const": "1.0" },
     "kind": { "const": "authority" },
-    "id": { "$ref": "#/$defs/steppps_ref" },
-    "authority_class": {
-      "type": "string",
-      "enum": ["owner", "guardian", "operator", "consent", "audit", "kill_switch", "contract_admin"]
-    },
-    "holder": { "$ref": "#/$defs/steppps_ref" },
-    "target": { "$ref": "#/$defs/steppps_ref" },
-    "scope": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "string",
-        "enum": ["read", "write", "operate", "delegate", "audit", "isolate", "shutdown", "revoke"]
-      }
-    },
-    "constraints": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": ["no_harm", "consent_required", "human_review", "time_limited", "emergency_only", "logged"]
-      }
-    },
-    "valid_until": {
-      "type": "string",
-      "format": "date-time"
-    }
-  },
-  "$defs": {
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    }
+    "id": { "type": "string", "pattern": "^steppps://authority/" },
+    "holder": { "type": "string" },
+    "subject": { "type": "string" },
+    "scope": { "type": "array", "items": { "type": "string" } },
+    "granted": { "type": "string", "format": "date-time" },
+    "expires": { "type": "string", "format": "date-time" },
+    "can_delegate": { "type": "boolean" }
   }
 }

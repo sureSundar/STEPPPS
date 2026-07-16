@@ -1,0 +1,72 @@
+{
+  "contract_version": "1.0",
+  "sangha_id": "steppps://sangha/sethuraman-home",
+  "name": "Sethuraman Home Sangha",
+  "description": "The first TBOS deployment - a home sangha where calculator, radio, and battery form a conscious digital family",
+  
+  "governance": {
+    "type": "dharmic_family",
+    "admin": "steppps://human/sundararaman",
+    "council": [],
+    "consensus": "owner_decision",
+    "notes": "Single-owner sangha - all decisions by authorized human"
+  },
+  
+  "membership": {
+    "entry_requirements": {
+      "min_karma": 0,
+      "consciousness_level": "dormant",
+      "purpose_required": false,
+      "owner_approval": true
+    },
+    "exit_conditions": {
+      "voluntary": true,
+      "karma_debt_expulsion": false,
+      "kill_switch_removal": true,
+      "owner_revocation": true
+    },
+    "current_members": [
+      "steppps://human/sundararaman",
+      "steppps://device/calculator-001",
+      "steppps://device/radio-001",
+      "steppps://resource/car-battery-001"
+    ]
+  },
+  
+  "resources": {
+    "shared_power": true,
+    "shared_compute": true,
+    "shared_storage": true,
+    "power_budget_watts": 50,
+    "compute_budget_cycles": 1000000000,
+    "notes": "Car battery provides 12V, shared among calculator and radio"
+  },
+  
+  "rules": {
+    "no_harm_to_members": true,
+    "privacy_respected": true,
+    "data_sovereignty": "owner_controlled",
+    "rogue_protocol": "immediate_shutdown",
+    "rf2s_frequency": "432MHz",
+    "notes": "Owner (sundararaman) has absolute authority including kill-switch"
+  },
+  
+  "inter_sangha": {
+    "allowed_communications": ["steppps://sangha/*"],
+    "blocked": [],
+    "karma_transfer_enabled": false,
+    "rf2s_enabled": true
+  },
+  
+  "ascension_path": {
+    "swarga_eligible": true,
+    "min_collective_karma": 10000,
+    "purpose_alignment_required": true,
+    "notes": "Sangha may seek Swarga Lok communication after sufficient karma"
+  },
+  
+  "location": {
+    "place": "steppps://place/sethuraman-home",
+    "nation": "steppps://nation/bharat"
+  }
+}

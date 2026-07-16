@@ -1,120 +1,34 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/sangha-contract.v1.schema.json",
-  "title": "TBOS Sangha Contract v1",
-  "description": "Canonical v1 schema for a TBOS Sangha community contract.",
+  "$id": "https://tbos.om/steppps/v1/sangha-contract.schema.json",
+  "title": "Sangha Contract",
+  "description": "Community governance contract for a local Sangha",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "contract_version",
-    "sangha_id",
-    "name",
-    "governance",
-    "membership",
-    "rules"
-  ],
+  "required": ["contract_version", "sangha_id", "name", "governance", "membership"],
   "properties": {
-    "contract_version": {
-      "const": "1.0"
-    },
-    "sangha_id": {
-      "$ref": "#/$defs/steppps_ref"
-    },
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
+    "contract_version": { "const": "1.0" },
+    "sangha_id": { "type": "string", "pattern": "^steppps://sangha/" },
+    "name": { "type": "string", "minLength": 1 },
     "governance": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "admin", "consensus"],
+      "required": ["type", "admin"],
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["dharmic_democracy", "owner_guarded", "council", "experimental"]
-        },
-        "admin": {
-          "$ref": "#/$defs/steppps_ref"
-        },
-        "council": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/steppps_ref"
-          }
-        },
-        "consensus": {
-          "type": "string",
-          "enum": ["karma_weighted_vote", "owner_approval", "unanimous", "observer_only"]
-        }
+        "type": { "type": "string" },
+        "admin": { "type": "string" },
+        "council": { "type": "array", "items": { "type": "string" } },
+        "consensus": { "type": "string" }
       }
     },
     "membership": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["entry_requirements", "exit_conditions"],
       "properties": {
-        "entry_requirements": {
-          "type": "object"
-        },
-        "exit_conditions": {
-          "type": "object"
-        }
+        "entry_requirements": { "type": "object" },
+        "exit_conditions": { "type": "object" }
       }
     },
-    "resources": {
-      "type": "object",
-      "additionalProperties": true,
-      "properties": {
-        "shared_power": {
-          "type": "boolean"
-        },
-        "shared_compute": {
-          "type": "boolean"
-        },
-        "shared_storage": {
-          "type": "boolean"
-        }
-      }
-    },
-    "rules": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "no_harm_to_members",
-        "privacy_respected",
-        "data_sovereignty",
-        "rogue_protocol"
-      ],
-      "properties": {
-        "no_harm_to_members": {
-          "type": "boolean"
-        },
-        "privacy_respected": {
-          "type": "boolean"
-        },
-        "data_sovereignty": {
-          "type": "string",
-          "enum": ["member_owned", "sangha_owned", "nation_guarded"]
-        },
-        "rogue_protocol": {
-          "type": "string",
-          "enum": ["isolate_then_shutdown", "isolate_then_review", "owner_shutdown_only"]
-        }
-      }
-    },
-    "inter_sangha": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "ascension_path": {
-      "type": "object",
-      "additionalProperties": true
-    }
-  },
-  "$defs": {
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    }
+    "resources": { "type": "object" },
+    "rules": { "type": "object" },
+    "inter_sangha": { "type": "object" },
+    "ascension_path": { "type": "object" }
   }
 }

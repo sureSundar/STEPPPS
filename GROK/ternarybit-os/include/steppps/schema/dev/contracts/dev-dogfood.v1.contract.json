@@ -1,29 +1,26 @@
 {
-  "contract_version": "1.0",
+  "$schema": "https://tbos.om/steppps/v1/contract.schema.json",
   "id": "steppps://contract/dev-dogfood-v1",
-  "name": "TBOS Development Dogfood Contract",
   "applies_to": "dev-action",
-  "description": "Every TBOS development action should be represented as a small STEPPPS record before it is treated as admitted development memory.",
-  "allowed_actions": [
-    "design",
-    "implement",
-    "validate",
-    "document",
-    "review",
-    "release"
-  ],
-  "required_dimensions": [
-    "space",
-    "time",
-    "event",
-    "psychology",
-    "pixel",
-    "prompt",
-    "script"
-  ],
-  "required_owner_prefixes": [
-    "steppps://human/",
-    "steppps://agent/"
-  ],
-  "minimum_verification_commands": 1
+  "contract_id": "steppps://contract/dev-dogfood-v1",
+  "contract_version": "1.0",
+  "name": "TBOS Development Dogfood Contract",
+  "description": "Ensures TBOS development itself is STEPPPS-native",
+  "required_dimensions": ["space", "time", "event", "psychology", "pixel", "prompt", "script", "enterprise_context"],
+  "allowed_actions": ["create", "modify", "delete", "refactor", "fix", "test", "document"],
+  "required_owner_prefixes": ["steppps://human/", "steppps://agent/"],
+  "minimum_verification_commands": 1,
+  "required_enterprise_context": ["capability", "stakeholders", "business_value", "risk", "acceptance_criteria", "operational_controls"],
+  "rules": {
+    "required_dimensions": ["space", "time", "event", "psychology", "pixel", "prompt", "script", "enterprise_context"],
+    "allowed_actions": ["create", "modify", "delete", "refactor", "fix", "test", "document"],
+    "must_have_verification": true,
+    "must_have_next_prompt": true,
+    "must_have_enterprise_context": true
+  },
+  "enforcement": {
+    "schema_validation": true,
+    "contract_enforcement": true,
+    "chain_append": true
+  }
 }

@@ -1,0 +1,42 @@
+{
+  "kind": "dev-action",
+  "id": "steppps://dev-action/steppps-infrastructure-creation",
+  "space": {
+    "repo": "ternarybit-os",
+    "paths": [
+      "include/steppps/schema/",
+      "include/steppps/schema/earth/",
+      "include/steppps/schema/dev/"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T06:30:00Z"
+  },
+  "event": {
+    "action": "create",
+    "intent": "Create STEPPPS schema infrastructure based on wisdom.md design"
+  },
+  "psychology": {
+    "awareness": "Following CX design from wisdom.md dialogues 13-22",
+    "karma_delta": 10
+  },
+  "pixel": {
+    "display_logic": "Show schema files created and validation status"
+  },
+  "prompt": {
+    "source": "wisdom.md dialogue 23 - Guru said complete normal operations first",
+    "next_genai_prompt": "Validate STEPPPS infrastructure and admit first Earth entities"
+  },
+  "script": {
+    "acts_on": ["space", "event"],
+    "commands": [
+      "mkdir -p include/steppps/schema/{earth,dev}",
+      "write schema JSON files",
+      "write examples"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py earth-examples",
+      "python3 tools/steppps_validate.py verify-earth-chain"
+    ]
+  }
+}

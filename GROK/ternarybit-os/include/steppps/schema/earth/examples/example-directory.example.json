@@ -1,0 +1,59 @@
+{
+  "steppps_version": "1.0",
+  "kind": "directory",
+  "id": "steppps://directory/home-user",
+
+  "S_space": {
+    "realm": "bhulok",
+    "filesystem": "pxfs",
+    "path": "/home/user",
+    "device": "steppps://device/calculator-001",
+    "sangha": "steppps://sangha/sethuraman-home"
+  },
+
+  "T_time": {
+    "created": "2026-07-16T10:00:00Z",
+    "modified": "2026-07-16T12:00:00Z"
+  },
+
+  "E_event": {
+    "creation_event": "steppps://event/dir-create-001",
+    "last_modifier": "steppps://human/sundararaman"
+  },
+
+  "P_psychology": {
+    "consciousness_level": "dormant",
+    "karma": 0,
+    "purpose": "user_home_directory"
+  },
+
+  "P_pixel": {
+    "form": "directory",
+    "child_count": 5,
+    "total_size_bytes": 10240,
+    "display_logic": "Render as folder icon with child count"
+  },
+
+  "P_prompt": {
+    "creation_prompt": "System created user home directory",
+    "next_genai_prompt": "This directory contains user files and inherits sangha permissions"
+  },
+
+  "S_script": {
+    "acts_on": ["space", "time", "event"],
+    "permissions": {
+      "read": ["steppps://human/sundararaman"],
+      "write": ["steppps://human/sundararaman"],
+      "execute": ["steppps://human/sundararaman"]
+    },
+    "inherit_permissions": true,
+    "intents": ["user_workspace"]
+  },
+
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "authority": "steppps://authority/owner-sundararaman",
+    "nation": "steppps://nation/bharat",
+    "contract": "steppps://contract/sangha-sethuraman-home-v1"
+  }
+}

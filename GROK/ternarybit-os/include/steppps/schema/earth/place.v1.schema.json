@@ -1,40 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/earth/place.v1.schema.json",
-  "title": "TBOS Earth Place Template v1",
-  "description": "Real Earth place template for homes, temples, schools, hospitals, offices, villages, and cities.",
+  "$id": "https://tbos.om/steppps/v1/earth/place.schema.json",
+  "title": "Place Entity",
+  "description": "A place - home, temple, school, hospital, office, village, city",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["template_version", "kind", "id", "place_class", "name"],
+  "required": ["kind", "id", "name", "place_type"],
   "properties": {
-    "template_version": { "const": "1.0" },
     "kind": { "const": "place" },
-    "id": { "$ref": "#/$defs/steppps_ref" },
-    "place_class": {
-      "type": "string",
-      "enum": ["home", "temple", "school", "hospital", "office", "village", "city", "nation_region", "vehicle", "unknown"]
-    },
+    "id": { "type": "string", "pattern": "^steppps://place/" },
     "name": { "type": "string", "minLength": 1 },
-    "parent_place": { "$ref": "#/$defs/steppps_ref" },
-    "sangha": { "$ref": "#/$defs/steppps_ref" },
-    "coordinates": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
-        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
-        "alt_m": { "type": "number" }
-      }
-    },
-    "access": {
-      "type": "string",
-      "enum": ["private", "shared", "public", "restricted"]
-    }
-  },
-  "$defs": {
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    }
+    "place_type": { "type": "string" },
+    "sangha": { "type": "string" },
+    "location": { "type": "object" },
+    "created": { "type": "string", "format": "date-time" }
   }
 }

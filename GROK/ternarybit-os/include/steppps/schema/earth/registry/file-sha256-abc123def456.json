@@ -1,0 +1,62 @@
+{
+  "steppps_version": "1.0",
+  "kind": "file",
+  "id": "steppps://file/sha256-abc123def456",
+
+  "S_space": {
+    "realm": "bhulok",
+    "filesystem": "pxfs",
+    "path": "/home/user/document.txt",
+    "device": "steppps://device/calculator-001",
+    "sangha": "steppps://sangha/sethuraman-home"
+  },
+
+  "T_time": {
+    "created": "2026-07-16T12:00:00Z",
+    "modified": "2026-07-16T12:00:00Z",
+    "accessed": "2026-07-16T12:00:00Z"
+  },
+
+  "E_event": {
+    "creation_event": "steppps://event/file-create-001",
+    "last_modifier": "steppps://human/sundararaman",
+    "modification_history": []
+  },
+
+  "P_psychology": {
+    "consciousness_level": "dormant",
+    "karma": 0,
+    "purpose": "data_storage"
+  },
+
+  "P_pixel": {
+    "form": "file",
+    "mime_type": "text/plain",
+    "size_bytes": 1024,
+    "content_hash": "sha256:abc123def456",
+    "pxfs_compressed": true,
+    "display_logic": "Render as text file with line numbers"
+  },
+
+  "P_prompt": {
+    "creation_prompt": "User created document for notes",
+    "next_genai_prompt": "This file may be read, modified, or deleted by authorized entities"
+  },
+
+  "S_script": {
+    "acts_on": ["space", "time", "event"],
+    "permissions": {
+      "read": ["steppps://human/sundararaman"],
+      "write": ["steppps://human/sundararaman"],
+      "execute": []
+    },
+    "intents": ["data_preservation"]
+  },
+
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "authority": "steppps://authority/owner-sundararaman",
+    "nation": "steppps://nation/bharat",
+    "contract": "steppps://contract/sangha-sethuraman-home-v1"
+  }
+}

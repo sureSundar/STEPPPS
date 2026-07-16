@@ -250,7 +250,7 @@ def validate_model(directory: Path) -> None:
         ids[entity_id] = path
         docs.append((path, doc))
 
-    external_prefixes = ("steppps://nation/", "steppps://sangha/")
+    external_prefixes = ("steppps://nation/", "steppps://sangha/", "steppps://contract/")
     for path, doc in docs:
         for ref in collect_steppps_refs(doc):
             if ref == doc.get("id"):
@@ -367,6 +367,14 @@ def enforce_dev_contract(doc: dict[str, Any], contract_path: Path) -> str:
     for dimension in contract.get("required_dimensions", []):
         if dimension not in doc:
             raise ValidationError(f"contract: missing STEPPPS dimension {dimension!r}")
+
+    enterprise_context = doc.get("enterprise_context")
+    if not isinstance(enterprise_context, dict):
+        raise ValidationError("contract: dev action must include enterprise_context")
+    for field in contract.get("required_enterprise_context", []):
+        value = enterprise_context.get(field)
+        if value in (None, "", []):
+            raise ValidationError(f"contract: enterprise_context.{field} must be populated")
 
     action = value_at_path(doc, "event.action")
     if not action or action[0] not in contract.get("allowed_actions", []):
@@ -497,7 +505,8 @@ def create_dev_action(
             "links": [str(DEV_CONTRACT_PATH.relative_to(ROOT))],
         },
         "psychology": {
-            "consciousness_level": "aware",
+            "awareness": "aware",
+            "karma_delta": 1,
             "karma": {
                 "total": 1,
             },
@@ -509,12 +518,25 @@ def create_dev_action(
         "prompt": {
             "source": "guru",
             "text": prompt,
-            "next_genai_prompt": "Continue the next TBOS change by creating or updating a STEPPPS dev-action, then verify the dev chain.",
+            "next_genai_prompt": f"Continue from this STEPPPS context: {intent} Create or update the next dev-action, preserve all seven dimensions, then verify the dev chain.",
         },
         "script": {
             "acts_on": ["space", "time", "event", "psychology", "pixel", "prompt", "script"],
             "commands": commands,
             "verification": verification,
+        },
+        "enterprise_context": {
+            "capability": "development-governance",
+            "stakeholders": ["owner", "agent", "future-operator"],
+            "business_value": f"Keep TBOS development auditable, restartable, and connected to the current intent: {intent}",
+            "risk": "Agents may generate structurally valid but context-poor STEPPPS actions.",
+            "acceptance_criteria": [
+                "The dev-action names concrete files or registry paths.",
+                "The intent explains why the change matters.",
+                "The next prompt preserves enterprise context for the next agent.",
+                "Verification proves schema and chain integrity.",
+            ],
+            "operational_controls": ["audit-chain", "git-review", "human-owner-review", "schema-validation"],
         },
         "meta": {
             "owner": owner,
@@ -654,6 +676,9 @@ def latest_chain_doc(chain_path: Path, expected_version: str) -> tuple[dict[str,
 
 def print_next_dev(chain_path: Path) -> None:
     block, doc, target = latest_chain_doc(chain_path, "dev-registry-chain.v1")
+    intents = value_at_path(doc, "event.intent")
+    prompt_texts = value_at_path(doc, "prompt.text")
+    enterprise_contexts = value_at_path(doc, "enterprise_context")
     next_prompts = value_at_path(doc, "prompt.next_genai_prompt")
     display_logic = value_at_path(doc, "pixel.display_logic")
     acts_on = value_at_path(doc, "script.acts_on[]")
@@ -663,6 +688,16 @@ def print_next_dev(chain_path: Path) -> None:
     print(f"block: {block.get('index')}")
     print(f"entity: {doc.get('id')}")
     print(f"target: {relative_path(target)}")
+    print()
+    print("EVENT.intent:")
+    print(intents[0] if intents else "")
+    print()
+    print("PROMPT.text:")
+    print(prompt_texts[0] if prompt_texts else "")
+    print()
+    print("ENTERPRISE.context:")
+    if enterprise_contexts and isinstance(enterprise_contexts[0], dict):
+        print(json.dumps(enterprise_contexts[0], indent=2, ensure_ascii=False))
     print()
     print("PROMPT.next_genai_prompt:")
     print(next_prompts[0] if next_prompts else "")
@@ -713,7 +748,7 @@ def main() -> int:
 
     record_dev_cmd = sub.add_parser("record-dev", help="create and admit a TBOS development STEPPPS action")
     record_dev_cmd.add_argument("slug")
-    record_dev_cmd.add_argument("--action", default="implement")
+    record_dev_cmd.add_argument("--action", default="modify")
     record_dev_cmd.add_argument("--intent", required=True)
     record_dev_cmd.add_argument("--path", action="append", required=True, dest="paths")
     record_dev_cmd.add_argument("--command", action="append", required=True, dest="commands")

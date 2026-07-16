@@ -1,0 +1,87 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/file-directory-schemas-phase1",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "include/steppps/schema/earth/file.v1.schema.json",
+      "include/steppps/schema/earth/directory.v1.schema.json",
+      "include/steppps/schema/earth/examples/example-file.example.json",
+      "include/steppps/schema/earth/examples/example-directory.example.json"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T02:57:10Z"
+  },
+  "event": {
+    "action": "create",
+    "intent": "Implement Phase 1: Create file.v1 and directory.v1 schemas with example entities",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "Guru approved all design points. Proceeding with Phase 1 implementation.",
+    "next_genai_prompt": "Continue from this STEPPPS context: Implement Phase 1: Create file.v1 and directory.v1 schemas with example entities Create or update the next dev-action, preserve all seven dimensions, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "Create file.v1.schema.json with 7 STEPPPS dimensions",
+      "Create directory.v1.schema.json with inheritance support",
+      "Create example file and directory entities"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain",
+      "python3 -c \"import json; json.load(open('include/steppps/schema/earth/file.v1.schema.json'))\""
+    ]
+  },
+  "enterprise_context": {
+    "capability": "development-governance",
+    "stakeholders": [
+      "owner",
+      "agent",
+      "future-operator"
+    ],
+    "business_value": "Keep TBOS development auditable, restartable, and connected to the current intent: Implement Phase 1: Create file.v1 and directory.v1 schemas with example entities",
+    "risk": "Agents may generate structurally valid but context-poor STEPPPS actions.",
+    "acceptance_criteria": [
+      "The dev-action names concrete files or registry paths.",
+      "The intent explains why the change matters.",
+      "The next prompt preserves enterprise context for the next agent.",
+      "Verification proves schema and chain integrity."
+    ],
+    "operational_controls": [
+      "audit-chain",
+      "git-review",
+      "human-owner-review",
+      "schema-validation"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

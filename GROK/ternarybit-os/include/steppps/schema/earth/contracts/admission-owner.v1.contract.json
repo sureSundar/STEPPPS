@@ -1,50 +1,19 @@
 {
-  "contract_version": "1.0",
+  "$schema": "https://tbos.om/steppps/v1/contract.schema.json",
   "id": "steppps://contract/earth-admission-owner-v1",
-  "name": "Earth Admission Owner Contract",
   "applies_to": "earth-admission",
-  "description": "Deterministic smart-contract rules for admitting Earth entities into the local TBOS registry.",
-  "allowed_kinds": [
-    "human",
-    "machine",
-    "device",
-    "place",
-    "resource",
-    "event",
-    "authority"
-  ],
-  "external_prefixes": [
-    "steppps://nation/",
-    "steppps://sangha/"
-  ],
+  "name": "Earth Entity Admission Contract",
+  "description": "Validates Earth entities before admission to registry",
+  "allowed_kinds": ["human", "machine", "device", "place", "resource", "event", "authority", "file", "directory"],
+  "external_prefixes": ["steppps://nation/", "steppps://sangha/", "steppps://contract/"],
   "required_known_reference_paths": {
-    "authority": [
-      "holder",
-      "target"
-    ],
-    "device": [
-      "owner"
-    ],
-    "event": [
-      "actor",
-      "target",
-      "place",
-      "evidence[]"
-    ],
-    "human": [],
-    "machine": [
-      "owner"
-    ],
-    "place": [],
-    "resource": [
-      "owner",
-      "location",
-      "sharing.contract"
-    ]
+    "device": ["owner"],
+    "machine": ["owner"],
+    "resource": ["owner"],
+    "event": ["actor"],
+    "authority": ["holder"],
+    "file": ["S_space.device", "E_event.creation_event", "meta.owner", "meta.authority"],
+    "directory": ["S_space.device", "E_event.creation_event", "meta.owner", "meta.authority"]
   },
-  "forbidden_scope_without_human_owner": [
-    "shutdown",
-    "isolate",
-    "audit"
-  ]
+  "forbidden_scope_without_human_owner": ["shutdown", "isolate"]
 }

@@ -1,0 +1,11 @@
+{
+  "kind": "event",
+  "id": "steppps://event/file-create-001",
+  "event_type": "file_create",
+  "timestamp": "2026-07-16T12:00:00Z",
+  "actor": "steppps://human/sundararaman",
+  "subject": "steppps://file/sha256-abc123def456",
+  "place": "steppps://place/sethuraman-home",
+  "karma_delta": 1,
+  "description": "Authorized human created a PXFS file entity with STEPPPS sidecar identity"
+}

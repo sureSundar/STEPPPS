@@ -1,311 +1,82 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tbos.om/include/steppps/schema/steppps-let.v1.schema.json",
-  "title": "TBOS STEPPPS-let v1",
-  "description": "Canonical v1 schema for an atomic TBOS infolet represented across Space, Time, Event, Psychology, Pixel, Prompt, and Script.",
+  "$id": "https://tbos.om/steppps/v1/steppps-let.schema.json",
+  "title": "STEPPPS-let",
+  "description": "The atomic infolet of TBOS - every entity represented in seven dimensions",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "steppps_version",
-    "id",
-    "space",
-    "time",
-    "event",
-    "psychology",
-    "pixel",
-    "prompt",
-    "script",
-    "meta"
-  ],
+  "required": ["steppps_version", "id", "S_space", "T_time", "E_event", "P_psychology", "P_pixel", "P_prompt", "S_script"],
   "properties": {
-    "steppps_version": {
-      "const": "1.0"
-    },
+    "steppps_version": { "const": "1.0" },
     "id": {
-      "$ref": "#/$defs/steppps_id"
-    },
-    "space": {
       "type": "object",
-      "additionalProperties": true,
+      "required": ["uri"],
+      "properties": {
+        "high": { "type": "string" },
+        "low": { "type": "string" },
+        "uri": { "type": "string", "pattern": "^steppps://" }
+      }
+    },
+    "S_space": {
+      "type": "object",
       "required": ["realm"],
       "properties": {
-        "realm": {
-          "type": "string",
-          "enum": ["bhulok", "swarga_lok", "virtual", "hybrid", "unknown"]
-        },
-        "device_fingerprint": {
-          "type": "string",
-          "minLength": 1
-        },
-        "location": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": ["physical", "virtual", "consciousness", "unknown"]
-            },
-            "sangha": {
-              "type": "string"
-            }
-          }
-        }
+        "realm": { "type": "string", "enum": ["bhulok", "swarga", "patala"] },
+        "device_fingerprint": { "type": "string" },
+        "location": { "type": "object" }
       }
     },
-    "time": {
+    "T_time": {
       "type": "object",
-      "additionalProperties": true,
       "required": ["created"],
       "properties": {
-        "created": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "modified": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "pranan": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["total_breaths", "remaining"],
-          "properties": {
-            "total_breaths": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "remaining": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "rate": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
+        "created": { "type": "string", "format": "date-time" },
+        "modified": { "type": "string", "format": "date-time" },
+        "birth_epoch": { "type": "integer" },
+        "pranan": { "type": "object" }
       }
     },
-    "event": {
+    "E_event": {
       "type": "object",
-      "additionalProperties": true,
       "properties": {
-        "history": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/event_record"
-          }
-        },
-        "dormant_samskaras": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        }
+        "history": { "type": "array" },
+        "dormant_samskaras": { "type": "array" }
       }
     },
-    "psychology": {
+    "P_psychology": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["consciousness_level", "karma"],
+      "required": ["consciousness_level"],
       "properties": {
         "consciousness_level": {
           "type": "string",
           "enum": ["dormant", "awakening", "aware", "compassionate", "enlightened"]
         },
-        "mana_ottam": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "value": {
-              "type": "number"
-            },
-            "is_sequential": {
-              "type": "boolean"
-            },
-            "dhyanam_cycles": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        },
-        "karma": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["total"],
-          "properties": {
-            "total": {
-              "type": "integer"
-            },
-            "good": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "bad": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
+        "mana_ottam": { "type": "object" },
+        "karma": { "type": "object" }
       }
     },
-    "pixel": {
+    "P_pixel": {
       "type": "object",
-      "additionalProperties": true,
       "required": ["form"],
       "properties": {
-        "form": {
-          "type": "string"
-        },
-        "representation": {
-          "type": "object"
-        }
+        "form": { "type": "string" },
+        "representation": { "type": "object" }
       }
     },
-    "prompt": {
+    "P_prompt": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["voice"],
       "properties": {
-        "voice": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "language": {
-              "type": "string"
-            },
-            "encoding": {
-              "type": "string"
-            },
-            "mantra": {
-              "type": "string"
-            }
-          }
-        },
-        "interface": {
-          "type": "object"
-        }
+        "voice": { "type": "object" },
+        "interface": { "type": "object" }
       }
     },
-    "script": {
+    "S_script": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["purpose"],
       "properties": {
-        "purpose": {
-          "type": "string",
-          "minLength": 1
-        },
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "constraints": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/dharmic_constraint"
-          }
-        },
-        "capabilities": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "executable_dharma": { "type": "object" },
+        "capabilities": { "type": "array", "items": { "type": "string" } },
+        "intents": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "meta": {
-      "type": "object",
-      "additionalProperties": true,
-      "required": ["owner"],
-      "properties": {
-        "signature": {
-          "type": "string"
-        },
-        "owner": {
-          "$ref": "#/$defs/steppps_ref"
-        },
-        "contracts": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sangha": {
-              "$ref": "#/$defs/steppps_ref"
-            },
-            "nation": {
-              "$ref": "#/$defs/steppps_ref"
-            },
-            "realm": {
-              "$ref": "#/$defs/steppps_ref"
-            }
-          }
-        },
-        "kill_switch": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["authorized", "active"],
-          "properties": {
-            "authorized": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "$ref": "#/$defs/steppps_ref"
-              }
-            },
-            "active": {
-              "type": "boolean"
-            }
-          }
-        }
-      }
-    }
-  },
-  "$defs": {
-    "steppps_id": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["uri"],
-      "properties": {
-        "high": {
-          "type": "string"
-        },
-        "low": {
-          "type": "string"
-        },
-        "uri": {
-          "$ref": "#/$defs/steppps_ref"
-        }
-      }
-    },
-    "steppps_ref": {
-      "type": "string",
-      "pattern": "^steppps://.+"
-    },
-    "event_record": {
-      "type": "object",
-      "additionalProperties": true,
-      "required": ["timestamp", "action"],
-      "properties": {
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "action": {
-          "type": "string"
-        },
-        "karma_delta": {
-          "type": "integer"
-        },
-        "samskara": {
-          "type": "boolean"
-        }
-      }
-    },
-    "dharmic_constraint": {
-      "type": "string",
-      "enum": ["no_harm", "no_theft", "truth_only", "privacy_respected", "owner_authorized"]
-    }
+    "meta": { "type": "object" }
   }
 }

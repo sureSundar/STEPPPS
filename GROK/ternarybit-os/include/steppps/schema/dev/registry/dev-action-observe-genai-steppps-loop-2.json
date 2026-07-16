@@ -1,0 +1,62 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/observe-genai-steppps-loop-2",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "include/steppps/schema/dev/examples/observe-genai-steppps-loop-1.dev-action.json",
+      "include/steppps/schema/dev/registry/dev-action-observe-genai-steppps-loop-1.json",
+      "include/steppps/schema/dev/registry/chain.jsonl"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T01:32:51Z"
+  },
+  "event": {
+    "action": "test",
+    "intent": "Validate the first generated continuation for STEPPPS format, message, and context continuity.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "Stand guard after loop 1: validate that the next STEPPPS-let keeps all seven dimensions, carries Guru's dev-loop observation message, and preserves the TBOS dogfood context.",
+    "next_genai_prompt": "Continue the next TBOS change by creating or updating a STEPPPS dev-action, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "python3 tools/steppps_validate.py next-dev",
+      "python3 tools/steppps_validate.py file include/steppps/schema/dev/examples/observe-genai-steppps-loop-1.dev-action.json --schema include/steppps/schema/dev/dev-action.v1.schema.json"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://agent/cx",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

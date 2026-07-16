@@ -1,0 +1,11 @@
+{
+  "kind": "event",
+  "id": "steppps://event/dir-create-001",
+  "event_type": "directory_create",
+  "timestamp": "2026-07-16T10:00:00Z",
+  "actor": "steppps://human/sundararaman",
+  "subject": "steppps://directory/home-user",
+  "place": "steppps://place/sethuraman-home",
+  "karma_delta": 1,
+  "description": "Authorized human created a PXFS directory entity with inherited Sangha governance"
+}

@@ -1,0 +1,60 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/observe-genai-steppps-loop-1",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "WISDOM.md",
+      "include/steppps/schema/dev/registry/chain.jsonl"
+    ]
+  },
+  "time": {
+    "created": "2026-07-16T01:32:39Z"
+  },
+  "event": {
+    "action": "test",
+    "intent": "Observe whether next-dev preserves STEPPPS context for the next GenAI action.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "Guru asks CC and CX to run dev loops and validate generated STEPPPS-lets for format, message, and context.",
+    "next_genai_prompt": "Continue the next TBOS change by creating or updating a STEPPPS dev-action, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "python3 tools/steppps_validate.py next-dev"
+    ],
+    "verification": [
+      "python3 tools/steppps_validate.py verify-dev-chain"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://agent/cx",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}
