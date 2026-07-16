@@ -17,7 +17,11 @@
       "Bash(./tbos_steppps_complete_demo)",
       "Bash(rm:*)",
       "Bash(make:*)",
-      "Bash(./build_universal.sh:*)"
+      "Bash(./build_universal.sh:*)",
+      "Bash(wc:*)",
+      "Bash(gcc:*)",
+      "Bash(grep:*)",
+      "Bash(cc:*)"
     ],
     "deny": [],
     "ask": []
