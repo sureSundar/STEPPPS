@@ -7,6 +7,9 @@
 #include "tbos/net.h"
 #include <string.h>
 #include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * INTERNAL STATE
@@ -113,12 +116,30 @@ int tbos_udp_join_multicast(int sock, const char* group) {
     tbos_udp_socket_t* s = find_udp_socket(sock);
     if (!s || !group) return TBOS_NET_ERROR;
 
-    /* Note: actual multicast join requires setsockopt -
-       for now just track the intention */
+    /* Get underlying socket fd from tbos_net layer */
+    const tbos_socket_t* net_sock = tbos_net_get_socket(s->sock);
+    if (!net_sock) return TBOS_NET_ERROR;
+
+    int fd = net_sock->fd;
+
+    /* Set up multicast group membership */
+    struct ip_mreq mreq;
+    memset(&mreq, 0, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr(group);
+    mreq.imr_interface.s_addr = INADDR_ANY;
+
+    if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+        printf("[UDP] Failed to join multicast group %s\n", group);
+        return TBOS_NET_ERROR;
+    }
+
+    /* Track the membership */
     strncpy(s->multicast_group, group, sizeof(s->multicast_group) - 1);
+    s->multicast_group[sizeof(s->multicast_group) - 1] = '\0';
     s->multicast_enabled = true;
     s->karma += 5;  /* Good karma for joining community */
 
+    printf("[UDP] Joined multicast group %s\n", group);
     return TBOS_NET_SUCCESS;
 }
 
@@ -126,10 +147,31 @@ int tbos_udp_leave_multicast(int sock, const char* group) {
     tbos_udp_socket_t* s = find_udp_socket(sock);
     if (!s) return TBOS_NET_ERROR;
 
-    (void)group;
+    /* Get underlying socket fd from tbos_net layer */
+    const tbos_socket_t* net_sock = tbos_net_get_socket(s->sock);
+    if (!net_sock) return TBOS_NET_ERROR;
+
+    int fd = net_sock->fd;
+
+    /* Use stored group if not specified */
+    const char* leave_group = (group && group[0]) ? group : s->multicast_group;
+    if (!leave_group[0]) return TBOS_NET_ERROR;
+
+    /* Leave multicast group */
+    struct ip_mreq mreq;
+    memset(&mreq, 0, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr(leave_group);
+    mreq.imr_interface.s_addr = INADDR_ANY;
+
+    if (setsockopt(fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+        printf("[UDP] Failed to leave multicast group %s\n", leave_group);
+        return TBOS_NET_ERROR;
+    }
+
     s->multicast_enabled = false;
     s->multicast_group[0] = '\0';
 
+    printf("[UDP] Left multicast group %s\n", leave_group);
     return TBOS_NET_SUCCESS;
 }
 
