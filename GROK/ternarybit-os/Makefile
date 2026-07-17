@@ -788,6 +788,10 @@ TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_
 # Link kernel/hal_baremetal.c instead to build against a platform with
 # no heap; the static-array fallback in the shell takes over.
 TIER_SHELL_HAL_SRCS := kernel/hal_hosted.c
+# Canonical STEPPPS v2 runtime, linked directly (not a sidecar - every
+# tier stays standalone, matching everything else in this file).
+TIER_SHELL_STEPPPS_SRCS := steppps/v2/steppps_runtime.c
+TIER_SHELL_STEPPPS_INC := -Isteppps/v2
 
 tier-info:
 	@echo ""
@@ -879,11 +883,12 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@ls -la $(TIER_BUILD_DIR)/shell_*
 	@echo ""
 	@echo "Commands per tier (verified by running each binary's 'help'):"
-	@echo "  shell_calc    (Tier 0): 15 commands  - help, echo, calc, karma, exit, net,"
+	@echo "  shell_calc    (Tier 0): 16 commands  - help, echo, calc, karma, exit, net,"
 	@echo "                                          ucfs, rf2s, pxencode, pxcompress,"
-	@echo "                                          pxdecompress, pxstore, pxload, pxsend, pxrecv"
-	@echo "  shell_embed   (Tier 1): 26 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
-	@echo "  shell_retro   (Tier 2): 35 commands  - + head, grep, wc, history, resolve, etc."
+	@echo "                                          pxdecompress, pxstore, pxload, pxsend,"
+	@echo "                                          pxrecv, steppps"
+	@echo "  shell_embed   (Tier 1): 27 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
+	@echo "  shell_retro   (Tier 2): 36 commands  - + head, grep, wc, history, resolve, etc."
 	@echo "  shell_desktop (Tier 3): 45 commands  - + meditate, sangha, dharma, ping, http"
 	@echo "  shell_server  (Tier 4): 50 commands  - + top, netstat, free, lscpu, listen"
 	@echo "  shell_super   (Tier 5): 54 commands  - + cluster, consciousness, quantum, netscan"
@@ -891,34 +896,35 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@echo "Every tier has real POSIX-socket networking (net/send/resolve/http/"
 	@echo "listen/netscan), scaled per tier - not system()/popen() shell-outs."
 	@echo "Every tier, including Calculator, has real ucfs/rf2s path parsing"
-	@echo "(canonical codecs, linked not reimplemented) and real, genuinely"
-	@echo "lossless PXFS compression - store to a file, transmit over a real"
-	@echo "TCP socket, extract back byte-exact (pxcompress/pxstore/pxsend and"
-	@echo "their pxdecompress/pxload/pxrecv counterparts)."
+	@echo "(canonical codecs, linked not reimplemented), real genuinely lossless"
+	@echo "PXFS compression (store/transmit/extract, byte-exact), and real"
+	@echo "STEPPPS (linked against steppps/v2 - parse/verify/run/audit real"
+	@echo "entities, gated by trust risk not cost: show is Tier 0+,"
+	@echo "verify/run/audit climb tiers)."
 
-$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
-	@echo "[Tier 0] Building Calculator Shell (15 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $^
+$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 0] Building Calculator Shell (16 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
-$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
-	@echo "[Tier 1] Building Embedded Shell (26 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $^
+$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 1] Building Embedded Shell (27 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
-$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
-	@echo "[Tier 2] Building Retro Shell (35 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $^
+$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 2] Building Retro Shell (36 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
-$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 3] Building Desktop Shell (45 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $^
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
-$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 4] Building Server Shell (50 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $^
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
-$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 5] Building Supercomputer Shell (54 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $^
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 # Run tier shells interactively
 tier-shell-calc: $(TIER_BUILD_DIR)/shell_calc

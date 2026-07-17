@@ -821,6 +821,46 @@ int steppps_audit_log(const steppps_t* s, const char* action, int result) {
     return 0;
 }
 
+int steppps_audit_get(const char* id, char* log, size_t len) {
+    if (!id || !log || len == 0) return -1;
+    log[0] = '\0';
+
+    if (!g_runtime.audit_path[0]) return -1;
+
+    /* Flush pending writes so a get right after a log() call sees them. */
+    if (g_runtime.audit_file) fflush(g_runtime.audit_file);
+
+    FILE* f = fopen(g_runtime.audit_path, "r");
+    if (!f) return -1;
+
+    char line[512];
+    size_t used = 0;
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        /* Format written by steppps_audit_log:
+         * timestamp|id|hash|action|author|result|granted */
+        char* first_pipe = strchr(line, '|');
+        if (!first_pipe) continue;
+        char* id_start = first_pipe + 1;
+        char* second_pipe = strchr(id_start, '|');
+        if (!second_pipe) continue;
+
+        size_t id_len = (size_t)(second_pipe - id_start);
+        if (id_len == strlen(id) && strncmp(id_start, id, id_len) == 0) {
+            size_t line_len = strlen(line);
+            if (used + line_len < len) {
+                memcpy(log + used, line, line_len);
+                used += line_len;
+                log[used] = '\0';
+                found = 1;
+            }
+        }
+    }
+    fclose(f);
+
+    return found ? 0 : -1;
+}
+
 /* ========================================================================= */
 /* UTILITY                                                                    */
 /* ========================================================================= */
@@ -835,4 +875,36 @@ const char* steppps_sandbox_name(steppps_sandbox_t level) {
 
 void steppps_print(const steppps_t* s) {
     steppps_display(s);
+}
+
+void steppps_print_security(const steppps_t* s) {
+    if (!s) return;
+
+    printf("\n");
+    printf("STEPPPS Security: %s\n", s->id);
+    printf("  Signed:       %s\n", s->security.is_signed ? "yes" : "no");
+    if (s->security.is_signed) {
+        printf("  Author:       %s\n", s->security.author);
+        printf("  Sig valid:    %s\n", s->security.sig_valid ? "yes" : "no");
+        printf("  Author karma: %lld\n", (long long)s->security.author_karma);
+    }
+    printf("  Max sandbox:  %s\n", steppps_sandbox_name(s->security.max_sandbox));
+    printf("  Requested caps: 0x%04x\n", (unsigned)s->security.requested);
+    printf("  Granted caps:   0x%04x\n", (unsigned)s->security.granted);
+    if (s->security.allowed_path_count > 0) {
+        printf("  Allowed paths (%d):\n", s->security.allowed_path_count);
+        for (int i = 0; i < s->security.allowed_path_count; i++) {
+            printf("    %s\n", s->security.allowed_paths[i]);
+        }
+    }
+    if (s->security.allowed_host_count > 0) {
+        printf("  Allowed hosts (%d):\n", s->security.allowed_host_count);
+        for (int i = 0; i < s->security.allowed_host_count; i++) {
+            printf("    %s\n", s->security.allowed_hosts[i]);
+        }
+    }
+    printf("  Hash:         %.16s...\n", s->security.hash);
+    printf("  Run count:    %u\n", s->security.run_count);
+    printf("  Blacklisted:  %s\n", s->security.blacklisted ? "yes" : "no");
+    printf("  Overall safe: %s\n", steppps_is_safe(s) ? "yes" : "no");
 }

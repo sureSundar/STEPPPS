@@ -2,12 +2,18 @@
  * TBOS Tier-Aware Shell
  * Scales from 4-bit calculators to supercomputers
  *
- * Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   - 15 commands
- * Tier 1: Embedded     (16-bit,   4KB-64KB RAM)   - 26 commands
- * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 35 commands
+ * Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   - 16 commands
+ * Tier 1: Embedded     (16-bit,   4KB-64KB RAM)   - 27 commands
+ * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 36 commands
  * Tier 3: Desktop      (64-bit,   16MB-16GB RAM)  - 45 commands
  * Tier 4: Server       (64-bit,   16GB-1TB RAM)   - 50 commands
  * Tier 5: Supercomputer (64-bit+, 1TB+ distributed) - 54 commands
+ *
+ * steppps show/verify/run/audit is linked directly against the
+ * canonical steppps/v2 runtime (steppps_runtime.c) - real signature
+ * verification and sandboxed execution, not a decorative status
+ * display. show (Tier 0+) is read-only; verify/run/audit climb tiers
+ * by trust/execution risk, the same gating rationale as pxfs/ucfs/rf2s.
  *
  * Real, lossless, genuinely-reversible PXFS compression (pxcompress/
  * pxdecompress/pxstore/pxload/pxsend/pxrecv) is at Tier 0 too - store
@@ -79,6 +85,12 @@
 /* The command table's storage strategy is a HAL capability query, not
  * a hardcoded choice - see tier_shell_init_command_table() below. */
 #include "tbos/hal.h"
+
+/* Canonical STEPPPS v2 runtime (docs/TBOS_CANONICAL_MANIFEST.md) -
+ * linked directly, not a sidecar (see the "direct link vs sidecar"
+ * discussion: Tier 0-3 stay standalone with no assumed companion
+ * process, matching every other command in this file). */
+#include "steppps.h"
 #endif
 
 #ifndef TBOS_TIER
@@ -329,9 +341,10 @@ static int tbos_net_tcp_connect(const char* host, int port, int timeout_sec) {
 #endif /* !_WIN32 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 0 COMMANDS (Calculator: 5 base + 10 real net/fs/compression = 15)
+ * TIER 0 COMMANDS (Calculator: 5 base + 11 real net/fs/compression/
+ * steppps = 16)
  * help, echo, calc, karma, exit, net, ucfs, rf2s, pxencode, pxcompress,
- * pxdecompress, pxstore, pxload, pxsend, pxrecv
+ * pxdecompress, pxstore, pxload, pxsend, pxrecv, steppps
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static int cmd_help(int argc, char** argv);
@@ -789,6 +802,114 @@ static int cmd_pxrecv(int argc, char** argv) {
     add_karma(2);
     return 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * REAL STEPPPS: linked against the canonical runtime (steppps/v2/
+ * steppps_runtime.c - the same one that parses/verifies/sandboxes real
+ * .steppps.json entities, tested earlier this session against the real
+ * example files under steppps/v2/examples/). Not the decorative
+ * "Space: Enabled" status display this used to be -
+ * docs/TBOS_FIRST_ARCHITECTURE.md rule 5 says STEPPPS must be
+ * "operational metadata and policy, not decorative terminology," and
+ * the old cmd_steppps was exactly that violation.
+ *
+ * One command, tier-gated by risk rather than cost, same lesson as
+ * pxfs/ucfs/rf2s being moved to Tier 0: show (read-only, no more
+ * dangerous than pxencode) stays at Tier 0; verify/run climb tiers
+ * because they carry real trust/execution consequences, not because
+ * they're expensive. */
+static int cmd_steppps(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: steppps <command> <file>\n");
+        printf("\n");
+        printf("Commands:\n");
+        printf("  show <file>    - Load, parse, display (Tier 0+)\n");
+        printf("  verify <file>  - Check signature + karma trust (Tier 2+)\n");
+        printf("  run <file>     - Execute in sandbox (Tier 3+)\n");
+        printf("  audit <id>     - Show audit log (Tier 4+)\n");
+        printf("\n");
+        printf("Real canonical runtime (steppps/v2) - loads actual\n");
+        printf("STEPPPS JSON entities, not a capability status display.\n");
+        return 1;
+    }
+
+    const char* subcmd = argv[1];
+
+    if (strcmp(subcmd, "show") == 0) {
+        if (argc < 3) { printf("Usage: steppps show <file>\n"); return 1; }
+        steppps_t s;
+        memset(&s, 0, sizeof(s));
+        if (steppps_load(argv[2], &s) != 0) {
+            printf("steppps: failed to load/parse %s\n", argv[2]);
+            return 1;
+        }
+        steppps_print(&s);
+        steppps_free(&s);
+        add_karma(1);
+        return 0;
+    }
+
+    if (strcmp(subcmd, "verify") == 0) {
+        if (TBOS_TIER < 2) {
+            printf("steppps verify requires Tier 2+ (this build is Tier %d)\n", TBOS_TIER);
+            return 1;
+        }
+        if (argc < 3) { printf("Usage: steppps verify <file>\n"); return 1; }
+        steppps_t s;
+        memset(&s, 0, sizeof(s));
+        if (steppps_load(argv[2], &s) != 0) {
+            printf("steppps: failed to load/parse %s\n", argv[2]);
+            return 1;
+        }
+        int sig_ok = steppps_verify(&s);
+        int trust_ok = steppps_check_trust(&s, g_karma);
+        steppps_print_security(&s);
+        printf("Signature valid: %s\n", sig_ok == 0 ? "yes" : "no");
+        printf("Trust check (your karma %d): %s\n", g_karma, trust_ok == 0 ? "passed" : "failed");
+        steppps_free(&s);
+        add_karma(2);
+        return 0;
+    }
+
+    if (strcmp(subcmd, "run") == 0) {
+        if (TBOS_TIER < 3) {
+            printf("steppps run requires Tier 3+ (this build is Tier %d)\n", TBOS_TIER);
+            return 1;
+        }
+        if (argc < 3) { printf("Usage: steppps run <file>\n"); return 1; }
+        steppps_t s;
+        memset(&s, 0, sizeof(s));
+        if (steppps_load(argv[2], &s) != 0) {
+            printf("steppps: failed to load/parse %s\n", argv[2]);
+            return 1;
+        }
+        steppps_verify(&s);
+        steppps_check_trust(&s, g_karma);
+        int rc = steppps_run(&s);
+        printf("Execution: %s (exit code %d)\n", rc == 0 ? "completed" : "rejected/failed", s.exit_code);
+        add_karma(rc == 0 ? 3 : 1);
+        steppps_free(&s);
+        return 0;
+    }
+
+    if (strcmp(subcmd, "audit") == 0) {
+        if (TBOS_TIER < 4) {
+            printf("steppps audit requires Tier 4+ (this build is Tier %d)\n", TBOS_TIER);
+            return 1;
+        }
+        if (argc < 3) { printf("Usage: steppps audit <id>\n"); return 1; }
+        char log[4096] = {0};
+        if (steppps_audit_get(argv[2], log, sizeof(log)) != 0) {
+            printf("steppps: no audit log found for id '%s'\n", argv[2]);
+            return 1;
+        }
+        printf("%s\n", log);
+        return 0;
+    }
+
+    printf("steppps: unknown command '%s'\n", subcmd);
+    return 1;
+}
 #endif /* !_WIN32 */
 
 static int cmd_echo(int argc, char** argv) {
@@ -842,7 +963,7 @@ static int cmd_exit(int argc, char** argv) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 1 COMMANDS (Embedded: +11 commands = 26 total)
+ * TIER 1 COMMANDS (Embedded: +11 commands = 27 total)
  * Adds: ls, cd, pwd, cat, mkdir, rm, clear, date, whoami, tier, send
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -1028,7 +1149,7 @@ static int cmd_send(int argc, char** argv) {
 #endif /* TBOS_TIER >= 1 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 2 COMMANDS (Retro: +9 commands = 35 total)
+ * TIER 2 COMMANDS (Retro: +9 commands = 36 total)
  * Adds: head, wc, grep, touch, uname, uptime, history, env, resolve
  * (ucfs/rf2s moved to Tier 0 - see top of file)
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -1204,8 +1325,9 @@ static int cmd_resolve(int argc, char** argv) {
 #endif /* TBOS_TIER >= 2 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 3+ COMMANDS (Desktop: +10 commands = 45 total)
- * Adds: meditate, reflect, sangha, dharma, pxfs, steppps, ping, df, ps, http
+ * TIER 3+ COMMANDS (Desktop: +9 commands = 45 total)
+ * Adds: meditate, reflect, sangha, dharma, pxfs, ping, df, ps, http
+ * (steppps moved to Tier 0 - see top of file)
  * (pxencode moved to Tier 0 - see top of file)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -1279,21 +1401,10 @@ static int cmd_pxfs(int argc, char** argv) {
     return 0;
 }
 
-/* pxencode moved to the Tier 0 section above - byte packing costs no
- * more than calc(), no reason to gate it behind Tier 3. */
-
-static int cmd_steppps(int argc, char** argv) {
-    (void)argc; (void)argv;
-    printf("STEPPPS Framework Status:\n");
-    printf("  Space:      %s\n", STEPPPS_SPACE  ? "Enabled" : "Disabled");
-    printf("  Time:       %s\n", STEPPPS_TIME   ? "Enabled" : "Disabled");
-    printf("  Event:      %s\n", STEPPPS_EVENT  ? "Enabled" : "Disabled");
-    printf("  Psychology: %s\n", STEPPPS_PSYCH  ? "Enabled" : "Disabled");
-    printf("  Pixel:      %s\n", STEPPPS_PIXEL  ? "Enabled" : "Disabled");
-    printf("  Prompt:     %s\n", STEPPPS_PROMPT ? "Enabled" : "Disabled");
-    printf("  Script:     %s\n", STEPPPS_SCRIPT ? "Enabled" : "Disabled");
-    return 0;
-}
+/* pxencode and steppps (show/verify/run/audit) both moved to the
+ * Tier 0 section above. steppps used to be a decorative "Space:
+ * Enabled" status display - now it's linked against the canonical
+ * steppps/v2 runtime and loads real entities. */
 
 #ifndef _WIN32
 static int cmd_ping(int argc, char** argv) {
@@ -1582,10 +1693,10 @@ static void register_cmd(const char* name, const char* desc, cmd_handler_t h, in
 
 static void register_all_commands(void) {
     /* Tier 0: Calculator (5 base + net/ucfs/rf2s/pxencode/pxcompress/
-     * pxdecompress/pxstore/pxload/pxsend/pxrecv = 15 commands). All of
-     * this is string/byte parsing and real socket I/O - no cheaper or
-     * more expensive than calc(), so there's no reason to hold any of
-     * it back from the smallest tier. */
+     * pxdecompress/pxstore/pxload/pxsend/pxrecv/steppps = 16 commands).
+     * All of this is string/byte parsing, real socket I/O, and a real
+     * linked STEPPPS parse - none of it costs more than calc(), so
+     * there's no reason to hold any of it back from the smallest tier. */
     register_cmd("help",   "Show available commands",  cmd_help,   0);
     register_cmd("echo",   "Display text",             cmd_echo,   0);
     register_cmd("calc",   "Calculator (+ - * /)",     cmd_calc,   0);
@@ -1602,10 +1713,11 @@ static void register_all_commands(void) {
     register_cmd("pxload",      "Read a file and decompress it",      cmd_pxload,      0);
     register_cmd("pxsend",      "Compress and transmit over TCP",     cmd_pxsend,      0);
     register_cmd("pxrecv",      "Receive and decompress over TCP",    cmd_pxrecv,      0);
+    register_cmd("steppps",     "Real STEPPPS: show/verify/run/audit", cmd_steppps,    0);
 #endif
 
 #if TBOS_TIER >= 1
-    /* Tier 1: Embedded (+10 base + send = 11; cumulative 20) */
+    /* Tier 1: Embedded (+10 base + send = 11; cumulative 27) */
     register_cmd("pwd",    "Print working directory",  cmd_pwd,    1);
     register_cmd("clear",  "Clear screen",             cmd_clear,  1);
     register_cmd("date",   "Show current date/time",   cmd_date,   1);
@@ -1622,7 +1734,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 2
-    /* Tier 2: Retro (+8 base + resolve = 9; cumulative 29) */
+    /* Tier 2: Retro (+8 base + resolve = 9; cumulative 36) */
     register_cmd("history","Show command history",     cmd_history, 2);
     register_cmd("env",    "Show environment",         cmd_env,     2);
 #ifndef _WIN32
@@ -1637,13 +1749,12 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 3
-    /* Tier 3: Desktop (+9 base + http = 10; cumulative 39) */
+    /* Tier 3: Desktop (+8 base + http = 9; cumulative 45) */
     register_cmd("meditate","Mindful break",           cmd_meditate, 3);
     register_cmd("reflect", "Reflect on journey",      cmd_reflect,  3);
     register_cmd("sangha",  "Digital sangha network",  cmd_sangha,   3);
     register_cmd("dharma",  "Dharma of computing",     cmd_dharma,   3);
     register_cmd("pxfs",    "PXFS filesystem info",    cmd_pxfs,     3);
-    register_cmd("steppps", "STEPPPS framework",       cmd_steppps,  3);
 #ifndef _WIN32
     register_cmd("ping",    "Ping a host",             cmd_ping,     3);
     register_cmd("df",      "Disk free space",         cmd_df,       3);
@@ -1653,7 +1764,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 4
-    /* Tier 4: Server (+4 base + listen = 5; cumulative 44) */
+    /* Tier 4: Server (+4 base + listen = 5; cumulative 50) */
 #ifndef _WIN32
     register_cmd("top",     "Process monitor",         cmd_top,      4);
     register_cmd("netstat", "Network connections",     cmd_netstat,  4);
@@ -1664,7 +1775,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 5
-    /* Tier 5: Supercomputer (+3 base + netscan = 4; cumulative 48) */
+    /* Tier 5: Supercomputer (+3 base + netscan = 4; cumulative 54) */
     register_cmd("cluster",     "Cluster status",      cmd_cluster,      5);
     register_cmd("consciousness","AI consciousness",   cmd_consciousness,5);
     register_cmd("quantum",     "Quantum simulation",  cmd_quantum,      5);
@@ -1764,6 +1875,9 @@ int main(int argc, char** argv) {
     /* Initialize */
     getcwd(g_cwd, sizeof(g_cwd));
     tier_shell_init_command_table();
+#ifndef _WIN32
+    steppps_runtime_init();
+#endif
     register_all_commands();
 
     /* Banner */
