@@ -20,6 +20,11 @@ typedef struct {
     uint32_t has_timer : 1;
     uint32_t has_input : 1;
     uint32_t has_network : 1;
+    uint32_t has_dynamic_memory : 1;  /* 0 on platforms with no heap (real
+                                        * bare-metal Tier 0/1 targets) -
+                                        * callers must fall back to a
+                                        * static, fixed-capacity structure
+                                        * rather than call memory.alloc. */
 } hal_capabilities_t;
 
 typedef struct {
@@ -64,6 +69,20 @@ typedef struct {
                              char* from_addr, uint16_t* from_port);
 } hal_network_ops_t;
 
+/**
+ * @brief HAL Memory Operations
+ * Only meaningful when hal_capabilities_t.has_dynamic_memory is set.
+ * Platforms without a heap (caps.has_dynamic_memory == 0) leave these
+ * NULL - callers must check the capability before calling through this
+ * table, the same discipline already used for storage/input on
+ * bare-metal (see kernel/hal_baremetal.c).
+ */
+typedef struct {
+    void* (*alloc)(size_t size);
+    void* (*realloc)(void* ptr, size_t new_size);
+    void  (*free)(void* ptr);
+} hal_memory_ops_t;
+
 typedef struct {
     void (*init)(void);
     hal_capabilities_t (*capabilities)(void);
@@ -72,6 +91,7 @@ typedef struct {
     hal_timer_ops_t timer;
     hal_storage_ops_t storage;
     hal_network_ops_t network;
+    hal_memory_ops_t memory;
 } hal_dispatch_table_t;
 
 const hal_dispatch_table_t* hal_get_dispatch(void);

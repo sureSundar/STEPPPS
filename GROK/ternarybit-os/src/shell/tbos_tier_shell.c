@@ -41,7 +41,15 @@
  * Build (see Makefile target tier-shell-*): gcc -DTBOS_HOSTED -DHOST_BUILD
  *   -DTBOS_TIER=N -Iinclude src/shell/tbos_tier_shell.c
  *   src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c
- *   -o tbos_tier_N
+ *   kernel/hal_hosted.c -o tbos_tier_N
+ *
+ * The command table's storage strategy (grow on a real heap vs a fixed
+ * static array) is decided at runtime via include/tbos/hal.h's
+ * caps.has_dynamic_memory, not hardcoded per tier - see
+ * tier_shell_init_command_table(). Link kernel/hal_baremetal.c instead
+ * of kernel/hal_hosted.c to build against a platform with no heap; the
+ * static-array fallback (still present, not dead code) takes over
+ * automatically.
  */
 
 #include <stdio.h>
@@ -67,6 +75,10 @@
  * a fourth reimplementation of UCFS/RF2S path parsing. */
 #include "fs/ucfs_codec.h"
 #include "fs/rf2s_codec.h"
+
+/* The command table's storage strategy is a HAL capability query, not
+ * a hardcoded choice - see tier_shell_init_command_table() below. */
+#include "tbos/hal.h"
 #endif
 
 #ifndef TBOS_TIER
@@ -212,8 +224,51 @@ static char g_history[HISTORY_SIZE][MAX_INPUT];
 static int g_history_count = 0;
 #endif
 
-static tbos_cmd_t g_commands[MAX_COMMANDS];
+/* Command table: HAL-capability-driven, not hardcoded to one strategy.
+ * caps.has_dynamic_memory decides whether this grows on a real heap
+ * (hosted targets - all 6 tiers in this build today) or stays a fixed
+ * static array (real bare-metal Tier 0/1 targets with no heap at all,
+ * if this is ever cross-compiled against kernel/hal_baremetal.c instead
+ * of kernel/hal_hosted.c). Static array is a real fallback, not dead
+ * code - it's still what the smallest real targets must use.
+ *
+ * No HAL adapter is linked for _WIN32 in this build, so it keeps the
+ * plain static array unconditionally - which is fine, since every
+ * command that could grow the table past MAX_COMMANDS is itself
+ * #ifndef _WIN32 (net/ucfs/rf2s/pxcompress/send/etc), so a Windows
+ * build's command count is already far smaller. */
+static tbos_cmd_t g_commands_static[MAX_COMMANDS];
+static tbos_cmd_t* g_commands = g_commands_static;
 static int g_command_count = 0;
+static int g_command_capacity = MAX_COMMANDS;
+
+#ifndef _WIN32
+static int g_using_dynamic_memory = 0;
+static const hal_dispatch_table_t* g_hal = NULL;
+
+static void tier_shell_init_command_table(void) {
+    g_hal = hal_get_dispatch();
+    if (!g_hal || !g_hal->capabilities) return;
+
+    hal_capabilities_t caps = g_hal->capabilities();
+    if (!caps.has_dynamic_memory || !g_hal->memory.alloc || !g_hal->memory.realloc) {
+        return;  /* stay on the static array - this platform has no heap */
+    }
+
+    int initial_capacity = 16;
+    tbos_cmd_t* dynamic = (tbos_cmd_t*)g_hal->memory.alloc(sizeof(tbos_cmd_t) * (size_t)initial_capacity);
+    if (!dynamic) {
+        /* Capability claimed available but allocation failed anyway -
+         * fall back safely rather than crash. */
+        return;
+    }
+    g_commands = dynamic;
+    g_command_capacity = initial_capacity;
+    g_using_dynamic_memory = 1;
+}
+#else
+static void tier_shell_init_command_table(void) { /* static array only */ }
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * UTILITY FUNCTIONS
@@ -836,7 +891,18 @@ static int cmd_tier(int argc, char** argv) {
     if (STEPPPS_PROMPT) printf("P");
     if (STEPPPS_SCRIPT) printf("S");
     printf("\n");
-    printf("  Commands: %d available\n", g_command_count);
+    printf("  Commands: %d available (capacity %d)\n", g_command_count, g_command_capacity);
+#ifndef _WIN32
+    printf("  Command table memory: %s",
+           g_using_dynamic_memory ? "dynamic (HAL heap, grows via realloc)"
+                                   : "static (fixed array, no heap on this platform)");
+    if (g_hal && g_hal->capabilities) {
+        printf(" [HAL caps.has_dynamic_memory=%d]", g_hal->capabilities().has_dynamic_memory);
+    }
+    printf("\n");
+#else
+    printf("  Command table memory: static (fixed array, no HAL adapter on _WIN32)\n");
+#endif
     return 0;
 }
 
@@ -1481,14 +1547,32 @@ static int cmd_help(int argc, char** argv) {
 
 static void register_cmd(const char* name, const char* desc, cmd_handler_t h, int tier) {
     if (TBOS_TIER < tier) return;
-    if (g_command_count >= MAX_COMMANDS) {
-        /* This used to fail silently - a command would just never be
-         * reachable with no indication why. Surfacing it at startup
-         * turns a silent capability gap into a build-time-visible bug. */
-        fprintf(stderr, "warning: MAX_COMMANDS (%d) exceeded, '%s' not registered\n",
-                MAX_COMMANDS, name);
-        return;
+
+    if (g_command_count >= g_command_capacity) {
+#ifndef _WIN32
+        if (g_using_dynamic_memory && g_hal && g_hal->memory.realloc) {
+            int new_capacity = g_command_capacity * 2;
+            tbos_cmd_t* grown = (tbos_cmd_t*)g_hal->memory.realloc(
+                g_commands, sizeof(tbos_cmd_t) * (size_t)new_capacity);
+            if (!grown) {
+                fprintf(stderr, "warning: command table realloc failed, '%s' not registered\n", name);
+                return;
+            }
+            g_commands = grown;
+            g_command_capacity = new_capacity;
+        } else
+#endif
+        {
+            /* Static array exhausted (no heap on this platform, or HAL
+             * unavailable) - this used to fail silently with zero
+             * indication why. Surfacing it turns a silent capability
+             * gap into a build-time-visible bug. */
+            fprintf(stderr, "warning: command table capacity (%d) exceeded, '%s' not registered\n",
+                    g_command_capacity, name);
+            return;
+        }
     }
+
     g_commands[g_command_count].name = name;
     g_commands[g_command_count].desc = desc;
     g_commands[g_command_count].handler = h;
@@ -1679,6 +1763,7 @@ int main(int argc, char** argv) {
 
     /* Initialize */
     getcwd(g_cwd, sizeof(g_cwd));
+    tier_shell_init_command_table();
     register_all_commands();
 
     /* Banner */

@@ -783,6 +783,11 @@ TIER_SHELL_SRC := src/shell/tbos_tier_shell.c
 # Canonical path codecs (docs/TBOS_CANONICAL_MANIFEST.md), reused for the
 # tier shell's ucfs/rf2s commands instead of a fourth reimplementation.
 TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c
+# Hosted HAL adapter - the tier shell's command table asks
+# caps.has_dynamic_memory instead of hardcoding a storage strategy.
+# Link kernel/hal_baremetal.c instead to build against a platform with
+# no heap; the static-array fallback in the shell takes over.
+TIER_SHELL_HAL_SRCS := kernel/hal_hosted.c
 
 tier-info:
 	@echo ""
@@ -891,27 +896,27 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@echo "TCP socket, extract back byte-exact (pxcompress/pxstore/pxsend and"
 	@echo "their pxdecompress/pxload/pxrecv counterparts)."
 
-$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator Shell (15 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 1] Building Embedded Shell (26 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 2] Building Retro Shell (35 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 3] Building Desktop Shell (45 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 4] Building Server Shell (50 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 5] Building Supercomputer Shell (54 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $^
 

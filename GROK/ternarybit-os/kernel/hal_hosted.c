@@ -99,7 +99,24 @@ static hal_capabilities_t hal_hosted_capabilities(void) {
     caps.has_input = 1;
     caps.has_timer = 1;
     caps.has_network = 1;
+    caps.has_dynamic_memory = 1;  /* Real heap available (host libc). */
     return caps;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MEMORY OPERATIONS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static void* hal_hosted_mem_alloc(size_t size) {
+    return malloc(size);
+}
+
+static void* hal_hosted_mem_realloc(void* ptr, size_t new_size) {
+    return realloc(ptr, new_size);
+}
+
+static void hal_hosted_mem_free(void* ptr) {
+    free(ptr);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -277,6 +294,11 @@ static const hal_dispatch_table_t DISPATCH = {
         .get_local_ip = hal_hosted_net_get_local_ip,
         .sendto = hal_hosted_net_sendto,
         .recvfrom = hal_hosted_net_recvfrom,
+    },
+    .memory = {
+        .alloc = hal_hosted_mem_alloc,
+        .realloc = hal_hosted_mem_realloc,
+        .free = hal_hosted_mem_free,
     },
 };
 

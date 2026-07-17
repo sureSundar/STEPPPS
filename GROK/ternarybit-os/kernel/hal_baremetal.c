@@ -63,6 +63,8 @@ static hal_capabilities_t hal_baremetal_capabilities(void) {
     caps.has_input = 0;
     caps.has_storage = 0;
     caps.has_network = 0;
+    caps.has_dynamic_memory = 0;  /* No heap - callers must use a static,
+                                    * fixed-capacity structure instead. */
     return caps;
 }
 
