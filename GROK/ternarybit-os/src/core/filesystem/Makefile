@@ -27,6 +27,8 @@ INCLUDES := -I$(INCDIR)/fs
 # Source files
 PXFS_CORE_SRC := pxfs_core.c
 PXFS_FUSE_SRC := pxfs_fuse.c
+STEPPPS_XATTR_SRC := steppps_xattr.c
+PXFS_STEPPPS_SRC := ../../../fs/pxfs_steppps.c
 UCFS_FUSE_SRC := ucfs_fuse.c
 RF2S_FUSE_SRC := rf2s_fuse.c
 MKFS_SRC := $(TOOLSDIR)/mkfs.pxfs.c
@@ -63,8 +65,11 @@ $(PXFS_CORE_OBJ): $(PXFS_CORE_SRC) $(INCDIR)/fs/pxfs.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 # PXFS FUSE driver
-$(PXFS_FUSE): $(PXFS_FUSE_SRC) $(PXFS_CORE_OBJ) $(INCDIR)/fs/pxfs.h
-	$(CC) $(CFLAGS) $(INCLUDES) $(FUSE_CFLAGS) $< $(PXFS_CORE_OBJ) -o $@ $(FUSE_LDFLAGS)
+$(PXFS_FUSE): $(PXFS_FUSE_SRC) $(STEPPPS_XATTR_SRC) $(PXFS_STEPPPS_SRC) \
+              $(PXFS_CORE_OBJ) $(INCDIR)/fs/pxfs.h steppps_xattr.h
+	$(CC) $(CFLAGS) $(INCLUDES) $(FUSE_CFLAGS) \
+		$(PXFS_FUSE_SRC) $(STEPPPS_XATTR_SRC) $(PXFS_STEPPPS_SRC) \
+		$(PXFS_CORE_OBJ) -o $@ $(FUSE_LDFLAGS)
 
 # UCFS FUSE driver
 $(UCFS_FUSE): $(UCFS_FUSE_SRC)

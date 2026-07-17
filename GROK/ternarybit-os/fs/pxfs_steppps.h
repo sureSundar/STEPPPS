@@ -39,15 +39,15 @@ extern "C" {
 /* CONSTANTS                                                                  */
 /* ========================================================================= */
 
-#define PXFS_MAGIC          "PXFS"
-#define PXFS_VERSION        2
+#define PXFS_STEPPPS_MAGIC          "PXFS"
+#define PXFS_STEPPPS_VERSION        2
 #define PXFS_FLAG_STEPPPS   0x01    /* Has STEPPPS header */
 #define PXFS_FLAG_SIGNED    0x02    /* STEPPPS is signed */
 #define PXFS_FLAG_ENCRYPTED 0x04    /* Content is encrypted */
 #define PXFS_FLAG_COMPRESSED 0x08   /* Content is compressed */
 
-#define PXFS_HEADER_SIZE    8       /* Magic(4) + Version(1) + Flags(1) + StepppsLen(2) */
-#define PXFS_MAX_STEPPPS    65535   /* Max STEPPPS JSON size */
+#define PXFS_STEPPPS_HEADER_SIZE    8     /* Magic + version + flags + JSON length */
+#define PXFS_STEPPPS_MAX_JSON       65535 /* Max embedded STEPPPS JSON size */
 
 /* ========================================================================= */
 /* PXFS HEADER                                                                */

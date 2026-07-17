@@ -31,6 +31,8 @@
 #include <pthread.h>
 
 #include "pxfs.h"
+#include "steppps_xattr.h"
+#include "../../../fs/pxfs_steppps.h"
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * INTERNAL STRUCTURES
@@ -49,6 +51,7 @@ typedef struct pxfs_entry {
     struct pxfs_entry* parent;
     struct pxfs_entry* children;    /* First child (for directories) */
     struct pxfs_entry* next;        /* Next sibling */
+    steppps_xattr_t steppps;        /* STEPPPS 7-dimension metadata */
 } pxfs_entry_t;
 
 /**
@@ -115,7 +118,137 @@ static void pxfs_free_entry(pxfs_entry_t* entry) {
 
     free(entry->name);
     free(entry->data);
+    steppps_xattr_free(&entry->steppps);
     free(entry);
+}
+
+/**
+ * @brief Convert steppps_xattr_t to full JSON string
+ */
+static char* steppps_xattr_to_json(const steppps_xattr_t* xattr) {
+    if (!xattr) return NULL;
+
+    /* Calculate buffer size needed */
+    size_t size = 256;  /* Base overhead */
+    if (xattr->space) size += strlen(xattr->space) + 20;
+    if (xattr->time) size += strlen(xattr->time) + 20;
+    if (xattr->event) size += strlen(xattr->event) + 20;
+    if (xattr->psychology) size += strlen(xattr->psychology) + 20;
+    if (xattr->pixel) size += strlen(xattr->pixel) + 20;
+    if (xattr->prompt) size += strlen(xattr->prompt) + 20;
+    if (xattr->script) size += strlen(xattr->script) + 20;
+    if (xattr->meta) size += strlen(xattr->meta) + 20;
+
+    char* json = malloc(size);
+    if (!json) return NULL;
+
+    snprintf(json, size,
+        "{"
+        "\"steppps_version\":\"1.0\","
+        "\"S_space\":%s,"
+        "\"T_time\":%s,"
+        "\"E_event\":%s,"
+        "\"P_psychology\":%s,"
+        "\"P_pixel\":%s,"
+        "\"P_prompt\":%s,"
+        "\"S_script\":%s,"
+        "\"meta\":%s"
+        "}",
+        xattr->space ? xattr->space : "{}",
+        xattr->time ? xattr->time : "{}",
+        xattr->event ? xattr->event : "{}",
+        xattr->psychology ? xattr->psychology : "{}",
+        xattr->pixel ? xattr->pixel : "{}",
+        xattr->prompt ? xattr->prompt : "{}",
+        xattr->script ? xattr->script : "{}",
+        xattr->meta ? xattr->meta : "{}"
+    );
+
+    return json;
+}
+
+/**
+ * @brief Embed STEPPPS into entry's data (PXFS format)
+ */
+static int pxfs_embed_steppps(pxfs_entry_t* entry) {
+    if (!entry) return -1;
+
+    char* steppps_json = steppps_xattr_to_json(&entry->steppps);
+    if (!steppps_json) return -1;
+
+    /* Get current content (if any) */
+    uint8_t* content = entry->data;
+    size_t content_len = entry->inode.size;
+
+    /* Check if data is already in PXFS format - extract raw content */
+    if (content && content_len >= PXFS_STEPPPS_HEADER_SIZE &&
+        pxfs_has_steppps(content, content_len)) {
+        /* Extract raw content from existing PXFS data */
+        size_t raw_len = 0;
+        uint8_t* raw_content = malloc(content_len);
+        if (raw_content) {
+            pxfs_read_with_steppps(content, content_len, NULL, 0,
+                                   raw_content, content_len, &raw_len);
+            content = raw_content;
+            content_len = raw_len;
+        }
+    }
+
+    /* Calculate output size */
+    size_t steppps_len = strlen(steppps_json);
+    size_t steppps_pixels = (steppps_len + 2) / 3;
+    size_t content_pixels = (content_len + 2) / 3;
+    size_t output_size = PXFS_STEPPPS_HEADER_SIZE +
+                         (steppps_pixels * 3) + (content_pixels * 3);
+
+    /* Allocate output buffer */
+    uint8_t* output = malloc(output_size + 256);  /* Extra space */
+    if (!output) {
+        free(steppps_json);
+        return -ENOMEM;
+    }
+
+    size_t output_len = 0;
+    int ret = pxfs_create_with_steppps(steppps_json, content, content_len,
+                                        output, output_size + 256, &output_len);
+    free(steppps_json);
+
+    if (ret != 0) {
+        free(output);
+        return -1;
+    }
+
+    /* Replace entry data with PXFS formatted data */
+    free(entry->data);
+    entry->data = output;
+    entry->data_capacity = output_size + 256;
+    entry->inode.size = output_len;
+    entry->dirty = true;
+
+    return 0;
+}
+
+/**
+ * @brief Initialize STEPPPS metadata for an entry
+ */
+static void pxfs_init_steppps(pxfs_entry_t* entry, const char* path) {
+    steppps_create_ctx_t ctx = {
+        .path = path,
+        .filesystem = "pxfs",
+        .realm = "bhulok",
+        .owner = "steppps://human/owner",  /* TODO: Get from context */
+        .sangha = NULL,
+        .nation = "steppps://nation/bharat",
+        .creation_prompt = "Created via PXFS FUSE",
+        .is_directory = S_ISDIR(entry->inode.mode),
+        .mode = entry->inode.mode,
+        .uid = entry->inode.uid,
+        .gid = entry->inode.gid,
+        .size = entry->inode.size,
+        .mime_type = NULL
+    };
+
+    steppps_xattr_create(&entry->steppps, &ctx);
 }
 
 /**
@@ -440,6 +573,10 @@ static int pxfs_fuse_create(const char* path, mode_t mode,
     pxfs_add_child(parent, entry);
     g_fs->superblock.free_inodes--;
 
+    /* Initialize STEPPPS metadata and embed in file */
+    pxfs_init_steppps(entry, path);
+    pxfs_embed_steppps(entry);
+
     fi->fh = (uint64_t)(uintptr_t)entry;
 
     pthread_mutex_unlock(&g_fs->lock);
@@ -484,6 +621,9 @@ static int pxfs_fuse_mkdir(const char* path, mode_t mode) {
 
     pxfs_add_child(parent, entry);
     g_fs->superblock.free_inodes--;
+
+    /* Initialize STEPPPS metadata */
+    pxfs_init_steppps(entry, path);
 
     pthread_mutex_unlock(&g_fs->lock);
     return 0;
@@ -748,6 +888,112 @@ static void pxfs_fuse_destroy(void* private_data) {
     g_fs = NULL;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STEPPPS EXTENDED ATTRIBUTES
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#ifdef __APPLE__
+static int pxfs_fuse_getxattr(const char* path, const char* name, char* value,
+                               size_t size, uint32_t position) {
+    (void)position;
+#else
+static int pxfs_fuse_getxattr(const char* path, const char* name, char* value,
+                               size_t size) {
+#endif
+    pthread_mutex_lock(&g_fs->lock);
+
+    pxfs_entry_t* entry = pxfs_find_entry(path);
+    if (!entry) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENOENT;
+    }
+
+    /* Only handle STEPPPS attributes */
+    if (!steppps_xattr_is_steppps(name)) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENODATA;
+    }
+
+    ssize_t ret = steppps_xattr_get(&entry->steppps, name, value, size);
+
+    pthread_mutex_unlock(&g_fs->lock);
+    return (int)ret;
+}
+
+#ifdef __APPLE__
+static int pxfs_fuse_setxattr(const char* path, const char* name,
+                               const char* value, size_t size, int flags,
+                               uint32_t position) {
+    (void)position;
+#else
+static int pxfs_fuse_setxattr(const char* path, const char* name,
+                               const char* value, size_t size, int flags) {
+#endif
+    if (g_fs->read_only) return -EROFS;
+
+    pthread_mutex_lock(&g_fs->lock);
+
+    pxfs_entry_t* entry = pxfs_find_entry(path);
+    if (!entry) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENOENT;
+    }
+
+    /* Only handle STEPPPS attributes */
+    if (!steppps_xattr_is_steppps(name)) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENOTSUP;
+    }
+
+    int ret = steppps_xattr_set(&entry->steppps, name, value, size, flags);
+
+    /* Sync xattr change back to embedded STEPPPS */
+    if (ret == 0) {
+        pxfs_embed_steppps(entry);
+    }
+
+    pthread_mutex_unlock(&g_fs->lock);
+    return ret;
+}
+
+static int pxfs_fuse_listxattr(const char* path, char* list, size_t size) {
+    pthread_mutex_lock(&g_fs->lock);
+
+    pxfs_entry_t* entry = pxfs_find_entry(path);
+    if (!entry) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENOENT;
+    }
+
+    ssize_t ret = steppps_xattr_list(&entry->steppps, list, size);
+
+    pthread_mutex_unlock(&g_fs->lock);
+    return (int)ret;
+}
+
+static int pxfs_fuse_removexattr(const char* path, const char* name) {
+    if (g_fs->read_only) return -EROFS;
+
+    pthread_mutex_lock(&g_fs->lock);
+
+    pxfs_entry_t* entry = pxfs_find_entry(path);
+    if (!entry) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENOENT;
+    }
+
+    /* Only handle STEPPPS attributes */
+    if (!steppps_xattr_is_steppps(name)) {
+        pthread_mutex_unlock(&g_fs->lock);
+        return -ENODATA;
+    }
+
+    int ret = steppps_xattr_remove(&entry->steppps, name);
+
+    pthread_mutex_unlock(&g_fs->lock);
+    return ret;
+}
+
 /* FUSE operations table */
 static const struct fuse_operations pxfs_fuse_ops = {
     .init       = pxfs_fuse_init,
@@ -769,6 +1015,11 @@ static const struct fuse_operations pxfs_fuse_ops = {
     .release    = pxfs_fuse_release,
     .fsync      = pxfs_fuse_fsync,
     .statfs     = pxfs_fuse_statfs,
+    /* STEPPPS extended attributes */
+    .getxattr   = pxfs_fuse_getxattr,
+    .setxattr   = pxfs_fuse_setxattr,
+    .listxattr  = pxfs_fuse_listxattr,
+    .removexattr = pxfs_fuse_removexattr,
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -831,6 +1082,9 @@ int pxfs_mount(const pxfs_mount_opts_t* opts, pxfs_fs_t** fs_out) {
         return -ENOMEM;
     }
     fs->root->inode.links = 2;
+
+    /* Initialize STEPPPS for root directory */
+    pxfs_init_steppps(fs->root, "/");
 
     *fs_out = fs;
     return 0;
