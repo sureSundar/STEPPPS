@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+config_file="${XDG_CONFIG_HOME:-$HOME/.config}/tbos/hosted.conf"
+if [ -r "$config_file" ]; then
+    # This file is created by a TBOS installer and contains shell assignments.
+    # shellcheck disable=SC1090
+    . "$config_file"
+fi
+
+export TBOS_HOSTED=1
+export TBOS_HOST_OS="${TBOS_HOST_OS:-linux}"
+runtime_root="${XDG_RUNTIME_DIR:-/tmp}"
+export TBOS_FS_ROOT="${TBOS_FS_ROOT:-$runtime_root/tbos-$(id -u)}"
+
+mkdir -p "$TBOS_FS_ROOT/pxfs" "$TBOS_FS_ROOT/ucfs" "$TBOS_FS_ROOT/rf2s"
+
+if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    echo "tbos-desktop-session: no Wayland or X11 display is available" >&2
+    exit 69
+fi
+
+exec "${TBOS_DESKTOP_BIN:-/usr/bin/tbos-desktop}" "$@"

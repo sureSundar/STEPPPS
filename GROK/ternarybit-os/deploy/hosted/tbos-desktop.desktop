@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=TernaryBit OS Desktop
+Comment=Hosted TBOS desktop and STEPPPS environment
+Exec=/usr/bin/tbos-desktop-session
+Icon=computer
+Terminal=false
+Categories=System;Utility;
