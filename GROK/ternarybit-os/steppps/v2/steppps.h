@@ -210,6 +210,7 @@ typedef struct {
     char id[128];
     char name[256];
     char version[16];
+    char kind[32];
 
     /* 7 Dimensions */
     steppps_space_t  space;     /* S */

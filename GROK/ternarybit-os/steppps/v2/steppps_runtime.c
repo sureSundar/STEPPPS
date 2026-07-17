@@ -45,17 +45,105 @@ static const char* json_skip_ws(const char* p) {
     return p;
 }
 
+static const char* json_skip_string(const char* p) {
+    if (!p || *p != '"') return NULL;
+    p++;
+    while (*p) {
+        if (*p == '\\') {
+            if (!p[1]) return NULL;
+            p += 2;
+        } else if (*p == '"') {
+            return p + 1;
+        } else {
+            p++;
+        }
+    }
+    return NULL;
+}
+
+static const char* json_skip_value(const char* p) {
+    char open;
+    char close;
+    int depth;
+
+    p = json_skip_ws(p);
+    if (!p || !*p) return NULL;
+    if (*p == '"') return json_skip_string(p);
+
+    if (*p == '{' || *p == '[') {
+        open = *p;
+        close = open == '{' ? '}' : ']';
+        depth = 1;
+        p++;
+        while (*p && depth > 0) {
+            if (*p == '"') {
+                p = json_skip_string(p);
+                if (!p) return NULL;
+                continue;
+            }
+            if (*p == open) depth++;
+            else if (*p == close) depth--;
+            p++;
+        }
+        return depth == 0 ? p : NULL;
+    }
+
+    while (*p && *p != ',' && *p != '}' && *p != ']') p++;
+    return p;
+}
+
+/* Find a direct member of one JSON object; nested objects are not searched. */
+static const char* json_find_member(const char* object, const char* key) {
+    const char* p;
+    size_t key_len;
+
+    if (!object || !key) return NULL;
+    p = json_skip_ws(object);
+    if (*p != '{') return NULL;
+    p++;
+    key_len = strlen(key);
+
+    while (*p) {
+        const char* key_start;
+        const char* key_end;
+        const char* value;
+
+        p = json_skip_ws(p);
+        if (*p == '}') return NULL;
+        if (*p != '"') return NULL;
+
+        key_start = p + 1;
+        key_end = json_skip_string(p);
+        if (!key_end) return NULL;
+
+        p = json_skip_ws(key_end);
+        if (*p != ':') return NULL;
+        value = json_skip_ws(p + 1);
+
+        if ((size_t)((key_end - 1) - key_start) == key_len &&
+            strncmp(key_start, key, key_len) == 0) {
+            return value;
+        }
+
+        p = json_skip_value(value);
+        if (!p) return NULL;
+        p = json_skip_ws(p);
+        if (*p == ',') {
+            p++;
+            continue;
+        }
+        if (*p == '}') return NULL;
+        return NULL;
+    }
+    return NULL;
+}
+
 static char* json_get_string(const char* json, const char* key, char* buf, size_t len) {
-    char search[256];
-    snprintf(search, sizeof(search), "\"%s\"", key);
-
-    const char* pos = strstr(json, search);
-    if (!pos) { buf[0] = '\0'; return NULL; }
-
-    pos = strchr(pos + strlen(search), ':');
-    if (!pos) { buf[0] = '\0'; return NULL; }
-
-    pos = json_skip_ws(pos + 1);
+    const char* pos = json_find_member(json, key);
+    if (!pos || !buf || len == 0) {
+        if (buf && len) buf[0] = '\0';
+        return NULL;
+    }
 
     if (*pos == '"') {
         pos++;
@@ -85,59 +173,21 @@ static char* json_get_string(const char* json, const char* key, char* buf, size_
 }
 
 static int64_t json_get_int(const char* json, const char* key, int64_t def) {
-    char search[256];
-    snprintf(search, sizeof(search), "\"%s\"", key);
-
-    const char* pos = strstr(json, search);
+    const char* pos = json_find_member(json, key);
     if (!pos) return def;
-
-    pos = strchr(pos + strlen(search), ':');
-    if (!pos) return def;
-
-    pos = json_skip_ws(pos + 1);
     return strtoll(pos, NULL, 10);
 }
 
 static double json_get_double(const char* json, const char* key, double def) {
-    char search[256];
-    snprintf(search, sizeof(search), "\"%s\"", key);
-
-    const char* pos = strstr(json, search);
+    const char* pos = json_find_member(json, key);
     if (!pos) return def;
-
-    pos = strchr(pos + strlen(search), ':');
-    if (!pos) return def;
-
-    pos = json_skip_ws(pos + 1);
     return strtod(pos, NULL);
-}
-
-static bool json_get_bool(const char* json, const char* key, bool def) {
-    char search[256];
-    snprintf(search, sizeof(search), "\"%s\"", key);
-
-    const char* pos = strstr(json, search);
-    if (!pos) return def;
-
-    pos = strchr(pos + strlen(search), ':');
-    if (!pos) return def;
-
-    pos = json_skip_ws(pos + 1);
-    return (strncmp(pos, "true", 4) == 0);
 }
 
 /* Find nested object and return pointer to its content */
 static const char* json_find_object(const char* json, const char* key) {
-    char search[256];
-    snprintf(search, sizeof(search), "\"%s\"", key);
-
-    const char* pos = strstr(json, search);
+    const char* pos = json_find_member(json, key);
     if (!pos) return NULL;
-
-    pos = strchr(pos + strlen(search), ':');
-    if (!pos) return NULL;
-
-    pos = json_skip_ws(pos + 1);
     if (*pos == '{') return pos;
 
     return NULL;
@@ -215,6 +265,16 @@ int steppps_parse(const char* json, steppps_t* s) {
     json_get_string(json, "id", s->id, sizeof(s->id));
     json_get_string(json, "name", s->name, sizeof(s->name));
     json_get_string(json, "version", s->version, sizeof(s->version));
+    json_get_string(json, "kind", s->kind, sizeof(s->kind));
+    if (!s->version[0]) {
+        json_get_string(json, "steppps_version", s->version, sizeof(s->version));
+    }
+    if (!s->id[0]) {
+        const char* identity = json_find_object(json, "id");
+        if (identity) {
+            json_get_string(identity, "uri", s->id, sizeof(s->id));
+        }
+    }
 
     if (!s->id[0]) return -1;  /* ID is required */
 
@@ -223,13 +283,19 @@ int steppps_parse(const char* json, steppps_t* s) {
 
     /* S - Space */
     const char* space = json_find_object(json, "space");
+    if (!space) space = json_find_object(json, "S_space");
     if (space) {
+        const char* coordinates = json_find_object(space, "coordinates");
         json_get_string(space, "universe", s->space.universe, sizeof(s->space.universe));
-        s->space.lat = json_get_double(space, "lat", 0);
-        s->space.lon = json_get_double(space, "lon", 0);
-        s->space.alt = json_get_double(space, "alt", 0);
+        s->space.lat = json_get_double(coordinates ? coordinates : space, "lat", 0);
+        s->space.lon = json_get_double(coordinates ? coordinates : space, "lon", 0);
+        s->space.alt = json_get_double(coordinates ? coordinates : space, "alt", 0);
         json_get_string(space, "cosmic", s->space.cosmic, sizeof(s->space.cosmic));
         json_get_string(space, "device", s->space.device, sizeof(s->space.device));
+        if (!s->space.device[0]) {
+            json_get_string(space, "device_fingerprint", s->space.device,
+                            sizeof(s->space.device));
+        }
         json_get_string(space, "path", s->space.path, sizeof(s->space.path));
         json_get_string(space, "realm", s->space.realm, sizeof(s->space.realm));
     }
@@ -237,6 +303,7 @@ int steppps_parse(const char* json, steppps_t* s) {
 
     /* T - Time */
     const char* time_obj = json_find_object(json, "time");
+    if (!time_obj) time_obj = json_find_object(json, "T_time");
     if (time_obj) {
         json_get_string(time_obj, "utc", s->time.utc, sizeof(s->time.utc));
         json_get_string(time_obj, "created", s->time.created, sizeof(s->time.created));
@@ -244,9 +311,16 @@ int steppps_parse(const char* json, steppps_t* s) {
         json_get_string(time_obj, "relative", s->time.relative, sizeof(s->time.relative));
         json_get_string(time_obj, "epoch", s->time.epoch, sizeof(s->time.epoch));
     }
+    if (!s->time.created[0]) {
+        json_get_string(json, "created", s->time.created, sizeof(s->time.created));
+    }
+    if (!s->time.utc[0] && s->time.created[0]) {
+        strncpy(s->time.utc, s->time.created, sizeof(s->time.utc) - 1);
+    }
 
     /* E - Event */
     const char* event = json_find_object(json, "event");
+    if (!event) event = json_find_object(json, "E_event");
     if (event) {
         json_get_string(event, "type", s->event.type, sizeof(s->event.type));
         json_get_string(event, "source", s->event.source, sizeof(s->event.source));
@@ -257,20 +331,36 @@ int steppps_parse(const char* json, steppps_t* s) {
 
     /* P - Psychology */
     const char* psych = json_find_object(json, "psychology");
+    if (!psych) psych = json_find_object(json, "P_psychology");
     if (psych) {
         const char* sys = json_find_object(psych, "system");
+        const char* environment = json_find_object(psych, "environment");
         if (sys) {
             s->psych.health = (int)json_get_int(sys, "health", 100);
             s->psych.karma = json_get_int(sys, "karma", 0);
             json_get_string(sys, "consciousness", s->psych.consciousness, sizeof(s->psych.consciousness));
         }
-        json_get_string(psych, "weather", s->psych.weather, sizeof(s->psych.weather));
-        s->psych.temperature = json_get_double(psych, "temperature", 20);
+        json_get_string(environment ? environment : psych, "weather",
+                        s->psych.weather, sizeof(s->psych.weather));
+        s->psych.temperature = json_get_double(
+            environment ? environment : psych, "temperature", 20);
         json_get_string(psych, "intent", s->psych.intent, sizeof(s->psych.intent));
+        if (!s->psych.consciousness[0]) {
+            json_get_string(psych, "consciousness_level", s->psych.consciousness,
+                            sizeof(s->psych.consciousness));
+        }
+    }
+    if (!s->psych.consciousness[0]) {
+        json_get_string(json, "consciousness_level", s->psych.consciousness,
+                        sizeof(s->psych.consciousness));
+    }
+    if (s->psych.karma == 0) {
+        s->psych.karma = json_get_int(json, "karma", 0);
     }
 
     /* P - Prompt */
     const char* prompt = json_find_object(json, "prompt");
+    if (!prompt) prompt = json_find_object(json, "P_prompt");
     if (prompt) {
         json_get_string(prompt, "system", s->prompt.system, sizeof(s->prompt.system));
         json_get_string(prompt, "user", s->prompt.user, sizeof(s->prompt.user));
@@ -282,14 +372,19 @@ int steppps_parse(const char* json, steppps_t* s) {
 
     /* P - Pixel */
     const char* pixel = json_find_object(json, "pixel");
+    if (!pixel) pixel = json_find_object(json, "P_pixel");
     if (pixel) {
         json_get_string(pixel, "type", s->pixel.type, sizeof(s->pixel.type));
+        if (!s->pixel.type[0]) {
+            json_get_string(pixel, "form", s->pixel.type, sizeof(s->pixel.type));
+        }
         json_get_string(pixel, "template", s->pixel.template_str, sizeof(s->pixel.template_str));
         /* data and actions are complex - store raw for now */
     }
 
     /* S - Script */
     const char* script = json_find_object(json, "script");
+    if (!script) script = json_find_object(json, "S_script");
     if (script) {
         json_get_string(script, "lang", s->script.lang, sizeof(s->script.lang));
         json_get_string(script, "code", s->script.code, sizeof(s->script.code));
@@ -607,6 +702,9 @@ int steppps_display(const steppps_t* s) {
     printf("╠═══════════════════════════════════════════════════════════════════╣\n");
     printf("║  ID: %-60s  ║\n", s->id);
     printf("║  Version: %-55s  ║\n", s->version[0] ? s->version : "1.0");
+    if (s->kind[0]) {
+        printf("║  Kind: %-58s  ║\n", s->kind);
+    }
     printf("╠═══════════════════════════════════════════════════════════════════╣\n");
 
     /* S - Space */
