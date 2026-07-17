@@ -752,7 +752,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 2
-    /* Tier 2: Retro (+25 = 40 commands) */
+    /* Tier 2: Retro (+8 = 23 commands) */
     register_cmd("history","Show command history",     cmd_history, 2);
     register_cmd("env",    "Show environment",         cmd_env,     2);
 #ifndef _WIN32
@@ -766,7 +766,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 3
-    /* Tier 3: Desktop (+40 = 80 commands) */
+    /* Tier 3: Desktop (+9 = 32 commands) */
     register_cmd("meditate","Mindful break",           cmd_meditate, 3);
     register_cmd("reflect", "Reflect on journey",      cmd_reflect,  3);
     register_cmd("sangha",  "Digital sangha network",  cmd_sangha,   3);
@@ -781,7 +781,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 4
-    /* Tier 4: Server (+20 = 100 commands) */
+    /* Tier 4: Server (+4 = 36 commands) */
 #ifndef _WIN32
     register_cmd("top",     "Process monitor",         cmd_top,      4);
     register_cmd("netstat", "Network connections",     cmd_netstat,  4);
@@ -791,7 +791,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 5
-    /* Tier 5: Supercomputer (+22 = 122 commands) */
+    /* Tier 5: Supercomputer (+3 = 39 commands) */
     register_cmd("cluster",     "Cluster status",      cmd_cluster,      5);
     register_cmd("consciousness","AI consciousness",   cmd_consciousness,5);
     register_cmd("quantum",     "Quantum simulation",  cmd_quantum,      5);
