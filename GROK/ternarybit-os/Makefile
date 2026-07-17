@@ -874,28 +874,30 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@ls -la $(TIER_BUILD_DIR)/shell_*
 	@echo ""
 	@echo "Commands per tier (verified by running each binary's 'help'):"
-	@echo "  shell_calc    (Tier 0):  6 commands  - help, echo, calc, karma, exit, net"
-	@echo "  shell_embed   (Tier 1): 17 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
-	@echo "  shell_retro   (Tier 2): 28 commands  - + head, grep, wc, history, resolve, ucfs, rf2s"
-	@echo "  shell_desktop (Tier 3): 39 commands  - + meditate, sangha, dharma, ping, http, pxencode"
+	@echo "  shell_calc    (Tier 0):  9 commands  - help, echo, calc, karma, exit, net, ucfs, rf2s, pxencode"
+	@echo "  shell_embed   (Tier 1): 20 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
+	@echo "  shell_retro   (Tier 2): 29 commands  - + head, grep, wc, history, resolve, etc."
+	@echo "  shell_desktop (Tier 3): 39 commands  - + meditate, sangha, dharma, ping, http"
 	@echo "  shell_server  (Tier 4): 44 commands  - + top, netstat, free, lscpu, listen"
 	@echo "  shell_super   (Tier 5): 48 commands  - + cluster, consciousness, quantum, netscan"
 	@echo ""
 	@echo "Every tier has real POSIX-socket networking (net/send/resolve/http/"
 	@echo "listen/netscan), scaled per tier - not system()/popen() shell-outs."
-	@echo "Tier 2+ has real ucfs/rf2s path parsing (canonical codecs, linked"
-	@echo "not reimplemented); Tier 3+ has real PXFS RAW-mode pxencode."
+	@echo "Every tier, including Calculator, has real ucfs/rf2s path parsing"
+	@echo "(canonical codecs, linked not reimplemented) and real PXFS RAW-mode"
+	@echo "pixel encoding (pxencode) - moved down from Tier 2/3, since parsing"
+	@echo "a string costs no more than calc() does."
 
-$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 0] Building Calculator Shell (6 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 0] Building Calculator Shell (9 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 1] Building Embedded Shell (17 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 1] Building Embedded Shell (20 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $^
 
 $(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
-	@echo "[Tier 2] Building Retro Shell (28 commands)..."
+	@echo "[Tier 2] Building Retro Shell (29 commands)..."
 	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $^
 
 $(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
