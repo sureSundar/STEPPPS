@@ -1,6 +1,12 @@
 #ifndef TBOS_ERRNO_H
 #define TBOS_ERRNO_H
 
+#ifdef TBOS_HOSTED
+
+#include <errno.h>
+
+#else
+
 #define EPERM        1
 #define ENOENT       2
 #define ESRCH        3
@@ -36,5 +42,7 @@
 #define ENAMETOOLONG 36
 #define ENOSYS      38
 #define ENOTSUP     95
+
+#endif /* TBOS_HOSTED */
 
 #endif /* TBOS_ERRNO_H */

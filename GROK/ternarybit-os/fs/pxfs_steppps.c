@@ -13,9 +13,22 @@
 /* ========================================================================= */
 
 static bool pxfs_validate_header(const uint8_t* data, size_t len) {
-    if (len < PXFS_STEPPPS_HEADER_SIZE) return false;
+    if (len < PXFS_STEPPPS_V2_HEADER_SIZE) return false;
     if (memcmp(data, PXFS_STEPPPS_MAGIC, 4) != 0) return false;
+    if (data[4] == PXFS_STEPPPS_VERSION && len < PXFS_STEPPPS_HEADER_SIZE) {
+        return false;
+    }
+    if (data[4] != PXFS_STEPPPS_VERSION &&
+        data[4] != PXFS_STEPPPS_VERSION_LEGACY) {
+        return false;
+    }
     return true;
+}
+
+static size_t pxfs_header_size(const pxfs_header_t* hdr) {
+    return hdr->version >= PXFS_STEPPPS_VERSION
+        ? PXFS_STEPPPS_HEADER_SIZE
+        : PXFS_STEPPPS_V2_HEADER_SIZE;
 }
 
 bool pxfs_has_steppps(const uint8_t* data, size_t len) {
@@ -60,6 +73,7 @@ int pxfs_create_with_steppps(
     hdr->version = PXFS_STEPPPS_VERSION;
     hdr->flags = steppps_json ? PXFS_FLAG_STEPPPS : 0;
     hdr->steppps_len = (uint16_t)steppps_len;
+    hdr->content_len = (uint32_t)content_len;
 
     size_t pos = PXFS_STEPPPS_HEADER_SIZE;
 
@@ -102,14 +116,14 @@ int pxfs_read_with_steppps(
     size_t content_max,
     size_t* content_len
 ) {
-    if (!input || input_len < PXFS_STEPPPS_HEADER_SIZE) return -1;
+    if (!input || input_len < PXFS_STEPPPS_V2_HEADER_SIZE) return -1;
 
     /* Validate header */
     if (!pxfs_validate_header(input, input_len)) return -1;
 
     const pxfs_header_t* hdr = (const pxfs_header_t*)input;
 
-    size_t pos = PXFS_STEPPPS_HEADER_SIZE;
+    size_t pos = pxfs_header_size(hdr);
     uint16_t steppps_len = hdr->steppps_len;
 
     /* Read STEPPPS */
@@ -139,12 +153,13 @@ int pxfs_read_with_steppps(
     /* Read content */
     size_t remaining = input_len - pos;
     size_t remaining_pixels = remaining / 3;
-    size_t raw_content_len = remaining_pixels * 3;  /* Approximate */
+    size_t raw_content_len = hdr->version >= PXFS_STEPPPS_VERSION
+        ? hdr->content_len
+        : remaining_pixels * 3;
+    if (raw_content_len > remaining_pixels * 3) return -1;
 
-    /* For exact content length, we'd need it stored in header.
-       For now, return all remaining pixels as content. */
     if (content && content_max > 0) {
-        if (raw_content_len > content_max) raw_content_len = content_max;
+        if (raw_content_len > content_max) return -1;
 
         size_t bytes_read = pxfs_pixels_to_bytes(
             input + pos,
@@ -177,11 +192,12 @@ int pxfs_update_steppps(
 
     /* Read existing content */
     pxfs_header_t* hdr = (pxfs_header_t*)pxfs_data;
+    size_t header_size = pxfs_header_size(hdr);
     uint16_t old_steppps_len = hdr->steppps_len;
     size_t old_steppps_pixels = (old_steppps_len + 2) / 3;
     size_t old_steppps_bytes = old_steppps_pixels * 3;
 
-    size_t content_start = PXFS_STEPPPS_HEADER_SIZE + old_steppps_bytes;
+    size_t content_start = header_size + old_steppps_bytes;
     size_t content_bytes = pxfs_len - content_start;
 
     /* Calculate new sizes */
@@ -191,13 +207,13 @@ int pxfs_update_steppps(
     size_t new_steppps_pixels = (new_steppps_len + 2) / 3;
     size_t new_steppps_bytes = new_steppps_pixels * 3;
 
-    size_t new_total = PXFS_STEPPPS_HEADER_SIZE + new_steppps_bytes + content_bytes;
+    size_t new_total = header_size + new_steppps_bytes + content_bytes;
     if (new_total > pxfs_max) return -1;
 
     /* Shift content if needed */
     if (new_steppps_bytes != old_steppps_bytes) {
         memmove(
-            pxfs_data + PXFS_STEPPPS_HEADER_SIZE + new_steppps_bytes,
+            pxfs_data + header_size + new_steppps_bytes,
             pxfs_data + content_start,
             content_bytes
         );
@@ -210,7 +226,7 @@ int pxfs_update_steppps(
         pxfs_bytes_to_pixels(
             (const uint8_t*)new_steppps_json,
             new_steppps_len,
-            pxfs_data + PXFS_STEPPPS_HEADER_SIZE,
+            pxfs_data + header_size,
             new_steppps_pixels
         );
     } else {
@@ -245,8 +261,10 @@ void pxfs_print_info(const uint8_t* data, size_t len) {
     printf("  STEPPPS:  %d bytes\n", hdr->steppps_len);
 
     size_t steppps_pixels = (hdr->steppps_len + 2) / 3;
-    size_t content_start = PXFS_STEPPPS_HEADER_SIZE + (steppps_pixels * 3);
-    size_t content_bytes = len - content_start;
+    size_t content_start = pxfs_header_size(hdr) + (steppps_pixels * 3);
+    size_t content_bytes = hdr->version >= PXFS_STEPPPS_VERSION
+        ? hdr->content_len
+        : len - content_start;
     printf("  Content:  %zu bytes\n", content_bytes);
     printf("  Total:    %zu bytes\n", len);
 }

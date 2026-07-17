@@ -40,13 +40,15 @@ extern "C" {
 /* ========================================================================= */
 
 #define PXFS_STEPPPS_MAGIC          "PXFS"
-#define PXFS_STEPPPS_VERSION        2
+#define PXFS_STEPPPS_VERSION        3
+#define PXFS_STEPPPS_VERSION_LEGACY 2
 #define PXFS_FLAG_STEPPPS   0x01    /* Has STEPPPS header */
 #define PXFS_FLAG_SIGNED    0x02    /* STEPPPS is signed */
 #define PXFS_FLAG_ENCRYPTED 0x04    /* Content is encrypted */
 #define PXFS_FLAG_COMPRESSED 0x08   /* Content is compressed */
 
-#define PXFS_STEPPPS_HEADER_SIZE    8     /* Magic + version + flags + JSON length */
+#define PXFS_STEPPPS_V2_HEADER_SIZE 8     /* Legacy header without content length */
+#define PXFS_STEPPPS_HEADER_SIZE    12    /* V3 adds exact content length */
 #define PXFS_STEPPPS_MAX_JSON       65535 /* Max embedded STEPPPS JSON size */
 
 /* ========================================================================= */
@@ -58,6 +60,7 @@ typedef struct __attribute__((packed)) {
     uint8_t version;            /* 2 */
     uint8_t flags;              /* PXFS_FLAG_* */
     uint16_t steppps_len;       /* Length of STEPPPS JSON (0 if none) */
+    uint32_t content_len;       /* Exact unpadded content length (v3+) */
 } pxfs_header_t;
 
 /* ========================================================================= */

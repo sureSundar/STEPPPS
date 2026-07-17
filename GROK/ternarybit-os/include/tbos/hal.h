@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sys/types.h>
+
+/* HAL contracts must compile without hosted POSIX headers. */
+typedef ptrdiff_t tbos_ssize_t;
 
 typedef enum {
     HAL_DEVICE_CONSOLE,
@@ -51,15 +53,15 @@ typedef struct {
     int (*bind)(int fd, uint16_t port);
     int (*listen)(int fd, int backlog);
     int (*accept)(int fd, char* remote_addr, uint16_t* remote_port);
-    ssize_t (*send)(int fd, const void* buf, size_t len);
-    ssize_t (*recv)(int fd, void* buf, size_t len);
+    tbos_ssize_t (*send)(int fd, const void* buf, size_t len);
+    tbos_ssize_t (*recv)(int fd, void* buf, size_t len);
     int (*close)(int fd);
     int (*set_nonblocking)(int fd, int enabled);
     int (*get_local_ip)(char* buf, size_t len);
-    ssize_t (*sendto)(int fd, const void* buf, size_t len,
-                      const char* host, uint16_t port);
-    ssize_t (*recvfrom)(int fd, void* buf, size_t len,
-                        char* from_addr, uint16_t* from_port);
+    tbos_ssize_t (*sendto)(int fd, const void* buf, size_t len,
+                           const char* host, uint16_t port);
+    tbos_ssize_t (*recvfrom)(int fd, void* buf, size_t len,
+                             char* from_addr, uint16_t* from_port);
 } hal_network_ops_t;
 
 typedef struct {
