@@ -1,0 +1,7 @@
+# Native GUI build artifacts (src/gui/Makefile)
+src/gui/tbos_gui_demo_standalone
+src/gui/tbos_gui_demo_sdl
+src/gui/tbos_desktop_demo_standalone
+src/gui/tbos_desktop_demo_sdl
+src/gui/*.ppm
+src/gui/*.dSYM/
