@@ -2,12 +2,18 @@
  * TBOS Tier-Aware Shell
  * Scales from 4-bit calculators to supercomputers
  *
- * Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   - 5 commands
- * Tier 1: Embedded     (16-bit,   4KB-64KB RAM)   - 15 commands
- * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 40 commands
- * Tier 3: Desktop      (64-bit,   16MB-16GB RAM)  - 80 commands
- * Tier 4: Server       (64-bit,   16GB-1TB RAM)   - 100 commands
- * Tier 5: Supercomputer (64-bit+, 1TB+ distributed) - 122+ commands
+ * Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   - 6 commands
+ * Tier 1: Embedded     (16-bit,   4KB-64KB RAM)   - 17 commands
+ * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 26 commands
+ * Tier 3: Desktop      (64-bit,   16MB-16GB RAM)  - 36 commands
+ * Tier 4: Server       (64-bit,   16GB-1TB RAM)   - 41 commands
+ * Tier 5: Supercomputer (64-bit+, 1TB+ distributed) - 45 commands
+ *
+ * Every tier from Calculator to Supercomputer has real POSIX-socket
+ * networking (net/send/resolve/http/listen/netscan), scaled to what's
+ * thematically appropriate per tier - not system()/popen() shell-outs.
+ * See tbos_net_tcp_connect() - the one primitive every tier's network
+ * command is built on.
  *
  * Build: gcc -DTBOS_TIER=N -o tbos_tier_N src/shell/tbos_tier_shell.c -Iinclude
  */
@@ -17,6 +23,18 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+
+#ifndef _WIN32
+/* Real POSIX sockets, available at every tier that can compile them.
+ * Windows needs winsock2 instead - network commands are excluded there,
+ * same as the existing ls/cd/cat/ping/etc POSIX-only commands. */
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#endif
 
 #ifndef TBOS_TIER
 #define TBOS_TIER 3  /* Default to Desktop tier */
@@ -175,13 +193,75 @@ static void add_karma(int amount) {
     if (g_karma < 0) g_karma = 0;
 }
 
+#ifndef _WIN32
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 0 COMMANDS (Calculator: 5 commands)
- * Basic operations only: help, echo, calc, karma, exit
+ * SHARED NETWORK PRIMITIVE
+ * Every tier's network command builds on this one real TCP connect - no
+ * system()/popen() shelling out anywhere in this file's network code.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Connects to host:port over TCP. Returns a connected fd (caller must
+ * close() it) or -1 on failure. timeout_sec bounds both connect and any
+ * later read/write on the returned fd. */
+static int tbos_net_tcp_connect(const char* host, int port, int timeout_sec) {
+    struct addrinfo hints, *res = NULL, *rp;
+    char port_str[8];
+    snprintf(port_str, sizeof(port_str), "%d", port);
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return -1;
+
+    int fd = -1;
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+        fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (fd < 0) continue;
+
+        struct timeval tv;
+        tv.tv_sec = timeout_sec;
+        tv.tv_usec = 0;
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+        if (connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) break;
+        close(fd);
+        fd = -1;
+    }
+    freeaddrinfo(res);
+    return fd;
+}
+#endif /* !_WIN32 */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TIER 0 COMMANDS (Calculator: 5 commands, +1 network = 6)
+ * Basic operations only: help, echo, calc, karma, exit, net
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static int cmd_help(int argc, char** argv);
 static int cmd_exit(int argc, char** argv);
+
+#ifndef _WIN32
+static int cmd_net(int argc, char** argv) {
+    if (argc < 3) {
+        printf("Usage: net <host> <port>\n");
+        printf("Real TCP connect probe - reports open or closed/unreachable.\n");
+        printf("The smallest network primitive; every higher tier's network\n");
+        printf("command is built on this same connect.\n");
+        return 1;
+    }
+    int port = atoi(argv[2]);
+    int fd = tbos_net_tcp_connect(argv[1], port, 3);
+    if (fd >= 0) {
+        printf("%s:%d - OPEN (connected)\n", argv[1], port);
+        close(fd);
+        return 0;
+    }
+    printf("%s:%d - closed or unreachable\n", argv[1], port);
+    return 1;
+}
+#endif
 
 static int cmd_echo(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
@@ -234,8 +314,8 @@ static int cmd_exit(int argc, char** argv) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 1 COMMANDS (Embedded: +10 commands = 15 total)
- * Adds: ls, cd, pwd, cat, mkdir, rm, clear, date, whoami, tier
+ * TIER 1 COMMANDS (Embedded: +11 commands = 17 total)
+ * Adds: ls, cd, pwd, cat, mkdir, rm, clear, date, whoami, tier, send
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 1
@@ -369,13 +449,48 @@ static int cmd_rm(int argc, char** argv) {
 
     return 0;
 }
+
+static int cmd_send(int argc, char** argv) {
+    if (argc < 4) {
+        printf("Usage: send <host> <port> <text...>\n");
+        printf("Connects, writes text terminated with CRLF, prints any reply.\n");
+        return 1;
+    }
+    int port = atoi(argv[2]);
+    int fd = tbos_net_tcp_connect(argv[1], port, 3);
+    if (fd < 0) {
+        printf("send: could not connect to %s:%d\n", argv[1], port);
+        return 1;
+    }
+
+    char msg[512] = {0};
+    for (int i = 3; i < argc; i++) {
+        strncat(msg, argv[i], sizeof(msg) - strlen(msg) - 1);
+        if (i < argc - 1) strncat(msg, " ", sizeof(msg) - strlen(msg) - 1);
+    }
+    strncat(msg, "\r\n", sizeof(msg) - strlen(msg) - 1);
+
+    ssize_t sent = write(fd, msg, strlen(msg));
+    if (sent < 0) { perror("send"); close(fd); return 1; }
+
+    char buf[1024];
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("Reply (%zd bytes):\n%s\n", n, buf);
+    } else {
+        printf("(no reply within timeout)\n");
+    }
+    close(fd);
+    return 0;
+}
 #endif /* !_WIN32 */
 
 #endif /* TBOS_TIER >= 1 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 2 COMMANDS (Retro: +25 commands = 40 total)
- * Adds: head, tail, wc, grep, cp, mv, touch, history, env, uname, etc.
+ * TIER 2 COMMANDS (Retro: +9 commands = 26 total)
+ * Adds: head, wc, grep, touch, uname, uptime, history, env, resolve
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 2
@@ -508,13 +623,47 @@ static int cmd_uptime(int argc, char** argv) {
     printf("System time: %s", ctime(&now));
     return 0;
 }
+
+static int cmd_resolve(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: resolve <hostname>\n");
+        return 1;
+    }
+
+    struct addrinfo hints, *res = NULL, *rp;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    int rc = getaddrinfo(argv[1], NULL, &hints, &res);
+    if (rc != 0) {
+        printf("resolve: %s\n", gai_strerror(rc));
+        return 1;
+    }
+
+    printf("Addresses for %s:\n", argv[1]);
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+        char ipstr[INET6_ADDRSTRLEN];
+        void* addr;
+        if (rp->ai_family == AF_INET) {
+            addr = &((struct sockaddr_in*)rp->ai_addr)->sin_addr;
+        } else {
+            addr = &((struct sockaddr_in6*)rp->ai_addr)->sin6_addr;
+        }
+        inet_ntop(rp->ai_family, addr, ipstr, sizeof(ipstr));
+        printf("  %s\n", ipstr);
+    }
+    freeaddrinfo(res);
+    add_karma(1);
+    return 0;
+}
 #endif /* !_WIN32 */
 
 #endif /* TBOS_TIER >= 2 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 3+ COMMANDS (Desktop: +40 commands = 80 total)
- * Adds: meditate, reflect, sangha, dharma, pxfs, steppps, network tools
+ * TIER 3+ COMMANDS (Desktop: +10 commands = 36 total)
+ * Adds: meditate, reflect, sangha, dharma, pxfs, steppps, ping, df, ps, http
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 3
@@ -621,13 +770,53 @@ static int cmd_ps(int argc, char** argv) {
     (void)argc; (void)argv;
     return system("ps aux | head -20");
 }
+
+static int cmd_http(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: http <host> [path]\n");
+        printf("Real HTTP/1.0 GET over a raw TCP socket to port 80 - no\n");
+        printf("curl/wget subprocess involved.\n");
+        return 1;
+    }
+    const char* path = (argc >= 3) ? argv[2] : "/";
+
+    int fd = tbos_net_tcp_connect(argv[1], 80, 5);
+    if (fd < 0) {
+        printf("http: could not connect to %s:80\n", argv[1]);
+        return 1;
+    }
+
+    char req[512];
+    snprintf(req, sizeof(req),
+             "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n",
+             path, argv[1]);
+    if (write(fd, req, strlen(req)) < 0) {
+        perror("http");
+        close(fd);
+        return 1;
+    }
+
+    char buf[4096];
+    ssize_t n;
+    size_t total = 0;
+    printf("--- response (first 2KB) ---\n");
+    while ((n = read(fd, buf, sizeof(buf) - 1)) > 0 && total < 2048) {
+        buf[n] = '\0';
+        printf("%s", buf);
+        total += (size_t)n;
+    }
+    printf("\n--- %zu bytes shown ---\n", total);
+    close(fd);
+    add_karma(1);
+    return 0;
+}
 #endif
 
 #endif /* TBOS_TIER >= 3 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 4+ COMMANDS (Server: +20 commands = 100 total)
- * Adds: process management, advanced network, monitoring
+ * TIER 4+ COMMANDS (Server: +5 commands = 41 total)
+ * Adds: top, netstat, free, lscpu, listen
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 4
@@ -652,13 +841,73 @@ static int cmd_lscpu(int argc, char** argv) {
     (void)argc; (void)argv;
     return system("lscpu 2>/dev/null || sysctl -a | grep cpu");
 }
+
+/* Minimal single-connection TCP echo server. A "server tier" should be
+ * able to serve, not just consume, the network. Bound to localhost only
+ * on principle - a shell command should not become an unintentional
+ * network-reachable listener (see tbos_api_server.c's fix for why). */
+static int cmd_listen(int argc, char** argv) {
+    int port = (argc >= 2) ? atoi(argv[1]) : 9000;
+
+    int srv = socket(AF_INET, SOCK_STREAM, 0);
+    if (srv < 0) { perror("listen"); return 1; }
+
+    int opt = 1;
+    setsockopt(srv, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port = htons((uint16_t)port);
+
+    if (bind(srv, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("listen: bind");
+        close(srv);
+        return 1;
+    }
+    if (listen(srv, 1) < 0) {
+        perror("listen: listen");
+        close(srv);
+        return 1;
+    }
+
+    printf("Listening on 127.0.0.1:%d (one connection, 10s timeout)...\n", port);
+    printf("Try from another terminal: nc 127.0.0.1 %d\n", port);
+
+    struct timeval tv;
+    tv.tv_sec = 10;
+    tv.tv_usec = 0;
+    setsockopt(srv, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(srv, (struct sockaddr*)&client_addr, &client_len);
+    if (client_fd < 0) {
+        printf("(no connection within timeout)\n");
+        close(srv);
+        return 1;
+    }
+
+    char buf[1024];
+    ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("Received %zd bytes: %s\n", n, buf);
+        write(client_fd, buf, (size_t)n); /* echo back */
+    }
+    close(client_fd);
+    close(srv);
+    add_karma(2);
+    return 0;
+}
 #endif
 
 #endif /* TBOS_TIER >= 4 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 5 COMMANDS (Supercomputer: +22 commands = 122 total)
- * Adds: distributed computing, cluster management, advanced AI hooks
+ * TIER 5 COMMANDS (Supercomputer: +4 commands = 45 total)
+ * Adds: cluster, consciousness, quantum, netscan
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 5
@@ -691,6 +940,39 @@ static int cmd_quantum(int argc, char** argv) {
     printf("  Error Correction: Basic\n");
     return 0;
 }
+
+#ifndef _WIN32
+/* Scans a bounded port range using the same tier-0 connect primitive,
+ * in a loop - "supercomputer tier" gets the aggregate/parallel-flavored
+ * operation, built from the same real socket code every other tier uses,
+ * not a separate implementation. Range is capped so a demo scan stays
+ * fast and doesn't become an accidental network scanner. */
+static int cmd_netscan(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: netscan <host> [startport] [endport]\n");
+        printf("Scans up to 200 ports using the tier-0 TCP connect probe.\n");
+        return 1;
+    }
+    int start = (argc >= 3) ? atoi(argv[2]) : 1;
+    int end = (argc >= 4) ? atoi(argv[3]) : 1024;
+    if (start < 1) start = 1;
+    if (end - start > 200) end = start + 200;
+
+    printf("Scanning %s ports %d-%d...\n", argv[1], start, end);
+    int found = 0;
+    for (int p = start; p <= end; p++) {
+        int fd = tbos_net_tcp_connect(argv[1], p, 1);
+        if (fd >= 0) {
+            printf("  %d/tcp open\n", p);
+            close(fd);
+            found++;
+        }
+    }
+    printf("Scan complete: %d open port(s) found.\n", found);
+    add_karma(1);
+    return 0;
+}
+#endif
 
 #endif /* TBOS_TIER >= 5 */
 
@@ -728,15 +1010,18 @@ static void register_cmd(const char* name, const char* desc, cmd_handler_t h, in
 }
 
 static void register_all_commands(void) {
-    /* Tier 0: Calculator (5 commands) */
+    /* Tier 0: Calculator (5 base + net = 6 commands) */
     register_cmd("help",   "Show available commands",  cmd_help,   0);
     register_cmd("echo",   "Display text",             cmd_echo,   0);
     register_cmd("calc",   "Calculator (+ - * /)",     cmd_calc,   0);
     register_cmd("karma",  "Show karma status",        cmd_karma,  0);
     register_cmd("exit",   "Exit shell",               cmd_exit,   0);
+#ifndef _WIN32
+    register_cmd("net",    "TCP connectivity probe",   cmd_net,    0);
+#endif
 
 #if TBOS_TIER >= 1
-    /* Tier 1: Embedded (+10 = 15 commands) */
+    /* Tier 1: Embedded (+10 base + send = 11; cumulative 17) */
     register_cmd("pwd",    "Print working directory",  cmd_pwd,    1);
     register_cmd("clear",  "Clear screen",             cmd_clear,  1);
     register_cmd("date",   "Show current date/time",   cmd_date,   1);
@@ -748,11 +1033,12 @@ static void register_all_commands(void) {
     register_cmd("cat",    "Display file contents",    cmd_cat,    1);
     register_cmd("mkdir",  "Create directory",         cmd_mkdir,  1);
     register_cmd("rm",     "Remove file",              cmd_rm,     1);
+    register_cmd("send",   "Send raw TCP message, read reply", cmd_send, 1);
 #endif
 #endif
 
 #if TBOS_TIER >= 2
-    /* Tier 2: Retro (+8 = 23 commands) */
+    /* Tier 2: Retro (+8 base + resolve = 9; cumulative 26) */
     register_cmd("history","Show command history",     cmd_history, 2);
     register_cmd("env",    "Show environment",         cmd_env,     2);
 #ifndef _WIN32
@@ -762,11 +1048,12 @@ static void register_all_commands(void) {
     register_cmd("touch",  "Create/update file",       cmd_touch,   2);
     register_cmd("uname",  "System information",       cmd_uname,   2);
     register_cmd("uptime", "System uptime",            cmd_uptime,  2);
+    register_cmd("resolve","DNS resolve a hostname",   cmd_resolve, 2);
 #endif
 #endif
 
 #if TBOS_TIER >= 3
-    /* Tier 3: Desktop (+9 = 32 commands) */
+    /* Tier 3: Desktop (+9 base + http = 10; cumulative 36) */
     register_cmd("meditate","Mindful break",           cmd_meditate, 3);
     register_cmd("reflect", "Reflect on journey",      cmd_reflect,  3);
     register_cmd("sangha",  "Digital sangha network",  cmd_sangha,   3);
@@ -777,24 +1064,29 @@ static void register_all_commands(void) {
     register_cmd("ping",    "Ping a host",             cmd_ping,     3);
     register_cmd("df",      "Disk free space",         cmd_df,       3);
     register_cmd("ps",      "Process status",          cmd_ps,       3);
+    register_cmd("http",    "Real HTTP/1.0 GET client", cmd_http,    3);
 #endif
 #endif
 
 #if TBOS_TIER >= 4
-    /* Tier 4: Server (+4 = 36 commands) */
+    /* Tier 4: Server (+4 base + listen = 5; cumulative 41) */
 #ifndef _WIN32
     register_cmd("top",     "Process monitor",         cmd_top,      4);
     register_cmd("netstat", "Network connections",     cmd_netstat,  4);
     register_cmd("free",    "Memory usage",            cmd_free,     4);
     register_cmd("lscpu",   "CPU information",         cmd_lscpu,    4);
+    register_cmd("listen",  "Minimal TCP echo server (localhost)", cmd_listen, 4);
 #endif
 #endif
 
 #if TBOS_TIER >= 5
-    /* Tier 5: Supercomputer (+3 = 39 commands) */
+    /* Tier 5: Supercomputer (+3 base + netscan = 4; cumulative 45) */
     register_cmd("cluster",     "Cluster status",      cmd_cluster,      5);
     register_cmd("consciousness","AI consciousness",   cmd_consciousness,5);
     register_cmd("quantum",     "Quantum simulation",  cmd_quantum,      5);
+#ifndef _WIN32
+    register_cmd("netscan", "Scan a port range (uses TCP connect probe)", cmd_netscan, 5);
+#endif
 #endif
 }
 

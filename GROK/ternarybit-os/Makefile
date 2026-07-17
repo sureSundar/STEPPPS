@@ -871,35 +871,38 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@ls -la $(TIER_BUILD_DIR)/shell_*
 	@echo ""
 	@echo "Commands per tier (verified by running each binary's 'help'):"
-	@echo "  shell_calc    (Tier 0):  5 commands  - help, echo, calc, karma, exit"
-	@echo "  shell_embed   (Tier 1): 15 commands  - + pwd, ls, cd, cat, mkdir, rm, etc."
-	@echo "  shell_retro   (Tier 2): 23 commands  - + head, grep, wc, history, etc."
-	@echo "  shell_desktop (Tier 3): 32 commands  - + meditate, sangha, dharma, ping"
-	@echo "  shell_server  (Tier 4): 36 commands  - + top, netstat, free, lscpu"
-	@echo "  shell_super   (Tier 5): 39 commands  - + cluster, consciousness, quantum"
+	@echo "  shell_calc    (Tier 0):  6 commands  - help, echo, calc, karma, exit, net"
+	@echo "  shell_embed   (Tier 1): 17 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
+	@echo "  shell_retro   (Tier 2): 26 commands  - + head, grep, wc, history, resolve, etc."
+	@echo "  shell_desktop (Tier 3): 36 commands  - + meditate, sangha, dharma, ping, http"
+	@echo "  shell_server  (Tier 4): 41 commands  - + top, netstat, free, lscpu, listen"
+	@echo "  shell_super   (Tier 5): 45 commands  - + cluster, consciousness, quantum, netscan"
+	@echo ""
+	@echo "Every tier has real POSIX-socket networking (net/send/resolve/http/"
+	@echo "listen/netscan), scaled per tier - not system()/popen() shell-outs."
 
 $(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 0] Building Calculator Shell (5 commands)..."
+	@echo "[Tier 0] Building Calculator Shell (6 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 1] Building Embedded Shell (15 commands)..."
+	@echo "[Tier 1] Building Embedded Shell (17 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 2] Building Retro Shell (23 commands)..."
+	@echo "[Tier 2] Building Retro Shell (26 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 3] Building Desktop Shell (32 commands)..."
+	@echo "[Tier 3] Building Desktop Shell (36 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 4] Building Server Shell (36 commands)..."
+	@echo "[Tier 4] Building Server Shell (41 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 5] Building Supercomputer Shell (39 commands)..."
+	@echo "[Tier 5] Building Supercomputer Shell (45 commands)..."
 	@gcc -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
 
 # Run tier shells interactively
