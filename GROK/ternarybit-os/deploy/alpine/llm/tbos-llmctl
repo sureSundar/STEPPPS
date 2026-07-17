@@ -4,18 +4,33 @@ import json
 import os
 import sys
 import urllib.request
+import urllib.error
 
 API = os.environ.get('TBOS_LLM_PROXY', 'http://127.0.0.1:8088')
 
 def post(path, obj):
     data = json.dumps(obj).encode()
     req = urllib.request.Request(API + path, data=data, headers={'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        try:
+            return json.loads(exc.read().decode())
+        except Exception:
+            return {'ok': False, 'error': f'proxy HTTP {exc.code}: {exc.reason}'}
+    except urllib.error.URLError as exc:
+        return {
+            'ok': False,
+            'error': f'cannot reach TBOS LLM proxy at {API}: {exc.reason}',
+        }
 
 
 def cmd_generate(args):
     res = post('/generate', {'prompt': args.prompt, 'use_grammar': args.use_grammar})
+    if not res.get('ok'):
+        print(json.dumps(res, indent=2), file=sys.stderr)
+        sys.exit(1)
     if args.out:
         with open(args.out, 'w') as f:
             f.write(res.get('text',''))
@@ -32,6 +47,22 @@ def cmd_steppps(args):
         print(json.dumps(res.get('frame', {}), indent=2))
 
 
+def cmd_interact(args):
+    with open(args.file, encoding='utf-8') as f:
+        entity = json.load(f)
+    res = post('/interact', {
+        'entity': entity,
+        'n_predict': args.n_predict,
+    })
+    if not res.get('ok'):
+        print(json.dumps(res, indent=2), file=sys.stderr)
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+    else:
+        print(res.get('text', ''))
+
+
 def main():
     ap = argparse.ArgumentParser(prog='tbos-llmctl', description='TBOS Micro LLM CLI')
     sub = ap.add_subparsers(dest='cmd')
@@ -46,6 +77,12 @@ def main():
     s.add_argument('--intent', required=True)
     s.add_argument('--out', help='rf2s://... or pxfs://... or local path; prints to stdout if omitted')
     s.set_defaults(func=cmd_steppps)
+
+    i = sub.add_parser('interact', help='Run the Prompt dimension of a STEPPPS JSON entity')
+    i.add_argument('--file', required=True, help='STEPPPS JSON entity')
+    i.add_argument('--n-predict', type=int, default=512, help='Maximum generated tokens')
+    i.add_argument('--json', action='store_true', help='Print the complete interaction result')
+    i.set_defaults(func=cmd_interact)
 
     args = ap.parse_args()
     if not args.cmd:
