@@ -17,7 +17,7 @@
 
 /* External kernel functions */
 extern void kernel_print(const char* str);
-extern int shell_execute_command(const char* cmdline);  /* TBOS native command executor */
+#include "shell.h"
 
 /* Forward declarations for internal functions */
 int sh_set_var(const char* name, const char* value);

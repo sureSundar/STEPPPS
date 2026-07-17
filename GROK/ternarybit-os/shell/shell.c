@@ -2,6 +2,7 @@
 // Provides a minimal yet functional shell backed by RAMFS.
 
 #include "shell.h"
+#include "command_provider.h"
 #include "tbos/libc.h"
 #include "tbos/stdio.h"
 #include "tbos/vfs.h"
@@ -53,7 +54,7 @@ static char* trim_spaces(char* str);
 static void normalize_path(const char* input, char* out, size_t out_size);
 static void print_errno_message(const char* prefix);
 static uint8_t shell_serial_read_char(void);
-static void shell_process_command(char* cmd);
+static int shell_process_command(char* cmd);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Command declarations
@@ -942,7 +943,12 @@ static void cmd_reboot(void) {
 
 /* Public function for shell morphing - allow other interpreters to execute TBOS commands */
 int shell_execute_command(const char* cmdline) {
-    if (!cmdline || !*cmdline) return 0;
+    if (!cmdline) return SHELL_STATUS_INVALID_ARGUMENT;
+    if (!*cmdline) return SHELL_STATUS_OK;
+    if (strlen(cmdline) >= MAX_CMD_LENGTH) {
+        kernel_print("shell: command exceeds maximum length\n");
+        return SHELL_STATUS_COMMAND_TOO_LONG;
+    }
 
     /* Make a mutable copy */
     char buffer[MAX_CMD_LENGTH];
@@ -953,18 +959,17 @@ int shell_execute_command(const char* cmdline) {
     const shell_interpreter_t* current = shell_morph_current();
     if (current && strcmp(current->name, "tbos") == 0) {
         /* We're in TBOS mode, execute directly */
-        shell_process_command(buffer);
+        return shell_process_command(buffer);
     } else {
         /* We're in another shell, but being called from that shell to execute TBOS commands */
         /* Execute TBOS command directly */
-        shell_process_command(buffer);
+        return shell_process_command(buffer);
     }
-
-    return 0;
 }
 
-static void shell_process_command(char* cmd) {
-    if (!cmd || !*cmd) return;
+static int shell_process_command(char* cmd) {
+    if (!cmd) return SHELL_STATUS_INVALID_ARGUMENT;
+    if (!*cmd) return SHELL_STATUS_OK;
 
     char* args = cmd;
     while (*args && *args != ' ') args++;
@@ -1139,6 +1144,12 @@ static void shell_process_command(char* cmd) {
         cmd_tee(args);
         karma_delta = 1;
     } else {
+        int provider_status = SHELL_STATUS_UNKNOWN_COMMAND;
+        if (tbos_command_provider_dispatch(cmd, args, &provider_status) ==
+            TBOS_COMMAND_HANDLED) {
+            commands_executed++;
+            return provider_status;
+        }
         handled = false;
     }
 
@@ -1146,11 +1157,12 @@ static void shell_process_command(char* cmd) {
         kernel_print("Unknown command: ");
         kernel_print(cmd);
         kernel_print("\nType 'help' for available commands\n");
-        return;
+        return SHELL_STATUS_UNKNOWN_COMMAND;
     }
 
     commands_executed++;
     user_karma += karma_delta;
+    return SHELL_STATUS_OK;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1165,6 +1177,7 @@ void shell_init(void) {
     commands_executed = 0;
     user_karma = 100;
     consciousness_level = 1;
+    tbos_command_providers_init();
 
     kernel_print("Shell: Initializing morphing framework...\n");
     /* Initialize shell morphing framework */
@@ -1181,6 +1194,22 @@ void shell_init(void) {
     kernel_print("Shell: sh registered\n");
 
     kernel_print("Shell morphing: TBOS + sh interpreters loaded\n");
+}
+
+const char* shell_current_path(void) {
+    return current_path;
+}
+
+uint32_t shell_commands_executed(void) {
+    return commands_executed;
+}
+
+int32_t shell_user_karma(void) {
+    return user_karma;
+}
+
+uint8_t shell_consciousness_level(void) {
+    return consciousness_level;
 }
 
 void shell_loop(void) {
@@ -1212,7 +1241,7 @@ void shell_loop(void) {
                 current->execute(cmd_buffer.buffer);
             } else {
                 /* Fallback to direct execution */
-                shell_process_command(cmd_buffer.buffer);
+                (void)shell_process_command(cmd_buffer.buffer);
             }
 
             cmd_buffer.length = 0;

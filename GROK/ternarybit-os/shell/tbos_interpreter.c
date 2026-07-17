@@ -10,7 +10,7 @@
 
 /* External kernel functions */
 extern void kernel_print(const char* str);
-extern int shell_execute_command(const char* cmdline);
+#include "shell.h"
 
 /* Forward declarations */
 static int tbos_init(void);
