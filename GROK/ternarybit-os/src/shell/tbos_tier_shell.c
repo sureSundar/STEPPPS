@@ -4,18 +4,23 @@
  *
  * Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   - 6 commands
  * Tier 1: Embedded     (16-bit,   4KB-64KB RAM)   - 17 commands
- * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 26 commands
- * Tier 3: Desktop      (64-bit,   16MB-16GB RAM)  - 36 commands
- * Tier 4: Server       (64-bit,   16GB-1TB RAM)   - 41 commands
- * Tier 5: Supercomputer (64-bit+, 1TB+ distributed) - 45 commands
+ * Tier 2: Retro        (32-bit,   64KB-16MB RAM)  - 28 commands
+ * Tier 3: Desktop      (64-bit,   16MB-16GB RAM)  - 39 commands
+ * Tier 4: Server       (64-bit,   16GB-1TB RAM)   - 44 commands
+ * Tier 5: Supercomputer (64-bit+, 1TB+ distributed) - 48 commands
  *
  * Every tier from Calculator to Supercomputer has real POSIX-socket
  * networking (net/send/resolve/http/listen/netscan), scaled to what's
  * thematically appropriate per tier - not system()/popen() shell-outs.
  * See tbos_net_tcp_connect() - the one primitive every tier's network
- * command is built on.
+ * command is built on. Tier 2+ also has real filesystem-path commands
+ * (ucfs/rf2s, reusing the canonical codecs) and Tier 3+ has real PXFS
+ * RAW-mode pixel encoding (pxencode) - not decorative status text.
  *
- * Build: gcc -DTBOS_TIER=N -o tbos_tier_N src/shell/tbos_tier_shell.c -Iinclude
+ * Build (see Makefile target tier-shell-*): gcc -DTBOS_HOSTED -DHOST_BUILD
+ *   -DTBOS_TIER=N -Iinclude src/shell/tbos_tier_shell.c
+ *   src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c
+ *   -o tbos_tier_N
  */
 
 #include <stdio.h>
@@ -34,6 +39,12 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+
+/* Reuse the canonical path codecs (docs/TBOS_CANONICAL_MANIFEST.md
+ * names src/core/filesystem/ as canonical for these) instead of writing
+ * a fourth reimplementation of UCFS/RF2S path parsing. */
+#include "fs/ucfs_codec.h"
+#include "fs/rf2s_codec.h"
 #endif
 
 #ifndef TBOS_TIER
@@ -489,8 +500,9 @@ static int cmd_send(int argc, char** argv) {
 #endif /* TBOS_TIER >= 1 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 2 COMMANDS (Retro: +9 commands = 26 total)
- * Adds: head, wc, grep, touch, uname, uptime, history, env, resolve
+ * TIER 2 COMMANDS (Retro: +11 commands = 28 total)
+ * Adds: head, wc, grep, touch, uname, uptime, history, env, resolve,
+ *       ucfs, rf2s
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 2
@@ -657,13 +669,74 @@ static int cmd_resolve(int argc, char** argv) {
     add_karma(1);
     return 0;
 }
+
+/* Real UCFS path parsing via the canonical codec - not a decorative
+ * status display. */
+static int cmd_ucfs(int argc, char** argv) {
+    if (argc < 3 || strcmp(argv[1], "parse") != 0) {
+        printf("Usage: ucfs parse <unicode-path>\n");
+        printf("Example: ucfs parse '\xF0\x9F\x8F\xA0/docs/file.txt'\n");
+        return 1;
+    }
+
+    ucfs_path_t path;
+    if (ucfs_parse(argv[2], &path) != 0) {
+        printf("ucfs: not a valid UCFS path (must start with a non-ASCII character)\n");
+        return 1;
+    }
+
+    printf("Delimiter:  %s (U+%04X)\n", path.delimiter_utf8, path.delimiter);
+    printf("Components: %zu\n", path.component_count);
+    for (size_t i = 0; i < path.component_count; i++) {
+        printf("  [%zu] %s\n", i, path.components[i]);
+    }
+    char canonical[512];
+    if (ucfs_to_canonical(&path, canonical, sizeof(canonical)) == 0) {
+        printf("Canonical:  %s\n", canonical);
+    }
+    ucfs_free(&path);
+    add_karma(1);
+    return 0;
+}
+
+/* Real RF2S frequency-path parsing via the canonical codec. */
+static int cmd_rf2s(int argc, char** argv) {
+    if (argc < 3 || strcmp(argv[1], "parse") != 0) {
+        printf("Usage: rf2s parse </freq/path...>\n");
+        printf("Example: rf2s parse /432MHz/sensor/data\n");
+        return 1;
+    }
+
+    rf2s_path_t path;
+    if (rf2s_parse(argv[2], &path) != 0) {
+        printf("rf2s: failed to parse path\n");
+        return 1;
+    }
+
+    char freq_str[64];
+    rf2s_format_frequency(path.frequency.frequency_hz, freq_str, sizeof(freq_str));
+    printf("Frequency:  %s (%llu Hz)\n", freq_str,
+           (unsigned long long)path.frequency.frequency_hz);
+    printf("Components: %zu\n", path.component_count);
+    for (size_t i = 0; i < path.component_count; i++) {
+        printf("  [%zu] %s\n", i, path.components[i]);
+    }
+    char canonical[512];
+    if (rf2s_to_canonical(&path, canonical, sizeof(canonical)) == 0) {
+        printf("Canonical:  %s\n", canonical);
+    }
+    rf2s_free(&path);
+    add_karma(1);
+    return 0;
+}
 #endif /* !_WIN32 */
 
 #endif /* TBOS_TIER >= 2 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 3+ COMMANDS (Desktop: +10 commands = 36 total)
- * Adds: meditate, reflect, sangha, dharma, pxfs, steppps, ping, df, ps, http
+ * TIER 3+ COMMANDS (Desktop: +11 commands = 39 total)
+ * Adds: meditate, reflect, sangha, dharma, pxfs, steppps, ping, df, ps,
+ *       http, pxencode
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #if TBOS_TIER >= 3
@@ -731,10 +804,47 @@ static int cmd_pxfs(int argc, char** argv) {
     (void)argc; (void)argv;
     printf("PXFS - PixelXpress File System\n");
     printf("  Status: Available\n");
-    printf("  Compression: RGB pixel encoding\n");
-    printf("  Ratio: Up to 1365:1\n");
+    printf("  Compression: RGB pixel encoding (see 'pxencode' for RAW mode)\n");
+    printf("  Ratio: Up to 1365:1 in QUANTUM mode (not implemented at this tier)\n");
     return 0;
 }
+
+#ifndef _WIN32
+/* Real RAW-mode PXFS encoding: 3 bytes packed per RGB pixel. This is the
+ * one PXFS mode simple enough to implement here without pulling in the
+ * much larger canonical compression engine (src/core/filesystem/
+ * pxfs_core.c, QUANTUM/FRACTAL pattern detection) - genuine encoding,
+ * not a status display, just not the full compression stack. */
+static int cmd_pxencode(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: pxencode <text>\n");
+        printf("Packs 3 bytes per RGB pixel (PXFS RAW mode).\n");
+        return 1;
+    }
+
+    char msg[256] = {0};
+    for (int i = 1; i < argc; i++) {
+        strncat(msg, argv[i], sizeof(msg) - strlen(msg) - 1);
+        if (i < argc - 1) strncat(msg, " ", sizeof(msg) - strlen(msg) - 1);
+    }
+    size_t len = strlen(msg);
+    size_t pixels = (len + 2) / 3;
+
+    printf("Input:  %zu bytes\n", len);
+    printf("Output: %zu pixel(s)\n\n", pixels);
+    printf("  Idx  RGB                Chars\n");
+    printf("  ---  -----------------  -----\n");
+    for (size_t p = 0; p < pixels; p++) {
+        unsigned char r = (p * 3     < len) ? (unsigned char)msg[p * 3]     : 0;
+        unsigned char g = (p * 3 + 1 < len) ? (unsigned char)msg[p * 3 + 1] : 0;
+        unsigned char b = (p * 3 + 2 < len) ? (unsigned char)msg[p * 3 + 2] : 0;
+        printf("  %3zu  (%3u,%3u,%3u)   %c%c%c\n", p, r, g, b,
+               isprint(r) ? r : '.', isprint(g) ? g : '.', isprint(b) ? b : '.');
+    }
+    add_karma(1);
+    return 0;
+}
+#endif
 
 static int cmd_steppps(int argc, char** argv) {
     (void)argc; (void)argv;
@@ -815,7 +925,7 @@ static int cmd_http(int argc, char** argv) {
 #endif /* TBOS_TIER >= 3 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 4+ COMMANDS (Server: +5 commands = 41 total)
+ * TIER 4+ COMMANDS (Server: +5 commands = 44 total)
  * Adds: top, netstat, free, lscpu, listen
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -906,7 +1016,7 @@ static int cmd_listen(int argc, char** argv) {
 #endif /* TBOS_TIER >= 4 */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIER 5 COMMANDS (Supercomputer: +4 commands = 45 total)
+ * TIER 5 COMMANDS (Supercomputer: +4 commands = 48 total)
  * Adds: cluster, consciousness, quantum, netscan
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -1038,7 +1148,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 2
-    /* Tier 2: Retro (+8 base + resolve = 9; cumulative 26) */
+    /* Tier 2: Retro (+8 base + resolve/ucfs/rf2s = 11; cumulative 28) */
     register_cmd("history","Show command history",     cmd_history, 2);
     register_cmd("env",    "Show environment",         cmd_env,     2);
 #ifndef _WIN32
@@ -1049,11 +1159,13 @@ static void register_all_commands(void) {
     register_cmd("uname",  "System information",       cmd_uname,   2);
     register_cmd("uptime", "System uptime",            cmd_uptime,  2);
     register_cmd("resolve","DNS resolve a hostname",   cmd_resolve, 2);
+    register_cmd("ucfs",   "Parse a UCFS Unicode path", cmd_ucfs,   2);
+    register_cmd("rf2s",   "Parse an RF2S frequency path", cmd_rf2s, 2);
 #endif
 #endif
 
 #if TBOS_TIER >= 3
-    /* Tier 3: Desktop (+9 base + http = 10; cumulative 36) */
+    /* Tier 3: Desktop (+9 base + http/pxencode = 11; cumulative 39) */
     register_cmd("meditate","Mindful break",           cmd_meditate, 3);
     register_cmd("reflect", "Reflect on journey",      cmd_reflect,  3);
     register_cmd("sangha",  "Digital sangha network",  cmd_sangha,   3);
@@ -1065,11 +1177,12 @@ static void register_all_commands(void) {
     register_cmd("df",      "Disk free space",         cmd_df,       3);
     register_cmd("ps",      "Process status",          cmd_ps,       3);
     register_cmd("http",    "Real HTTP/1.0 GET client", cmd_http,    3);
+    register_cmd("pxencode","Real PXFS RAW pixel encode", cmd_pxencode, 3);
 #endif
 #endif
 
 #if TBOS_TIER >= 4
-    /* Tier 4: Server (+4 base + listen = 5; cumulative 41) */
+    /* Tier 4: Server (+4 base + listen = 5; cumulative 44) */
 #ifndef _WIN32
     register_cmd("top",     "Process monitor",         cmd_top,      4);
     register_cmd("netstat", "Network connections",     cmd_netstat,  4);
@@ -1080,7 +1193,7 @@ static void register_all_commands(void) {
 #endif
 
 #if TBOS_TIER >= 5
-    /* Tier 5: Supercomputer (+3 base + netscan = 4; cumulative 45) */
+    /* Tier 5: Supercomputer (+3 base + netscan = 4; cumulative 48) */
     register_cmd("cluster",     "Cluster status",      cmd_cluster,      5);
     register_cmd("consciousness","AI consciousness",   cmd_consciousness,5);
     register_cmd("quantum",     "Quantum simulation",  cmd_quantum,      5);

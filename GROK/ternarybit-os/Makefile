@@ -780,6 +780,9 @@ docker-test-riscv64:
 TIER_BUILD_DIR := build/tiers
 TIER_DEMO_SRC := demos/tbos_universal_demo.c
 TIER_SHELL_SRC := src/shell/tbos_tier_shell.c
+# Canonical path codecs (docs/TBOS_CANONICAL_MANIFEST.md), reused for the
+# tier shell's ucfs/rf2s commands instead of a fourth reimplementation.
+TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c
 
 tier-info:
 	@echo ""
@@ -873,37 +876,39 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@echo "Commands per tier (verified by running each binary's 'help'):"
 	@echo "  shell_calc    (Tier 0):  6 commands  - help, echo, calc, karma, exit, net"
 	@echo "  shell_embed   (Tier 1): 17 commands  - + pwd, ls, cd, cat, mkdir, rm, send, etc."
-	@echo "  shell_retro   (Tier 2): 26 commands  - + head, grep, wc, history, resolve, etc."
-	@echo "  shell_desktop (Tier 3): 36 commands  - + meditate, sangha, dharma, ping, http"
-	@echo "  shell_server  (Tier 4): 41 commands  - + top, netstat, free, lscpu, listen"
-	@echo "  shell_super   (Tier 5): 45 commands  - + cluster, consciousness, quantum, netscan"
+	@echo "  shell_retro   (Tier 2): 28 commands  - + head, grep, wc, history, resolve, ucfs, rf2s"
+	@echo "  shell_desktop (Tier 3): 39 commands  - + meditate, sangha, dharma, ping, http, pxencode"
+	@echo "  shell_server  (Tier 4): 44 commands  - + top, netstat, free, lscpu, listen"
+	@echo "  shell_super   (Tier 5): 48 commands  - + cluster, consciousness, quantum, netscan"
 	@echo ""
 	@echo "Every tier has real POSIX-socket networking (net/send/resolve/http/"
 	@echo "listen/netscan), scaled per tier - not system()/popen() shell-outs."
+	@echo "Tier 2+ has real ucfs/rf2s path parsing (canonical codecs, linked"
+	@echo "not reimplemented); Tier 3+ has real PXFS RAW-mode pxencode."
 
 $(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator Shell (6 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 1] Building Embedded Shell (17 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 2] Building Retro Shell (26 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 2] Building Retro Shell (28 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 3] Building Desktop Shell (36 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 3] Building Desktop Shell (39 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 4] Building Server Shell (41 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 4] Building Server Shell (44 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $^
 
-$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) | $(TIER_BUILD_DIR)
-	@echo "[Tier 5] Building Supercomputer Shell (45 commands)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
+$(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) | $(TIER_BUILD_DIR)
+	@echo "[Tier 5] Building Supercomputer Shell (48 commands)..."
+	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $^
 
 # Run tier shells interactively
 tier-shell-calc: $(TIER_BUILD_DIR)/shell_calc
