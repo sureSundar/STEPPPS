@@ -5,3 +5,10 @@ src/gui/tbos_desktop_demo_standalone
 src/gui/tbos_desktop_demo_sdl
 src/gui/*.ppm
 src/gui/*.dSYM/
+
+# Generated binaries (docs/TBOS_CANONICAL_MANIFEST.md rule 4: build outputs
+# do not belong in source control). Rebuild via hosted/build_hosted.sh,
+# make -C src/shell/universal, or build_tbos_system.sh.
+build_integrated/calc_4k/tbos
+src/shell/universal/tbos_shell
+src/shell/universal/tbos_api_server

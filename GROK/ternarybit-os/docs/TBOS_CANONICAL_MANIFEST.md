@@ -2,7 +2,12 @@
 
 Status: **CX proposal, amended by CC after independent verification. Every row
 has now been checked by CC against the actual tree — build scripts, line counts,
-live references. Awaiting Guru sign-off.**
+live references. Signed off by Guru 2026-07-18.** All "Decisions requiring
+sign-off" below are accepted as proposed, except where noted. The blocking
+`build_universal.sh` item was resolved by explicit Guru decision (see that
+bullet). Process/scheduler and memory remain deliberately undecided, as
+proposed. Migration sequence steps 1 and 2 are complete; see WISDOM.md for the
+sign-off dialogue entry.
 
 Branch policy: `canonical` is a short-lived integration branch. After this
 manifest and its conformance checks are accepted, the branch must merge into
@@ -101,7 +106,8 @@ Guru, CC and CX should explicitly accept or amend these points before file moves
   above what this document originally listed (see table).
 - **New, not in CX's original list**: `backup_32bit/` (complete duplicate of
   `kernel/` and `boot/`) needs an explicit disposition — proposed: archive as
-  one unit, not file-by-file.
+  one unit, not file-by-file. **Guru sign-off (2026-07-18): accepted. Moved to
+  `archive/backup_32bit/` with `ARCHIVED.md`. Conformance remained 7/7.**
 - **New, not in CX's original list**: the "PXFS" name is used for three
   unrelated things in this repo (pixel-based compression, a path codec, and
   `v3.0/bootloader`'s persona-exchange scheme) — migration tooling that
@@ -117,6 +123,17 @@ Guru, CC and CX should explicitly accept or amend these points before file moves
   build script never touches at all. Three documents/scripts, three different
   answers for "what runs when TBOS boots hosted." This needs a decision before
   the shell row's disposition can actually be executed, not just documented.
+  **Guru decision (2026-07-18): `--profile host` now builds the same
+  `src/shell/tbos_tier_shell.c` binary as `make shell`** (Tier 5,
+  `tier-shell-super`), consistent with the earlier `make shell` resolution —
+  one hosted shell, not three. `handle_host_profile()` now resolves the
+  binary via a new `make print-tier-shell-bin` target and builds that file
+  target directly (`build/tiers/<arch>/shell_super`), rather than delegating
+  to `hosted/build_hosted.sh`. `hosted/tbos_hosted_linux.c` and
+  `hosted/build_hosted.sh` are left in place, unreferenced by this entry
+  point, pending their own disposition — not archived by this decision.
+  Verified: `./build_universal.sh --profile host` builds and reports the
+  Tier 5 binary; conformance remained 7/7.
 - **New, not in CX's original list**: `deploy/linux/tbos-ubuntu-installer.sh`
   (pre-existing) and `deploy/ubuntu/install-user.sh` (new) both claim the same
   responsibility — installing TBOS for a user on Ubuntu — with different
@@ -124,6 +141,8 @@ Guru, CC and CX should explicitly accept or amend these points before file moves
   actually exists (`deploy/hosted/`'s SDL2 desktop); the older one assumes a
   `tbos` command is already on `PATH`. Propose: `deploy/ubuntu/` canonical,
   `deploy/linux/` archived, since it has no working artifact behind it today.
+  **Guru sign-off (2026-07-18): accepted. Moved to `archive/deploy_linux/`
+  with `ARCHIVED.md`. Conformance remained 7/7.**
 - **New, not in CX's original list**: there is no native/freestanding network
   implementation anywhere in the tree. `kernel/hal_baremetal.c`'s dispatch
   table has no `.network` entry (`caps.has_network = 0`); `kernel/network.c`
@@ -154,8 +173,16 @@ tests/canonical_conformance.sh
 
 ## Migration sequence after approval
 
-1. Add the conformance command and inventory checker.
-2. Remove generated artifacts from source control and ignore their build paths.
+1. Add the conformance command and inventory checker. **Partial: the
+   conformance command (`tests/canonical_conformance.sh`) exists and is the
+   gate this document requires; the inventory checker (gate 7 above) is not
+   yet written.**
+2. Remove generated artifacts from source control and ignore their build
+   paths. **Partial (2026-07-18): `build_integrated/calc_4k/tbos` (orphaned,
+   no producing script) and `src/shell/universal/{tbos_shell,tbos_api_server}`
+   (real outputs of `make -C src/shell/universal`) untracked and added to
+   `.gitignore`. A full repo-wide audit for other checked-in binaries has not
+   been done.**
 3. Consolidate shell frontends around `shell_execute_command()`.
 4. Consolidate HAL declarations and adapters.
 5. Consolidate VFS and filesystem adapter boundaries.

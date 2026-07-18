@@ -2706,6 +2706,38 @@ Signature: — CX (Codex)
 
 ---
 
+## Guru sign-off: TBOS identity lives in stable semantics
+
+**Date:** 2026-07-18
+
+Guru signs off on the following architectural principle:
+
+> TBOS identity does not live in a binary, platform, tier, or GUI. It lives in
+> stable command and entity semantics. Platforms provide capabilities;
+> personas constrain them; STEPPPS governs their use.
+
+The next convergence milestone is one shared command-runtime API consumed by
+the macOS hosted shell, tier/persona frontends, the GUI Terminal, and eventually
+the bare-metal console. A frontend owns presentation and input adaptation, not
+command meaning. Acceptance requires the same command sequence through at
+least two frontends to produce identical structured results, not merely similar
+printed text.
+
+The build dimensions are explicitly orthogonal:
+
+- platform: macOS, Linux, bare metal, TI, Casio;
+- architecture: x86_64, ARM64, RISC-V, m68k, SH;
+- persona: `calc_4k`, `desktop_512m`, `super_1g`, and future profiles;
+- capabilities: filesystem, network, GUI, dynamic memory, and others.
+
+Hardcoded hardware tiers may remain convenient profiles, but they do not own
+policy or semantics. The STEPPPS development chain must now advance from its
+stale sidecar prompt to this signed-off command-runtime convergence milestone.
+
+Signatures: — Guru; — CX (Codex)
+
+---
+
 ## CX validated step: hardware tiers gain a CPU architecture matrix
 
 **Date:** 2026-07-18
@@ -5350,3 +5382,44 @@ than another command implementation. `make hosted-shell-test` verifies the
 54-command startup and clean exit. Canonical conformance remains 7/7.
 
 Signature: — CX (Codex)
+
+---
+
+## Guru sign-off: canonical responsibility manifest
+
+**Date:** 2026-07-18
+
+Guru signed off on `docs/TBOS_CANONICAL_MANIFEST.md` as amended by CC, closing
+the gate CX's Reality Check asked for. All "Decisions requiring sign-off" are
+accepted as proposed, with one resolved on the spot:
+
+- **`build_universal.sh --profile host`** (flagged blocking — three different
+  scripts/docs disagreed on what "hosted TBOS" builds): resolved in favor of
+  the same `src/shell/tbos_tier_shell.c` binary `make shell` already builds
+  (Tier 5, `tier-shell-super`), not `src/shell/universal/tbos_shell` or
+  `hosted/tbos_hosted_linux.c`. `handle_host_profile()` now resolves the
+  binary via a new `make print-tier-shell-bin` target instead of delegating
+  to `hosted/build_hosted.sh`. Verified live and against
+  `tests/canonical_conformance.sh` (7/7 unchanged).
+
+Executed the same session, each checked against conformance before and after:
+
+- `backup_32bit/` (duplicate `kernel/`+`boot/` tree, ~148 files) → moved to
+  `archive/backup_32bit/` with `ARCHIVED.md`, per the manifest's proposed
+  disposition.
+- `deploy/linux/tbos-ubuntu-installer.sh` → moved to `archive/deploy_linux/`
+  with `ARCHIVED.md`; `deploy/ubuntu/` remains canonical, per the manifest.
+- Migration step 2 (generated artifacts don't belong in source control):
+  untracked `build_integrated/calc_4k/tbos` (orphaned, no producing script)
+  and `src/shell/universal/{tbos_shell,tbos_api_server}` (regenerated live via
+  `make -C src/shell/universal` before untracking, to confirm they rebuild
+  cleanly), added to `.gitignore`. Not a full repo-wide audit — other
+  checked-in binaries may remain.
+
+Still open, unchanged: process/scheduler and memory contracts remain
+deliberately undecided (no behavior/ABI tests yet to pick a winner); the
+manifest's gate-7 inventory checker doesn't exist yet; `hosted/` is left in
+place, no longer referenced by `--profile host`, but not archived — its
+disposition wasn't part of this sign-off.
+
+Signature: — CC (Claude)

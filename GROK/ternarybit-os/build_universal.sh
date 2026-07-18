@@ -110,7 +110,11 @@ PROFILE_DIR="$TBOS_ROOT/config"
 GENERATED_INCLUDE_DIR="$BUILD_DIR/generated"
 LEGACY_IMAGE="$BUILD_DIR/tbos_bare_metal.img"
 HOSTED_DIR="$TBOS_ROOT/hosted"
-HOSTED_BIN="$TBOS_ROOT/src/shell/universal/tbos_shell"
+# Canonical hosted shell (docs/TBOS_CANONICAL_MANIFEST.md, "Universal build
+# entry" row, Guru decision 2026-07-18): the same tbos_tier_shell.c binary
+# that `make shell` builds, not src/shell/universal/tbos_shell. Resolved at
+# build time in handle_host_profile() via `make print-tier-shell-bin`.
+HOSTED_BIN=""
 
 # Configuration variables (bash 3.x compatible - no associative arrays)
 CFG_SHELL="y"
@@ -245,17 +249,11 @@ parse_args() {
 
 handle_host_profile() {
     log_step "Hosted profile detected"
-    if [[ ! -d "$HOSTED_DIR" ]]; then
-        echo "error: hosted tooling not found" >&2
-        exit 1
-    fi
-    "$HOSTED_DIR/build_hosted.sh"
-    if [[ -x "$HOSTED_DIR/test_hosted.sh" ]]; then
-        "$HOSTED_DIR/test_hosted.sh"
-    fi
+    HOSTED_BIN="$(make -C "$TBOS_ROOT" -s print-tier-shell-bin)"
+    make -C "$TBOS_ROOT" "$HOSTED_BIN"
     echo ""
     echo "Hosted binary available at: $HOSTED_BIN"
-    echo "Use 'make hosted' or run the binary directly for interactive sessions."
+    echo "Use 'make shell' or run the binary directly for interactive sessions."
     exit 0
 }
 

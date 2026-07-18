@@ -994,6 +994,13 @@ tier-shell-server: $(TIER_BUILD_DIR)/shell_server
 tier-shell-super: $(TIER_BUILD_DIR)/shell_super
 	@$(TIER_BUILD_DIR)/shell_super
 
+# Prints the canonical hosted-shell binary path without building or running
+# it, so other tooling (build_universal.sh --profile host) can build the
+# same file target directly instead of launching the interactive shell.
+.PHONY: print-tier-shell-bin
+print-tier-shell-bin:
+	@echo "$(TIER_BUILD_DIR)/shell_super"
+
 # ═══════════════════════════════════════════════════════════════════════════
 # TBOS COMPLETE SHELL (runs on any OS)
 # ═══════════════════════════════════════════════════════════════════════════
