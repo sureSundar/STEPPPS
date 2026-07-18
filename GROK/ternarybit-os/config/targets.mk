@@ -10,17 +10,6 @@ SHELL_TARGETS = ternarybit_shell ternarybit_shell_di
 .PHONY: all
 all: directories $(BUILD_TARGETS) $(SHELL_TARGETS)
 
-# Test targets
-.PHONY: test
-test: $(TEST_TARGETS)
-	@echo "✅ All tests completed successfully"
-
-# Clean targets
-.PHONY: clean
-clean:
-	rm -rf $(BUILD_DIR)
-	@echo "🧹 Cleaned build artifacts"
-
 # Create build directories
 .PHONY: directories
 directories:

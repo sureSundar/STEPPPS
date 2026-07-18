@@ -21,7 +21,18 @@
       "Bash(wc:*)",
       "Bash(gcc:*)",
       "Bash(grep:*)",
-      "Bash(cc:*)"
+      "Bash(cc:*)",
+      "Read(//private/tmp/**)",
+      "Bash(sips -s format png tbos_desktop_dark.ppm --out tbos_desktop_dark.png)",
+      "Bash(sips -s format png tbos_desktop_light.ppm --out tbos_desktop_light.png)",
+      "Bash(sips -s format png tbos_desktop_saffron.ppm --out tbos_desktop_saffron.png)",
+      "Bash(/tmp/steppps_cli show *)",
+      "Bash(/tmp/steppps_cli verify *)",
+      "Bash(/tmp/steppps_cli run *)",
+      "Bash(/tmp/test_command_provider)",
+      "Bash(git restore *)",
+      "Bash(./tbos_shell)",
+      "Bash(./tests/canonical_conformance.sh)"
     ],
     "deny": [],
     "ask": []

@@ -263,32 +263,6 @@ $(BUILD_DIR)/test_di_bootstrap: $(TEST_DIR)/test_di_bootstrap.c $(ALL_DI_SRCS) |
 	@echo "🔨 Building DI Bootstrap Test..."
 	$(CC) $(CFLAGS) $(INCLUDES) -lpthread -o $@ $^
 
-# Run all tests
-test: $(TESTS)
-	@echo ""
-	@echo "🧪 RUNNING TERNARYBIT OS COMPONENT TESTS"
-	@echo "========================================"
-	@echo ""
-	@echo "Testing Hardware Detection System..."
-	@./$(BUILD_DIR)/test_hardware_detector
-	@echo ""
-	@echo "Testing Universal Boot System..."
-	@./$(BUILD_DIR)/test_universal_boot
-	@echo ""
-	@echo "Testing STEPPPS Framework..."
-	@./$(BUILD_DIR)/test_steppps_framework
-	@echo ""
-	@echo "Testing Memory Management System..."
-	@./$(BUILD_DIR)/test_memory_manager
-	@echo ""
-	@echo "Testing IoC Container..."
-	@./$(BUILD_DIR)/test_ioc_container
-	@echo ""
-	@echo "Testing DI Bootstrap..."
-	@./$(BUILD_DIR)/test_di_bootstrap
-	@echo ""
-	@echo "🎯 All component tests completed!"
-
 # Run individual tests
 test-hardware: $(BUILD_DIR)/test_hardware_detector
 	@echo "🧪 Testing Hardware Detection System..."
@@ -656,16 +630,18 @@ build/$(TBOS_HOST_ARCH)/test_net: tests/test_net_quick.c $(TBOS_NET_SRCS)
 	@echo "[$(TBOS_HOST_ARCH)] Building test_net..."
 	@gcc $(TBOS_COMMON_FLAGS) $(TBOS_DEBUG_FLAGS) -Isrc/network -o $@ $^
 
-# x86_64 cross-compile (use native gcc for hosted builds since elf-gcc lacks libc)
+# x86_64 cross-compile (use native gcc for hosted builds since elf-gcc lacks libc).
+# On an x86_64 host these paths are already owned by arch-host; reuse that
+# target instead of defining a second recipe for the same expanded filenames.
+ifeq ($(TBOS_HOST_ARCH),x86_64)
+arch-x86_64: arch-host
+	@echo "[x86_64] Build complete"
+else
 arch-x86_64: build/x86_64/tbos_shell build/x86_64/tbos_hybrid
 	@echo "[x86_64] Build complete"
 
 build/x86_64/tbos_shell: $(TBOS_SHELL_SRCS)
-ifeq ($(TBOS_HOST_ARCH),x86_64)
-	@mkdir -p build/x86_64
-	@echo "[x86_64] Building tbos_shell (native)..."
-	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
-else ifneq ($(X86_64_ELF_CC),)
+ifneq ($(X86_64_ELF_CC),)
 	@mkdir -p build/x86_64
 	@echo "[x86_64] Building tbos_shell (cross)..."
 	@$(X86_64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[x86_64] Skipped (needs hosted libc)"
@@ -674,16 +650,13 @@ else
 endif
 
 build/x86_64/tbos_hybrid: $(TBOS_HYBRID_SRCS)
-ifeq ($(TBOS_HOST_ARCH),x86_64)
-	@mkdir -p build/x86_64
-	@echo "[x86_64] Building tbos_hybrid (native)..."
-	@gcc $(TBOS_COMMON_FLAGS) -o $@ $<
-else ifneq ($(X86_64_ELF_CC),)
+ifneq ($(X86_64_ELF_CC),)
 	@mkdir -p build/x86_64
 	@echo "[x86_64] Building tbos_hybrid (cross)..."
 	@$(X86_64_ELF_CC) $(TBOS_COMMON_FLAGS) -o $@ $< 2>/dev/null || echo "[x86_64] Skipped (needs hosted libc)"
 else
 	@echo "[x86_64] Cross-compiler not found, skipping"
+endif
 endif
 
 # ARM64 cross-compile
@@ -773,15 +746,23 @@ docker-test-riscv64:
 # HARDWARE TIER BUILDS (4-bit to Supercomputer)
 # ═══════════════════════════════════════════════════════════════════════════
 
-.PHONY: tier-all tier-calc tier-embed tier-retro tier-desktop tier-server tier-super tier-info tier-test
+.PHONY: tier-all tier-arch-all tier-arch-host tier-arch-arm64 tier-arch-riscv64
+.PHONY: tier-calc tier-embed tier-retro tier-desktop tier-server tier-super tier-info tier-test
 .PHONY: tier-shell-all tier-shell-calc tier-shell-embed tier-shell-retro tier-shell-desktop tier-shell-server tier-shell-super
 
-TIER_BUILD_DIR := build/tiers
+# A hardware tier and a CPU architecture are independent dimensions. Keep each
+# architecture in its own directory so a cross-build cannot overwrite the host
+# binaries. Override TIER_CC for toolchains not discovered above.
+TIER_ARCH ?= $(TBOS_HOST_ARCH)
+TIER_CC ?= gcc
+TIER_ARCH_FLAGS ?=
+TIER_BUILD_DIR := build/tiers/$(TIER_ARCH)
 TIER_DEMO_SRC := demos/tbos_universal_demo.c
 TIER_SHELL_SRC := src/shell/tbos_tier_shell.c
 # Canonical path codecs (docs/TBOS_CANONICAL_MANIFEST.md), reused for the
 # tier shell's ucfs/rf2s commands instead of a fourth reimplementation.
-TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c
+TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c \
+                      src/core/compression/pxfs_lossless.c
 # Hosted HAL adapter - the tier shell's command table asks
 # caps.has_dynamic_memory instead of hardcoding a storage strategy.
 # Link kernel/hal_baremetal.c instead to build against a platform with
@@ -792,12 +773,48 @@ TIER_SHELL_HAL_SRCS := kernel/hal_hosted.c
 TIER_SHELL_STEPPPS_SRCS := steppps/v2/steppps_runtime.c
 TIER_SHELL_STEPPPS_INC := -Isteppps/v2
 
+# Native hosted shell. This is a platform frontend over the same Tier 5 shell,
+# hosted HAL, codecs and STEPPPS runtime used by `make shell`; it is not another
+# command implementation. Native platform builds intentionally do not pretend
+# to cross-compile a macOS binary from Linux or vice versa.
+.PHONY: hosted-shell hosted-shell-test
+HOST_PLATFORM ?= $(TBOS_HOST_OS)
+HOSTED_SHELL_CC ?= cc
+HOSTED_SHELL_DIR := build/hosted/$(HOST_PLATFORM)
+HOSTED_SHELL_BIN := $(HOSTED_SHELL_DIR)/tbos-shell
+HOSTED_SHELL_SRCS := $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) \
+                     $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS)
+
+hosted-shell: $(HOSTED_SHELL_BIN)
+	@echo "Hosted TBOS shell: $(HOSTED_SHELL_BIN)"
+
+$(HOSTED_SHELL_BIN): $(HOSTED_SHELL_SRCS)
+	@if [ "$(HOST_PLATFORM)" != "$(TBOS_HOST_OS)" ]; then \
+		echo "Cannot build HOST_PLATFORM=$(HOST_PLATFORM) natively on $(TBOS_HOST_OS)"; \
+		exit 1; \
+	fi
+	@mkdir -p $(@D)
+	@echo "Building native $(HOST_PLATFORM)/$(TBOS_HOST_ARCH) TBOS shell..."
+	@$(HOSTED_SHELL_CC) -std=c11 -O2 -Wall -Wextra \
+		-DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 \
+		-Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+
+hosted-shell-test: hosted-shell
+	@printf 'help\nexit\n' | $(HOSTED_SHELL_BIN) > /tmp/tbos-hosted-shell-test.log
+	@grep -q '54 commands available' /tmp/tbos-hosted-shell-test.log
+	@grep -q 'Namaste' /tmp/tbos-hosted-shell-test.log
+	@echo "Hosted shell smoke test passed: $(HOSTED_SHELL_BIN)"
+
 tier-info:
 	@echo ""
 	@echo "================================================================"
 	@echo "  TBOS Hardware Tier Build System"
 	@echo "  From 4-bit Calculators to Supercomputers"
 	@echo "================================================================"
+	@echo ""
+	@echo "  Build architecture: $(TIER_ARCH)"
+	@echo "  Compiler:           $(TIER_CC)"
+	@echo "  Output:             $(TIER_BUILD_DIR)"
 	@echo ""
 	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   5 commands"
 	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)  15 commands"
@@ -808,6 +825,8 @@ tier-info:
 	@echo ""
 	@echo "  Demo targets (display tier info):"
 	@echo "    make tier-all        Build all tier demos"
+	@echo "    make tier-arch-all   Build demos and shells for every available CPU"
+	@echo "    make tier-all TIER_ARCH=arm64 TIER_CC=aarch64-linux-gnu-gcc"
 	@echo "    make tier-calc       Run calculator demo"
 	@echo "    make tier-test       Run all tier demos"
 	@echo ""
@@ -822,6 +841,37 @@ tier-info:
 	@echo "================================================================"
 	@echo ""
 
+tier-arch-host:
+	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+		TIER_ARCH=$(TBOS_HOST_ARCH) TIER_CC=gcc
+
+tier-arch-arm64:
+ifeq ($(ARM64_ELF_CC),)
+	@echo "ARM64 tier build skipped: no aarch64 cross-compiler found"
+else
+	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+		TIER_ARCH=arm64 TIER_CC=$(ARM64_ELF_CC) \
+		TIER_ARCH_FLAGS=-DTBOS_ARCH_ARM64
+endif
+
+tier-arch-riscv64:
+ifeq ($(RISCV64_ELF_CC),)
+	@echo "RISC-V tier build skipped: no riscv64 cross-compiler found"
+else
+	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+		TIER_ARCH=riscv64 TIER_CC=$(RISCV64_ELF_CC) \
+		TIER_ARCH_FLAGS=-DTBOS_ARCH_RISCV64
+endif
+
+tier-arch-all: tier-arch-host
+ifneq ($(TBOS_HOST_ARCH),arm64)
+	@$(MAKE) --no-print-directory tier-arch-arm64
+endif
+ifneq ($(TBOS_HOST_ARCH),riscv64)
+	@$(MAKE) --no-print-directory tier-arch-riscv64
+endif
+	@echo "Tier architecture matrix complete under build/tiers/"
+
 tier-all: $(TIER_BUILD_DIR)/tbos_calc $(TIER_BUILD_DIR)/tbos_embed $(TIER_BUILD_DIR)/tbos_retro $(TIER_BUILD_DIR)/tbos_desktop $(TIER_BUILD_DIR)/tbos_server $(TIER_BUILD_DIR)/tbos_super
 	@echo ""
 	@echo "All hardware tiers built:"
@@ -832,27 +882,27 @@ $(TIER_BUILD_DIR):
 
 $(TIER_BUILD_DIR)/tbos_calc: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator (8-bit, 256B RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $< 2>/dev/null || gcc -DTBOS_HOSTED -DTBOS_TIER=0 -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/tbos_embed: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 1] Building Embedded (16-bit, 4KB RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/tbos_retro: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 2] Building Retro (32-bit, 64KB RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/tbos_desktop: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 3] Building Desktop (64-bit, 1MB RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/tbos_server: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 4] Building Server (64-bit SMP, 4MB RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
 
 $(TIER_BUILD_DIR)/tbos_super: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 5] Building Supercomputer (64-bit distributed, 16MB RAM)..."
-	@gcc -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
 
 tier-calc: $(TIER_BUILD_DIR)/tbos_calc
 	@$(TIER_BUILD_DIR)/tbos_calc
@@ -903,27 +953,27 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 
 $(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator Shell (16 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_embed: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 1] Building Embedded Shell (27 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_retro: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 2] Building Retro Shell (36 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_desktop: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 3] Building Desktop Shell (45 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 4] Building Server Shell (50 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 5] Building Supercomputer Shell (54 commands)..."
-	@gcc -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
+	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 # Run tier shells interactively
 tier-shell-calc: $(TIER_BUILD_DIR)/shell_calc

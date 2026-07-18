@@ -737,8 +737,8 @@ static void print_tree_recursive(const char* base_path, int depth, const char* p
             print_tree_recursive(child->path, depth + 1, new_prefix);
         } else {
             printf("%s", name);
-            if (child->size > 0) {
-                printf(" (%zu bytes)", child->size);
+            if (child->file_size > 0) {
+                printf(" (%zu bytes)", child->file_size);
             }
             printf("\n");
         }

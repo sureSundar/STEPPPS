@@ -64,6 +64,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdint.h>
+#include "../core/compression/pxfs_lossless.h"
 
 #ifndef _WIN32
 /* Real POSIX sockets, available at every tier that can compile them.
@@ -480,74 +481,14 @@ static int cmd_pxencode(int argc, char** argv) {
  * genuinely compresses that far, and this recovers the exact original
  * bytes on decompress - verified below, not simulated.
  *
- * Format: byte 0 = flag (1 = RLE, 0 = literal fallback for
- * non-repetitive input, honest about not compressing it).
- *   RLE:     [1][unit_len:1][repeat_count:2 LE][unit bytes...]
- *   Literal: [0][original bytes...]
+ * The shared core codec preserves CC's original formats:
+ *   Periodic: [1][unit_len:1][repeat_count:2 LE][unit bytes...]
+ *   Literal:  [0][original bytes...]
+ * and adds format 2 for mixed literal/run blocks with original length and
+ * CRC32. The compressor chooses the smallest representation.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-#define PXC_MAX 4096
-
-/* Finds the shortest period that covers the whole input exactly (i.e.
- * data is `unit` repeated end to end, no partial trailing copy allowed
- * so decompression is exact). Returns 0 if no repetition found (only
- * the trivial period == len, meaning "compress" it as literal instead). */
-static size_t pxc_find_period(const unsigned char* data, size_t len) {
-    for (size_t period = 1; period < len; period++) {
-        if (len % period != 0) continue;
-        int matches = 1;
-        for (size_t i = period; i < len; i++) {
-            if (data[i] != data[i % period]) { matches = 0; break; }
-        }
-        if (matches) return period;
-    }
-    return 0;
-}
-
-/* Returns compressed length, or 0 on error. out must be >= in_len + 4. */
-static size_t pxc_compress(const unsigned char* in, size_t in_len, unsigned char* out) {
-    if (in_len == 0 || in_len > PXC_MAX) return 0;
-
-    size_t period = pxc_find_period(in, in_len);
-    if (period > 0 && period < 256) {
-        uint16_t repeat = (uint16_t)(in_len / period);
-        out[0] = 1;
-        out[1] = (unsigned char)period;
-        out[2] = (unsigned char)(repeat & 0xFF);
-        out[3] = (unsigned char)((repeat >> 8) & 0xFF);
-        memcpy(out + 4, in, period);
-        return 4 + period;
-    }
-
-    /* Not repetitive - store literally rather than fake a ratio. */
-    out[0] = 0;
-    memcpy(out + 1, in, in_len);
-    return 1 + in_len;
-}
-
-/* Returns decompressed length, or 0 on error/corrupt input. */
-static size_t pxc_decompress(const unsigned char* in, size_t in_len, unsigned char* out, size_t out_max) {
-    if (in_len < 1) return 0;
-
-    if (in[0] == 1) {
-        if (in_len < 4) return 0;
-        size_t period = in[1];
-        uint16_t repeat = (uint16_t)(in[2] | (in[3] << 8));
-        size_t total = period * repeat;
-        if (period == 0 || in_len < 4 + period || total > out_max) return 0;
-        for (size_t i = 0; i < total; i++) out[i] = in[4 + (i % period)];
-        return total;
-    }
-
-    if (in[0] == 0) {
-        size_t len = in_len - 1;
-        if (len > out_max) return 0;
-        memcpy(out, in + 1, len);
-        return len;
-    }
-
-    return 0;
-}
+#define PXC_MAX PXFS_LOSSLESS_MAX_INPUT
 
 static void pxc_print_hex(const unsigned char* data, size_t len) {
     for (size_t i = 0; i < len; i++) printf("%02x", data[i]);
@@ -558,9 +499,14 @@ static int pxc_parse_hex(const char* hex, unsigned char* out, size_t out_max, si
     size_t hlen = strlen(hex);
     if (hlen % 2 != 0 || hlen / 2 > out_max) return -1;
     for (size_t i = 0; i < hlen / 2; i++) {
-        unsigned int byte;
-        if (sscanf(hex + i * 2, "%2x", &byte) != 1) return -1;
-        out[i] = (unsigned char)byte;
+        int hi = isdigit((unsigned char)hex[i * 2]) ? hex[i * 2] - '0' :
+                 isxdigit((unsigned char)hex[i * 2]) ?
+                 tolower((unsigned char)hex[i * 2]) - 'a' + 10 : -1;
+        int lo = isdigit((unsigned char)hex[i * 2 + 1]) ? hex[i * 2 + 1] - '0' :
+                 isxdigit((unsigned char)hex[i * 2 + 1]) ?
+                 tolower((unsigned char)hex[i * 2 + 1]) - 'a' + 10 : -1;
+        if (hi < 0 || lo < 0) return -1;
+        out[i] = (unsigned char)((hi << 4) | lo);
     }
     *out_len = hlen / 2;
     return 0;
@@ -585,8 +531,8 @@ static int cmd_pxcompress(int argc, char** argv) {
         if (i < argc - 1 && len < sizeof(msg) - 1) msg[len++] = ' ';
     }
 
-    unsigned char out[PXC_MAX + 4];
-    size_t clen = pxc_compress(msg, len, out);
+    unsigned char out[PXFS_LOSSLESS_MAX_ENCODED];
+    size_t clen = pxfs_lossless_compress(msg, len, out, sizeof(out));
     if (clen == 0) {
         printf("pxcompress: input too large or empty (max %d bytes)\n", PXC_MAX);
         return 1;
@@ -595,7 +541,10 @@ static int cmd_pxcompress(int argc, char** argv) {
     printf("Original:   %zu bytes\n", len);
     printf("Compressed: %zu bytes\n", clen);
     printf("Ratio:      %.1f:1\n", (double)len / (double)clen);
-    printf("Mode:       %s\n", out[0] == 1 ? "RLE (genuinely repetitive)" : "literal (not repetitive - stored as-is, honestly)");
+    const char* mode = out[0] == PXFS_LOSSLESS_PERIODIC ? "periodic" :
+                       out[0] == PXFS_LOSSLESS_BLOCKS_V1 ? "mixed runs + CRC32" :
+                       "literal (stored as-is)";
+    printf("Mode:       %s\n", mode);
     printf("Hex:        ");
     pxc_print_hex(out, clen);
     printf("(feed that hex string to 'pxdecompress' to verify the round trip)\n");
@@ -609,7 +558,7 @@ static int cmd_pxdecompress(int argc, char** argv) {
         return 1;
     }
 
-    unsigned char cbuf[PXC_MAX + 4];
+    unsigned char cbuf[PXFS_LOSSLESS_MAX_ENCODED];
     size_t clen;
     if (pxc_parse_hex(argv[1], cbuf, sizeof(cbuf), &clen) != 0) {
         printf("pxdecompress: invalid hex input\n");
@@ -617,7 +566,7 @@ static int cmd_pxdecompress(int argc, char** argv) {
     }
 
     unsigned char out[PXC_MAX] = {0};
-    size_t len = pxc_decompress(cbuf, clen, out, sizeof(out) - 1);
+    size_t len = pxfs_lossless_decompress(cbuf, clen, out, sizeof(out) - 1);
     if (len == 0) {
         printf("pxdecompress: corrupt or unrecognized data\n");
         return 1;
@@ -649,8 +598,8 @@ static int cmd_pxstore(int argc, char** argv) {
         if (i < argc - 1 && len < sizeof(msg) - 1) msg[len++] = ' ';
     }
 
-    unsigned char out[PXC_MAX + 4];
-    size_t clen = pxc_compress(msg, len, out);
+    unsigned char out[PXFS_LOSSLESS_MAX_ENCODED];
+    size_t clen = pxfs_lossless_compress(msg, len, out, sizeof(out));
     if (clen == 0) {
         printf("pxstore: input too large or empty\n");
         return 1;
@@ -676,12 +625,12 @@ static int cmd_pxload(int argc, char** argv) {
 
     FILE* f = fopen(argv[1], "rb");
     if (!f) { perror("pxload"); return 1; }
-    unsigned char cbuf[PXC_MAX + 4];
+    unsigned char cbuf[PXFS_LOSSLESS_MAX_ENCODED];
     size_t clen = fread(cbuf, 1, sizeof(cbuf), f);
     fclose(f);
 
     unsigned char out[PXC_MAX] = {0};
-    size_t len = pxc_decompress(cbuf, clen, out, sizeof(out) - 1);
+    size_t len = pxfs_lossless_decompress(cbuf, clen, out, sizeof(out) - 1);
     if (len == 0) {
         printf("pxload: corrupt or unrecognized file\n");
         return 1;
@@ -715,8 +664,8 @@ static int cmd_pxsend(int argc, char** argv) {
         if (i < argc - 1 && len < sizeof(msg) - 1) msg[len++] = ' ';
     }
 
-    unsigned char out[PXC_MAX + 4];
-    size_t clen = pxc_compress(msg, len, out);
+    unsigned char out[PXFS_LOSSLESS_MAX_ENCODED];
+    size_t clen = pxfs_lossless_compress(msg, len, out, sizeof(out));
     if (clen == 0) {
         printf("pxsend: input too large or empty\n");
         return 1;
@@ -781,7 +730,7 @@ static int cmd_pxrecv(int argc, char** argv) {
         return 1;
     }
 
-    unsigned char cbuf[PXC_MAX + 4];
+    unsigned char cbuf[PXFS_LOSSLESS_MAX_ENCODED];
     ssize_t clen = read(client_fd, cbuf, sizeof(cbuf));
     close(client_fd);
     close(srv);
@@ -792,7 +741,7 @@ static int cmd_pxrecv(int argc, char** argv) {
     }
 
     unsigned char out[PXC_MAX] = {0};
-    size_t len = pxc_decompress(cbuf, (size_t)clen, out, sizeof(out) - 1);
+    size_t len = pxfs_lossless_decompress(cbuf, (size_t)clen, out, sizeof(out) - 1);
     if (len == 0) {
         printf("pxrecv: received %zd bytes but could not decompress (corrupt?)\n", clen);
         return 1;

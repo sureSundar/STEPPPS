@@ -74,8 +74,14 @@ echo "╚═══════════════════════�
 echo ""
 
 CC=gcc
-CFLAGS="-Wall -Wextra -std=c11 -I./src -I./include -I./kernel -D_POSIX_C_SOURCE=200809L -DTBOS_INTEGRATED"
-LDFLAGS="-lrt -lpthread -lm"
+# This script produces a userspace executable. Mark it as hosted explicitly so
+# the include/ compatibility headers forward to the platform libc instead of
+# exposing the freestanding TBOS stdio declarations.
+CFLAGS="-Wall -Wextra -std=c11 -I./src -I./include -I./kernel -D_POSIX_C_SOURCE=200809L -DTBOS_INTEGRATED -DTBOS_HOSTED -DHOST_BUILD"
+LDFLAGS="-lpthread -lm"
+if [[ "$(uname -s)" == "Linux" ]]; then
+    LDFLAGS="-lrt $LDFLAGS"
+fi
 
 if [[ -n "${TBOS_BUILD_DEFINES:-}" ]]; then
     CFLAGS+=" ${TBOS_BUILD_DEFINES}"
@@ -124,8 +130,10 @@ echo "Step 1: Compiling Core Components..."
 
 compile_module "src/boot/tbos_minimal_boot.c" "Minimal Boot"
 compile_module "src/hal/tbos_hal.c" "Hardware Abstraction Layer"
+compile_module "kernel/hal_hosted.c" "Canonical Hosted HAL Adapter"
 compile_module "src/core/filesystem/tbos_ramdisk.c" "Ramdisk Filesystem"
 compile_module "src/core/filesystem/ucfs_codec.c" "UCFS Codec"
+compile_module "src/core/filesystem/ucfs_config.c" "UCFS Configuration"
 compile_module "src/core/filesystem/ucfs_overlay.c" "UCFS Overlay"
 compile_module "src/core/filesystem/pxfs_codec.c" "PXFS Codec"
 compile_module "src/core/filesystem/pxfs_overlay.c" "PXFS Overlay"

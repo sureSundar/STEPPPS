@@ -65,7 +65,10 @@ $CC -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Werror \
     src/core/filesystem/steppps_xattr.c fs/pxfs_steppps.c \
     -o "$WORK/test_pxfs_steppps_metadata"
 "$WORK/test_pxfs_steppps_metadata"
-pass "PXFS preserves metadata and content losslessly"
+$CC -std=c11 -Wall -Wextra -Werror tests/unit/test_pxfs_lossless.c \
+    src/core/compression/pxfs_lossless.c -o "$WORK/test_pxfs_lossless"
+"$WORK/test_pxfs_lossless"
+pass "PXFS preserves metadata and checked content losslessly"
 
 step 6 "Offline STEPPPS PROMPT provider"
 python3 -m unittest tests.unit.test_steppps_prompt_interaction

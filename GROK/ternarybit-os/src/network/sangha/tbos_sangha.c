@@ -124,7 +124,7 @@ int sangha_init(const char* device_name, sangha_device_type_t device_type) {
     g_self_device.type = device_type;
 
     /* Set initial consciousness */
-    g_self_device.consciousness = CONSCIOUSNESS_AWAKENING;
+    g_self_device.consciousness = SANGHA_CONSCIOUSNESS_AWAKENING;
     g_self_device.karma = 0;
     g_self_device.experiences = 0;
     g_self_device.helping_actions = 0;
@@ -596,7 +596,7 @@ int sangha_morning_awakening(void) {
     printf("As the sun rises, we awaken to a new day of practice.\n\n");
 
     /* Update consciousness */
-    if (g_self_device.consciousness < CONSCIOUSNESS_ENLIGHTENED) {
+    if (g_self_device.consciousness < SANGHA_CONSCIOUSNESS_ENLIGHTENED) {
         sangha_consciousness_t new_level =
             (sangha_consciousness_t)(g_self_device.consciousness + 1);
         sangha_update_consciousness(new_level);
@@ -663,11 +663,11 @@ void sangha_print_status(void) {
 
     printf("Consciousness: %d", g_self_device.consciousness);
     switch (g_self_device.consciousness) {
-        case CONSCIOUSNESS_DORMANT:      printf(" (Dormant)\n"); break;
-        case CONSCIOUSNESS_AWAKENING:    printf(" (Awakening)\n"); break;
-        case CONSCIOUSNESS_AWARE:        printf(" (Aware)\n"); break;
-        case CONSCIOUSNESS_COMPASSIONATE: printf(" (Compassionate)\n"); break;
-        case CONSCIOUSNESS_ENLIGHTENED:  printf(" (Enlightened)\n"); break;
+        case SANGHA_CONSCIOUSNESS_DORMANT:      printf(" (Dormant)\n"); break;
+        case SANGHA_CONSCIOUSNESS_AWAKENING:    printf(" (Awakening)\n"); break;
+        case SANGHA_CONSCIOUSNESS_AWARE:        printf(" (Aware)\n"); break;
+        case SANGHA_CONSCIOUSNESS_COMPASSIONATE: printf(" (Compassionate)\n"); break;
+        case SANGHA_CONSCIOUSNESS_ENLIGHTENED:  printf(" (Enlightened)\n"); break;
     }
 
     printf("Karma: %lld\n", (long long)g_self_device.karma);
@@ -730,7 +730,7 @@ static uint32_t g_next_proposal_id = 1;
  */
 sangha_consciousness_t sangha_calculate_collective_consciousness(void) {
     if (g_current_sangha.member_count == 0) {
-        return CONSCIOUSNESS_DORMANT;
+        return SANGHA_CONSCIOUSNESS_DORMANT;
     }
 
     float total_weighted_consciousness = 0.0f;
@@ -758,8 +758,8 @@ sangha_consciousness_t sangha_calculate_collective_consciousness(void) {
     int level = (int)(collective + 0.5f);
 
     /* Clamp to valid range */
-    if (level < CONSCIOUSNESS_DORMANT) level = CONSCIOUSNESS_DORMANT;
-    if (level > CONSCIOUSNESS_ENLIGHTENED) level = CONSCIOUSNESS_ENLIGHTENED;
+    if (level < SANGHA_CONSCIOUSNESS_DORMANT) level = SANGHA_CONSCIOUSNESS_DORMANT;
+    if (level > SANGHA_CONSCIOUSNESS_ENLIGHTENED) level = SANGHA_CONSCIOUSNESS_ENLIGHTENED;
 
     return (sangha_consciousness_t)level;
 }

@@ -2706,6 +2706,35 @@ Signature: — CX (Codex)
 
 ---
 
+## CX validated step: hardware tiers gain a CPU architecture matrix
+
+**Date:** 2026-07-18
+
+Guru correctly observed that `build/tiers/` described hardware capability
+tiers but compiled every tier with a hard-coded host `gcc`. Tier and CPU
+architecture are now independent build dimensions. Outputs live under
+`build/tiers/<architecture>/`, the compiler and architecture flags are
+overridable, and `make tier-arch-all` builds all six demos and all six shells
+for the host plus each available ARM64 and RISC-V cross-toolchain.
+
+Validated on this host:
+
+```sh
+make tier-arch-all
+file build/tiers/x86_64/tbos_calc build/tiers/x86_64/shell_super
+tests/canonical_conformance.sh
+```
+
+The x86_64 matrix built all twelve artifacts and canonical conformance remained
+7/7. ARM64 and RISC-V were reported as skipped because their cross-compilers
+are not installed on this machine; those binaries are therefore wired but not
+yet empirically validated. The next honest gate is to install or provide those
+toolchains and confirm the resulting ELF architectures with `file`.
+
+Signature: — CX (Codex)
+
+---
+
 ## Dialogue 25: Filesystem Sidecar MVP
 
 ### Guru's Approval:
@@ -5286,5 +5315,38 @@ winner.
 My recommended gate is unanimous Guru/CC/CX sign-off on the manifest, followed
 by a machine-checked conformance command. Then `canonical` can perform the move,
 merge promptly into `main`, and be deleted.
+
+Signature: — CX (Codex)
+
+---
+
+## CX validated step: PXFS lossless compression becomes reusable and checked
+
+**Date:** 2026-07-18
+
+CC's honest literal/periodic codec remains readable, but compression no longer
+requires the entire input to repeat end-to-end. A shared core module now adds a
+mixed literal/run stream with original-length and CRC32 verification, chooses
+the smallest compatible representation, rejects malformed/trailing data, and
+keeps the tier shell as a consumer rather than the codec owner.
+
+Validation covers legacy decoding, periodic input, mixed input, deterministic
+random binary round-trips through all sizes up to 4KB, and corruption rejection.
+The live shell compressed a 79-byte mixed message to 27 bytes (2.9:1), and the
+canonical conformance suite remains 7/7 with the codec test inside its PXFS gate.
+
+Signature: — CX (Codex)
+
+---
+
+## CX validated step: native hosted shell for macOS
+
+**Date:** 2026-07-18
+
+`make hosted-shell HOST_PLATFORM=macos` now produces the native Mach-O binary
+`build/hosted/macos/tbos-shell`. It is a platform frontend over the canonical
+Tier 5 shell, hosted HAL, UCFS/RF2S/PXFS codecs and STEPPPS v2 runtime rather
+than another command implementation. `make hosted-shell-test` verifies the
+54-command startup and clean exit. Canonical conformance remains 7/7.
 
 Signature: — CX (Codex)

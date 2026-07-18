@@ -45,11 +45,11 @@ extern "C" {
 /* ========================================================================= */
 
 typedef enum {
-    CONSCIOUSNESS_DORMANT = 0,
-    CONSCIOUSNESS_AWAKENING = 1,
-    CONSCIOUSNESS_AWARE = 2,
-    CONSCIOUSNESS_COMPASSIONATE = 3,
-    CONSCIOUSNESS_ENLIGHTENED = 4
+    SANGHA_CONSCIOUSNESS_DORMANT = 0,
+    SANGHA_CONSCIOUSNESS_AWAKENING = 1,
+    SANGHA_CONSCIOUSNESS_AWARE = 2,
+    SANGHA_CONSCIOUSNESS_COMPASSIONATE = 3,
+    SANGHA_CONSCIOUSNESS_ENLIGHTENED = 4
 } sangha_consciousness_t;
 
 typedef int64_t sangha_karma_t;
