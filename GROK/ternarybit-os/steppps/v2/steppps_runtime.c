@@ -29,10 +29,12 @@
 
 static struct {
     bool initialized;
-    int64_t user_karma;             /* Current user's karma */
+    int64_t punyam;                 /* Merit earned (grows on reward) */
+    int64_t pavam;                  /* Demerit spent (grows on spend) */
     steppps_cap_t user_caps;        /* User's granted capabilities */
     char audit_path[256];           /* Audit log path */
     char blacklist_path[256];       /* Blacklist path */
+    char karma_path[256];           /* Karma wallet path */
     FILE* audit_file;
 } g_runtime = {0};
 
@@ -217,11 +219,24 @@ static void compute_hash(const char* data, size_t len, char* hex_out) {
 /* RUNTIME INITIALIZATION                                                     */
 /* ========================================================================= */
 
+/* Persist punyam and pavam immediately, so they survive a crash or a shell
+ * that never calls steppps_runtime_shutdown(). Karma is punyam - pavam,
+ * kept as two separate trails (merit earned, demerit spent) rather than
+ * one net number, so either side can be inspected on its own. */
+static void steppps_save_karma(void) {
+    if (!g_runtime.karma_path[0]) return;
+    FILE* f = fopen(g_runtime.karma_path, "w");
+    if (!f) return;
+    fprintf(f, "%lld %lld\n", (long long)g_runtime.punyam, (long long)g_runtime.pavam);
+    fclose(f);
+}
+
 int steppps_runtime_init(void) {
     if (g_runtime.initialized) return 0;
 
     /* Set defaults */
-    g_runtime.user_karma = 100;  /* Default karma for new users */
+    g_runtime.punyam = 100;  /* Default merit for new users */
+    g_runtime.pavam = 0;     /* No demerit spent yet */
     g_runtime.user_caps = CAP_READ_FS | CAP_EXEC;  /* Basic caps */
 
     /* Setup audit log */
@@ -231,6 +246,8 @@ int steppps_runtime_init(void) {
                  "%s/.tbos/steppps_audit.log", home);
         snprintf(g_runtime.blacklist_path, sizeof(g_runtime.blacklist_path),
                  "%s/.tbos/steppps_blacklist", home);
+        snprintf(g_runtime.karma_path, sizeof(g_runtime.karma_path),
+                 "%s/.tbos/karma", home);
 
         /* Create directory if needed */
         char dir[256];
@@ -238,10 +255,36 @@ int steppps_runtime_init(void) {
         tbos_mkdir(dir);
 
         g_runtime.audit_file = fopen(g_runtime.audit_path, "a");
+
+        /* Load persisted punyam/pavam if they exist; otherwise the
+         * defaults above stand and this becomes the wallet's first write. */
+        FILE* kf = fopen(g_runtime.karma_path, "r");
+        if (kf) {
+            long long p = 0, v = 0;
+            if (fscanf(kf, "%lld %lld", &p, &v) == 2) {
+                g_runtime.punyam = (int64_t)p;
+                g_runtime.pavam = (int64_t)v;
+            }
+            fclose(kf);
+        } else {
+            steppps_save_karma();
+        }
     }
 
     g_runtime.initialized = true;
     return 0;
+}
+
+int64_t steppps_get_punyam(void) {
+    return g_runtime.punyam;
+}
+
+int64_t steppps_get_pavam(void) {
+    return g_runtime.pavam;
+}
+
+int64_t steppps_get_user_karma(void) {
+    return g_runtime.punyam - g_runtime.pavam;
 }
 
 void steppps_runtime_shutdown(void) {
@@ -637,6 +680,14 @@ int steppps_run(steppps_t* s) {
         return -1;
     }
 
+    /* Spend: the run is proceeding (approved, not blacklisted, sandbox ok),
+     * so pay its cost now - not at the earlier gate check, which only
+     * confirms the balance can afford it. */
+    if (s->karma_cost > 0) {
+        g_runtime.pavam += s->karma_cost;
+        steppps_save_karma();
+    }
+
     /* Audit log - before execution */
     steppps_audit_log(s, "run", 0);
 
@@ -681,9 +732,11 @@ int steppps_run(steppps_t* s) {
 
     /* Award karma on success */
     if (rc == 0) {
-        g_runtime.user_karma += s->karma_reward;
-        printf("\n+%lld karma (total: %lld)\n",
-               (long long)s->karma_reward, (long long)g_runtime.user_karma);
+        g_runtime.punyam += s->karma_reward;
+        steppps_save_karma();
+        printf("\n+%lld karma (punyam %lld - pavam %lld = %lld)\n",
+               (long long)s->karma_reward, (long long)g_runtime.punyam,
+               (long long)g_runtime.pavam, (long long)steppps_get_user_karma());
     }
 
     return rc;

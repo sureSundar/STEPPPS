@@ -244,6 +244,9 @@ typedef struct {
 /* Initialize runtime */
 int steppps_runtime_init(void);
 void steppps_runtime_shutdown(void);
+int64_t steppps_get_user_karma(void);  /* Real, persisted karma balance (punyam - pavam) */
+int64_t steppps_get_punyam(void);      /* Merit earned */
+int64_t steppps_get_pavam(void);       /* Demerit spent */
 
 /* Load & Parse */
 int steppps_load(const char* path, steppps_t* s);

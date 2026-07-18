@@ -861,11 +861,12 @@ static int cmd_steppps(int argc, char** argv) {
             printf("steppps: failed to load/parse %s\n", argv[2]);
             return 1;
         }
+        int64_t real_karma = steppps_get_user_karma();
         int sig_ok = steppps_verify(&s);
-        int trust_ok = steppps_check_trust(&s, g_karma);
+        int trust_ok = steppps_check_trust(&s, real_karma);
         steppps_print_security(&s);
         printf("Signature valid: %s\n", sig_ok == 0 ? "yes" : "no");
-        printf("Trust check (your karma %d): %s\n", g_karma, trust_ok == 0 ? "passed" : "failed");
+        printf("Trust check (your karma %lld): %s\n", (long long)real_karma, trust_ok == 0 ? "passed" : "failed");
         steppps_free(&s);
         add_karma(2);
         return 0;
@@ -884,7 +885,7 @@ static int cmd_steppps(int argc, char** argv) {
             return 1;
         }
         steppps_verify(&s);
-        steppps_check_trust(&s, g_karma);
+        steppps_check_trust(&s, steppps_get_user_karma());
         int rc = steppps_run(&s);
         printf("Execution: %s (exit code %d)\n", rc == 0 ? "completed" : "rejected/failed", s.exit_code);
         add_karma(rc == 0 ? 3 : 1);
