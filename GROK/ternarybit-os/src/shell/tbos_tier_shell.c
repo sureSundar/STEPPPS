@@ -230,6 +230,7 @@ typedef struct {
 static int g_running = 1;
 static int g_karma = 100;
 static char g_cwd[MAX_PATH];
+static time_t g_shell_start_time;
 
 #if TBOS_TIER >= 2
 static char g_history[HISTORY_SIZE][MAX_INPUT];
@@ -1280,9 +1281,20 @@ static int cmd_uname(int argc, char** argv) {
 
 static int cmd_uptime(int argc, char** argv) {
     (void)argc; (void)argv;
-    /* Simplified - just show system time */
     time_t now = time(NULL);
-    printf("System time: %s", ctime(&now));
+    double elapsed = difftime(now, g_shell_start_time);
+    long total_secs = (long)elapsed;
+    long days = total_secs / 86400;
+    long hours = (total_secs % 86400) / 3600;
+    long mins = (total_secs % 3600) / 60;
+    long secs = total_secs % 60;
+
+    printf("Shell uptime: ");
+    if (days > 0) printf("%ldd ", days);
+    if (days > 0 || hours > 0) printf("%ldh ", hours);
+    printf("%ldm %lds\n", mins, secs);
+    printf("Started:      %s", ctime(&g_shell_start_time));
+    printf("Current time: %s", ctime(&now));
     return 0;
 }
 
@@ -1874,6 +1886,7 @@ int main(int argc, char** argv) {
     (void)argc; (void)argv;
 
     /* Initialize */
+    g_shell_start_time = time(NULL);
     getcwd(g_cwd, sizeof(g_cwd));
     tier_shell_init_command_table();
 #ifndef _WIN32
