@@ -382,15 +382,14 @@ test-di: $(BUILD_DIR)/test_di_bootstrap
 test-di-all: test-ioc test-di
 
 # Interactive Shell
-$(SHELL_MAIN): $(BUILD_DIR)/$(SHELL_MAIN)
-$(BUILD_DIR)/$(SHELL_MAIN): $(SRC_DIR)/shell/shell_main.c $(ALL_CORE_SRCS) | directories
-	@echo "🔨 Building TernaryBit OS Interactive Shell..."
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
-
-# Run interactive shell
-shell: $(BUILD_DIR)/$(SHELL_MAIN)
-	@echo "🚀 Starting TernaryBit OS Interactive Shell..."
-	@./$(BUILD_DIR)/$(SHELL_MAIN)
+#
+# Canonical shell is tbos_tier_shell.c (see docs/TBOS_CANONICAL_MANIFEST.md) -
+# `make shell` builds and runs it at the top tier (Supercomputer, all 54
+# commands: real pxfs/ucfs/rf2s/network/steppps). For a specific tier, use
+# tier-shell-calc/embed/retro/desktop/server/super directly.
+shell: tier-shell-super
+	@echo "🚀 Starting TernaryBit OS Interactive Shell (Tier 5 - Supercomputer)..."
+	@./$(TIER_BUILD_DIR)/shell_super
 
 # Clean build artifacts
 clean:
