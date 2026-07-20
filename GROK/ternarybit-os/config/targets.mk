@@ -6,10 +6,6 @@ BUILD_TARGETS = kernel.bin bootloader.bin
 TEST_TARGETS = test_hardware_detector test_universal_boot test_steppps_framework test_memory_manager test_ioc_container test_di_bootstrap
 SHELL_TARGETS = ternarybit_shell ternarybit_shell_di
 
-# Default target
-.PHONY: all
-all: directories $(BUILD_TARGETS) $(SHELL_TARGETS)
-
 # Create build directories
 .PHONY: directories
 directories:

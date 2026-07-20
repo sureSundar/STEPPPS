@@ -1,3 +1,10 @@
+# GNU Make's default goal is whichever target is defined *first* in the
+# file, not whichever is named "all" - `paper` (below) held that position,
+# so bare `make` silently built an unrelated research-paper PDF and failed
+# without pandoc, never reaching any real build target. Force the real
+# default explicitly rather than relying on definition order.
+.DEFAULT_GOAL := all
+
 .PHONY: paper
 paper:
 	@echo "[make] Building research paper via scripts/build-paper.sh"
@@ -83,12 +90,27 @@ HOST_SHELL2_OBJS = $(patsubst $(SHELL2_DIR)/%.c,$(HOST_BUILD_DIR)/$(SHELL2_DIR)/
 TEST_SRCS = $(wildcard $(TEST_DIR)/unit/test_*.c)
 TEST_BINS = $(patsubst $(TEST_DIR)/unit/%.c,$(BUILD_DIR)/%,$(TEST_SRCS))
 
-# Default target
-all: $(BUILD_TARGETS) $(SHELL_TARGETS)
-	@echo "🏗️  TernaryBit OS for $(ARCH) built successfully"
-	@echo "  Kernel: $(KERNEL_BIN)"
-	@echo "  Bootloader: $(BOOTLOADER_BIN)"
-	@echo "  Shell: $(SHELL_TARGETS)"
+# Default target: attempts the legacy bare-metal image (kernel/bootloader/
+# shell below) plus every platform and architecture this repo can currently
+# target - canonical tier shells for the host arch, ARM64 and RISC-V (each
+# skipped gracefully if its cross-compiler isn't installed), Windows tier
+# shells (skipped if no MinGW), and the iOS Simulator app (skipped if no
+# Xcode). One `make` builds everything possible on this machine; a broken
+# or unavailable target is reported and skipped rather than stopping the
+# rest, the same way tbos-all-platforms already treats missing toolchains.
+# BUILD_TARGETS/SHELL_TARGETS are invoked via sub-make, not as direct
+# prerequisites, specifically so a hard failure there (e.g. kernel.bin has
+# no matching rule today - config/targets.mk names it without the
+# $(BUILD_DIR) prefix config/flags.mk's KERNEL_BIN actually uses) can't
+# abort the working parts of the build.
+all:
+	@$(MAKE) --no-print-directory $(BUILD_TARGETS) $(SHELL_TARGETS) && \
+		( echo "🏗️  TernaryBit OS for $(ARCH) built successfully"; \
+		  echo "  Kernel: $(KERNEL_BIN)"; \
+		  echo "  Bootloader: $(BOOTLOADER_BIN)"; \
+		  echo "  Shell: $(SHELL_TARGETS)" ) || \
+		echo "⚠️  Legacy bare-metal image (kernel.bin/bootloader.bin/shell) skipped - known broken, see docs/TBOS_CANONICAL_MANIFEST.md Phase 2 (freestanding core, not done yet)"
+	@$(MAKE) --no-print-directory tbos-all-platforms
 	@echo "\nRun 'make test' to execute tests or 'make run' to start in QEMU"
 
 # WINDSURF: Build scaffolding-only (drivers, fs, net, shell stubs)
@@ -479,6 +501,7 @@ test-hosted-linux: build-hosted-linux
 	@echo "bcb\nmemory\nexit" | ./artifacts/hosted/tbos-linux
 
 .PHONY: persona-help list-personas list-packages persona-build persona-test persona-run persona-ci
+.PHONY: agent-contract-test agent-contract-birth
 
 persona-help:
 	@echo "Persona-aware workflow"
@@ -507,6 +530,14 @@ persona-run:
 
 persona-ci:
 	@PACKAGES="$(PACKAGES)" ./scripts/tbos_persona_ci.sh $(PERSONAS)
+
+# First governed digital-being lifecycle experiment.
+agent-contract-birth:
+	@./tools/tbos-agent birth sundars-agent \
+		config/agents/sundars-agent.contract.json
+
+agent-contract-test:
+	@python3 -m unittest tests.integration.test_agent_contract
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MULTI-ARCHITECTURE BUILD TARGETS
@@ -762,7 +793,8 @@ TIER_SHELL_SRC := src/shell/tbos_tier_shell.c
 # Canonical path codecs (docs/TBOS_CANONICAL_MANIFEST.md), reused for the
 # tier shell's ucfs/rf2s commands instead of a fourth reimplementation.
 TIER_SHELL_FS_SRCS := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c \
-                      src/core/compression/pxfs_lossless.c
+                      src/core/compression/pxfs_lossless.c \
+                      kernel/fs/vfs.c kernel/fs/ramfs.c
 # Hosted HAL adapter - the tier shell's command table asks
 # caps.has_dynamic_memory instead of hardcoding a storage strategy.
 # Link kernel/hal_baremetal.c instead to build against a platform with
@@ -1124,6 +1156,13 @@ build/macos/tbos: $(TBOS_CROSS_SRCS) $(TBOS_CROSS_STEPPPS_SRCS)
 
 MINGW_CC := x86_64-w64-mingw32-gcc
 MINGW_EXISTS := $(shell which $(MINGW_CC) 2>/dev/null)
+# MinGW-w64's linker defaults the PE subsystem/OS version fields to 5.2/4.0
+# (Windows Server 2003/XP-64, NT4-era) - anachronistic metadata for a binary
+# meant to run on Windows 10/11, and reported to trigger "This app can't run
+# on your PC" on some Windows 11 machines. Force a modern (Vista+) baseline
+# explicitly rather than relying on the linker's default.
+MINGW_MODERN_VERSION_FLAGS := -Wl,--major-subsystem-version,6 -Wl,--minor-subsystem-version,0 \
+                               -Wl,--major-os-version,6 -Wl,--minor-os-version,0
 
 tbos-windows: build/windows/tbos.exe build/windows/steppps.exe
 	@echo ""
@@ -1145,14 +1184,91 @@ ifndef MINGW_EXISTS
 endif
 	@mkdir -p build/windows
 	@echo "Building TBOS for Windows (x86_64)..."
-	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static
+	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static $(MINGW_MODERN_VERSION_FLAGS)
 	@echo "Windows build complete!"
 
 build/windows/steppps.exe: $(STEPPPS_V2_SRCS)
 	@mkdir -p build/windows
 	@echo "Building STEPPPS CLI for Windows..."
-	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static
+	@$(MINGW_CC) -DHOST_BUILD -D_WIN32 -Wall -O2 -o $@ $^ $(TBOS_CROSS_INCLUDES) -static $(MINGW_MODERN_VERSION_FLAGS)
 	@echo "STEPPPS Windows build complete!"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WINDOWS TIER SHELLS (MinGW-w64 cross-compile of the same canonical
+# tbos_tier_shell.c, not the tbos_complete_shell.c the tbos-windows target
+# above builds.) The macOS/Linux tier shells transferred to Windows fail
+# with "is not recognized" because they're Mach-O/ELF - a format Windows
+# cannot execute at all, regardless of extension. These are real PE32+ .exe
+# binaries of the identical source.
+#
+# kernel/fs/vfs.c + ramfs.c are dropped (uid_t/gid_t don't exist without a
+# POSIX layer on Windows) and kernel/hal_hosted.c is replaced with
+# kernel/hal_baremetal.c (needs netdb.h/BSD sockets; see the "no heap"
+# substitution documented above TIER_SHELL_HAL_SRCS). Neither loss is a
+# regression: tbos_tier_shell.c's own #ifndef _WIN32 guards already exclude
+# net/vfs commands (net, netscan, vmkdir, vls, ucfs, rf2s, px*, steppps)
+# from registration on Windows - those files were never linked into any
+# command Windows could reach.
+# ─────────────────────────────────────────────────────────────────────────────
+WINDOWS_BUILD_DIR := build/windows
+TIER_SHELL_FS_SRCS_WIN := src/core/filesystem/ucfs_codec.c src/core/filesystem/rf2s_codec.c \
+                          src/core/compression/pxfs_lossless.c
+TIER_SHELL_HAL_SRCS_WIN := kernel/hal_baremetal.c
+
+$(WINDOWS_BUILD_DIR)/shell_calc.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 0] Building Calculator Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=0 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+$(WINDOWS_BUILD_DIR)/shell_embed.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 1] Building Embedded Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=1 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+$(WINDOWS_BUILD_DIR)/shell_retro.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 2] Building Retro Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=2 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+$(WINDOWS_BUILD_DIR)/shell_desktop.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 3] Building Desktop Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=3 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+$(WINDOWS_BUILD_DIR)/shell_server.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 4] Building Server Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+$(WINDOWS_BUILD_DIR)/shell_super.exe: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS_WIN) $(TIER_SHELL_HAL_SRCS_WIN) $(TIER_SHELL_STEPPPS_SRCS)
+ifndef MINGW_EXISTS
+	@echo "Error: MinGW not found. Install with: brew install mingw-w64 (macOS) or apt install mingw-w64 (Linux)"; exit 1
+endif
+	@mkdir -p $(WINDOWS_BUILD_DIR)
+	@echo "[Windows/Tier 5] Building Supercomputer Shell..."
+	@$(MINGW_CC) -D_WIN32 -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm -static $(MINGW_MODERN_VERSION_FLAGS)
+
+.PHONY: tier-shell-windows-all
+tier-shell-windows-all: $(WINDOWS_BUILD_DIR)/shell_calc.exe $(WINDOWS_BUILD_DIR)/shell_embed.exe \
+                        $(WINDOWS_BUILD_DIR)/shell_retro.exe $(WINDOWS_BUILD_DIR)/shell_desktop.exe \
+                        $(WINDOWS_BUILD_DIR)/shell_server.exe $(WINDOWS_BUILD_DIR)/shell_super.exe
+	@echo "Windows tier shells built in $(WINDOWS_BUILD_DIR)/ - copy the .exe to Windows and run in cmd.exe/PowerShell."
+	@echo "Network and virtual-root commands (net, netscan, vmkdir, vls, ucfs, rf2s, px*, steppps) are unavailable in this build; the same tier shell built natively on macOS/Linux has the full command set."
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ANDROID (NDK cross-compilation)
@@ -1295,14 +1411,29 @@ build/ios/steppps_runtime.o: steppps/v2/steppps_runtime.c
 # BUILD ALL PLATFORMS
 # ─────────────────────────────────────────────────────────────────────────────
 
-tbos-all-platforms: tbos-steppps
+tbos-all-platforms:
 	@echo "Building for all available platforms..."
-	@$(MAKE) tbos-windows 2>/dev/null || echo "Windows: Skipped (no MinGW)"
+	@echo ""
+	@echo "== TBOS + STEPPPS host build =="
+	@$(MAKE) --no-print-directory tbos-steppps 2>/dev/null || echo "tbos-steppps: Skipped (pre-existing build error, unrelated to this target - see demos/steppps_fs_demo.c: undeclared PXFS_HEADER_SIZE)"
+	@echo ""
+	@echo "== Canonical tier shells (host architecture) =="
+	@$(MAKE) --no-print-directory tier-arch-all
+	@echo ""
+	@echo "== Canonical tier shells (Windows, MinGW) =="
+	@$(MAKE) --no-print-directory tier-shell-windows-all 2>/dev/null || echo "Windows tier shells: Skipped (no MinGW)"
+	@echo ""
+	@echo "== Legacy tbos_complete_shell.c track (docs/TBOS_CANONICAL_MANIFEST.md: non-canonical) =="
+	@$(MAKE) tbos-windows 2>/dev/null || echo "Windows (legacy): Skipped (no MinGW)"
 	@$(MAKE) tbos-android 2>/dev/null || echo "Android: Skipped (no NDK)"
 	@$(MAKE) tbos-ios 2>/dev/null || echo "iOS: Skipped (no Xcode)"
 	@echo ""
+	@echo "== TernaryBit OS iOS app (mobile/ios/TernaryBitOS, Simulator SDK) =="
+	@cd mobile/ios/TernaryBitOS && xcodebuild -project TernaryBitOS.xcodeproj -target TernaryBitOS -sdk iphonesimulator -configuration Debug build -quiet 2>/dev/null && echo "iOS app: built mobile/ios/TernaryBitOS/build/Debug-iphonesimulator/TernaryBitOS.app" || echo "iOS app: Skipped (no Xcode or build failed)"
+	@echo ""
 	@echo "Cross-platform build complete!"
 	@ls -la build/*/tbos* build/*/*.exe build/*/*.a 2>/dev/null || true
+	@ls -la build/tiers/*/shell_* build/windows/shell_*.exe 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELP

@@ -65,6 +65,9 @@
 #include <ctype.h>
 #include <stdint.h>
 #include "../core/compression/pxfs_lossless.h"
+#include "../../include/tbos/vfs.h"
+
+extern const vfs_driver_t ramfs_driver;
 
 #ifndef _WIN32
 /* Real POSIX sockets, available at every tier that can compile them.
@@ -170,6 +173,7 @@
 /* Platform includes */
 #ifdef _WIN32
     #include <io.h>
+    #include <windows.h>
     #define popen _popen
     #define pclose _pclose
 #else
@@ -184,7 +188,13 @@
 
 #define VERSION "1.0.0"
 
-/* Scale buffer sizes by tier */
+/* Scale buffer sizes by tier. <windows.h> (included above for _WIN32) also
+ * defines MAX_PATH (260) - undefine it so TBOS's own tier-scaled value is
+ * unambiguously what the rest of this file uses, not an artifact of
+ * definition order. */
+#ifdef _WIN32
+    #undef MAX_PATH
+#endif
 #if TBOS_TIER <= 1
     #define MAX_INPUT    64
     #define MAX_ARGS     8
@@ -1047,6 +1057,56 @@ static int cmd_mkdir(int argc, char** argv) {
     return 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TBOS's own virtual root, distinct from the host filesystem `ls`/`cd`/`mkdir`
+ * above operate on. docs/TBOS_LINUX_DISTRO_ROADMAP.md step 1: an "Ubuntu-like"
+ * TBOS needs its own namespace, not just host passthrough. Mounts the
+ * already-canonical kernel/fs/vfs.c + ramfs.c (manifest: "VFS contract and
+ * namespace") rather than the non-canonical tbos_ramdisk.c or a new format.
+ * Deliberately additive and Tier-5-only for this first slice: `ls`/`cd`/
+ * `mkdir` above are unchanged, so nothing that already depends on real host
+ * paths (pxstore/pxload, editing this very repo) can regress.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static int g_vfs_mounted = 0;
+
+static void vfs_ensure_mounted(void) {
+    if (g_vfs_mounted) return;
+    vfs_init();
+    vfs_mount("/", &ramfs_driver);
+    g_vfs_mounted = 1;
+}
+
+static int cmd_vmkdir(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: vmkdir <path>  (TBOS's own virtual root, not the host filesystem)\n");
+        return 1;
+    }
+    vfs_ensure_mounted();
+    if (vfs_mkdir(argv[1]) != 0) {
+        printf("vmkdir: failed to create %s\n", argv[1]);
+        return 1;
+    }
+    add_karma(2);
+    return 0;
+}
+
+static int vls_print(const char* name, vfs_node_type_t type, void* user) {
+    (void)user;
+    printf("%s%s\n", name, type == VFS_NODE_DIR ? "/" : "");
+    return 0;
+}
+
+static int cmd_vls(int argc, char** argv) {
+    const char* path = (argc > 1) ? argv[1] : "/";
+    vfs_ensure_mounted();
+    if (vfs_list_dir(path, vls_print, NULL) != 0) {
+        printf("vls: cannot list %s\n", path);
+        return 1;
+    }
+    return 0;
+}
+
 static int cmd_rm(int argc, char** argv) {
     if (argc < 2) {
         printf("Usage: rm <file>\n");
@@ -1743,6 +1803,8 @@ static void register_all_commands(void) {
     register_cmd("quantum",     "Quantum simulation",  cmd_quantum,      5);
 #ifndef _WIN32
     register_cmd("netscan", "Scan a port range (uses TCP connect probe)", cmd_netscan, 5);
+    register_cmd("vmkdir",  "Create a dir in TBOS's own virtual root (not the host FS)", cmd_vmkdir, 5);
+    register_cmd("vls",     "List a dir in TBOS's own virtual root (not the host FS)",   cmd_vls,     5);
 #endif
 #endif
 }
@@ -1833,6 +1895,18 @@ int main(int argc, char** argv) {
     char* cmd_argv[MAX_ARGS];
 
     (void)argc; (void)argv;
+
+#ifdef _WIN32
+    /* The banner below prints UTF-8 box-drawing characters (e.g. the border
+     * around "TBOS Supercomputer Shell"). Windows consoles default to a
+     * legacy OEM code page, not UTF-8, so each multi-byte sequence gets
+     * misread byte-by-byte and renders as garbage - reported as "non
+     * printable chars and no shell prompt" (the mangled banner obscures the
+     * actual, correctly-flushed ASCII prompt line right after it). Setting
+     * both codepages to UTF-8 (65001) before any output fixes this. */
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
 
     /* Initialize */
     g_shell_start_time = time(NULL);

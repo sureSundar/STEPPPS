@@ -1,0 +1,26 @@
+{
+  "$schema": "https://tbos.om/steppps/v1/contract.schema.json",
+  "id": "steppps://contract/package-publish-v1",
+  "applies_to": "package",
+  "contract_id": "steppps://contract/package-publish-v1",
+  "contract_version": "1.0",
+  "name": "TBOS Package Publish Contract",
+  "description": "Ensures TBOS packages are real, STEPPPS-native, and traceable to files that actually exist - not a bespoke, unverified format.",
+  "required_dimensions": ["space", "time", "event", "psychology", "pixel", "prompt", "script", "package"],
+  "allowed_actions": ["publish", "update", "deprecate", "yank"],
+  "required_owner_prefixes": ["steppps://human/", "steppps://agent/"],
+  "minimum_verification_commands": 1,
+  "rules": {
+    "required_dimensions": ["space", "time", "event", "psychology", "pixel", "prompt", "script", "package"],
+    "allowed_actions": ["publish", "update", "deprecate", "yank"],
+    "must_have_verification": true,
+    "must_have_next_prompt": true,
+    "package_provides_must_reference_space_paths": true,
+    "package_depends_unenforced_in_v1": true
+  },
+  "enforcement": {
+    "schema_validation": true,
+    "contract_enforcement": false,
+    "chain_append": false
+  }
+}

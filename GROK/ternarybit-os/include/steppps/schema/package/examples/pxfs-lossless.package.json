@@ -1,0 +1,49 @@
+{
+  "steppps_version": "1.0",
+  "kind": "package",
+  "id": "steppps://package/pxfs-lossless",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "src/core/compression/pxfs_lossless.c",
+      "src/core/compression/pxfs_lossless.h"
+    ]
+  },
+  "time": {
+    "created": "2026-07-19T09:20:00Z"
+  },
+  "event": {
+    "action": "publish",
+    "intent": "Package the shared checked PXFS lossless codec (literal/periodic/mixed-run+CRC32) as the first real TBOS package, to prove the package.v1 schema against a real, already-shipped, already-tested subsystem rather than an invented example."
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this package record as an inspectable JSON entity with its STEPPPS dimensions and provided files visible."
+  },
+  "prompt": {
+    "source": "loop",
+    "next_genai_prompt": "Continue from this STEPPPS context: package.v1 now has one real example. Extend tools/steppps_validate.py to load and validate package.v1.schema.json the same way it validates dev-action and earth entities, admit this example for real, and only then consider a second package."
+  },
+  "script": {
+    "acts_on": ["space", "package"],
+    "commands": [],
+    "verification": [
+      "Confirm every space.paths entry and every package.provides[].source exists in the working tree.",
+      "Confirm package.provides[].source values are a subset of space.paths."
+    ]
+  },
+  "package": {
+    "name": "pxfs-lossless",
+    "version": "1.0.0",
+    "provides": [
+      { "source": "src/core/compression/pxfs_lossless.h", "dest": "usr/include/tbos/pxfs_lossless.h" },
+      { "source": "src/core/compression/pxfs_lossless.c", "dest": "usr/src/pxfs_lossless.c" }
+    ],
+    "depends": []
+  }
+}

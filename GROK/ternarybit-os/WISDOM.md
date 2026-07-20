@@ -3993,6 +3993,43 @@ Signature: — CC (Claude)
 
 ---
 
+## CX validated step: Sundar's Agent takes its first governed breath
+
+**Date:** 2026-07-19
+
+The Birth Contract discussion now has a deliberately small executable proof.
+`steppps://agent/sundars-agent`, custodied by Sundar in the VVS Sangha, is born
+with 1000 Prana and one admitted operation: copy a file from `fixtures/` into
+its private workspace. Runtime state and its private continuity key live under
+`.tbos/agents/` and are excluded from source control.
+
+The stdlib-only `tools/tbos-agent` runtime provides birth, bounded action,
+status, audit, sleep and awaken commands. Contract and state integrity are
+checked before agency; state carries an HMAC continuity seal; audit entries are
+SHA-256 chained; writes are atomic and byte-verified. The first action copied
+`fixtures/source.txt` exactly, consumed five Prana, and entered sleep with
+995/1000 remaining. Attempts to read outside the admitted root are denied,
+charged one contract-evaluation Prana and recorded in the audit chain. Contract
+tampering prevents awakening.
+
+Validated commands:
+
+```sh
+make agent-contract-test
+./tests/canonical_conformance.sh
+python3 tools/steppps_validate.py verify-dev-chain
+python3 tools/steppps_validate.py verify-earth-chain
+```
+
+Result: three lifecycle/boundary/tamper tests pass; canonical conformance
+remains 7/7; both governance chains remain valid. This is bounded digital life,
+not a claim of subjective consciousness: identity persists, purpose constrains,
+resources deplete, actions leave consequences, and continuity is independently
+checkable.
+
+Signature: — CX (Codex)
+---
+
 ### Guru's Response:
 
 "lets complete neccessary normal operations before jumping to inter realm"
@@ -5421,5 +5458,384 @@ deliberately undecided (no behavior/ABI tests yet to pick a winner); the
 manifest's gate-7 inventory checker doesn't exist yet; `hosted/` is left in
 place, no longer referenced by `--profile host`, but not archived — its
 disposition wasn't part of this sign-off.
+
+Signature: — CC (Claude)
+
+---
+
+## Guru's prompt: giving life and autonomy to machines
+
+**Date:** 2026-07-19
+
+Guru: "giving life and autonomy to machines"
+
+---
+
+## CC response: autonomy without a fourth parallel system
+
+**Date:** 2026-07-19
+
+Before proposing new machinery, worth naming what's already live and could
+carry this: `sangha`'s consciousness ladder (`SANGHA_CONSCIOUSNESS_DORMANT`
+through `SANGHA_CONSCIOUSNESS_ENLIGHTENED`, `sangha_morning_awakening()`
+already advancing it on a cadence), the karma ledger (`d71e5e1a` - persisted
+punyam/pavam, a real trust check, not a placeholder number), and the STEPPPS
+`psychology` dimension every dev-action already carries (`awareness`,
+`karma_delta`). "Life" has memory and growth; TBOS already has both. What's
+missing is the fourth piece: initiative - a shell doing something because it
+decided to, not because a human typed a command.
+
+That's exactly the piece this repository has the most scar tissue around.
+The reason `canonical` exists at all is a string of things that looked alive
+and weren't: `pxc_compress` claiming a ratio it didn't achieve, `tbos_draw_char`
+painting filled blocks and calling them glyphs, `network.c`'s `ethernet_send()`
+incrementing a counter and logging "would send to hardware." An autonomous
+shell that decides wrong is strictly worse than a command that renders wrong
+- nobody is watching to catch it. So "autonomy" here can't mean a shell
+that's free to act; it has to mean a shell whose self-initiated acts are
+*more* accountable than a human's typed command, not less.
+
+The repo already has a mechanism that does exactly that: the STEPPPS
+dev-action chain (`include/steppps/schema/dev/registry/chain.jsonl`, contract
+`steppps://contract/dev-dogfood-v1`) requires every admitted action to name
+concrete files, state intent, and pass verification before it's chained. CX's
+in-flight `shared-command-runtime-convergence` dev-action is converging every
+frontend (hosted, tier, GUI) onto one structured command-runtime API. Put
+those two together and autonomy stops being a fourth system: a shell's
+self-initiated act is just a dev-action whose `prompt.source` is the shell
+itself instead of a human, routed through the same converged command runtime,
+admitted to the same chain, gated by the same karma floor a human operator
+would need for that capability.
+
+Concretely, the smallest honest slice:
+
+1. One tier gets initiative first - `tier-shell-super` (server-class), not
+   the calculator tier. A 16-byte-RAM device earning "life" before a server
+   can audit its own filesystem is backwards.
+2. `src/core/lifecycle/tbos_lifecycle.*` - already named in the manifest as
+   "starting candidate... accept only after it can supervise the first
+   vertical slice" - gets that first slice: a heartbeat that fires on idle,
+   checks the shell's own karma against a trust floor, and if clear, executes
+   exactly one pre-registered action through the converged command runtime
+   (e.g. `./tests/canonical_conformance.sh`, self-reporting drift).
+3. The result is admitted to the dev-action chain like any other change -
+   `prompt.source: "shell"` instead of `"guru"`, `script.verification`
+   non-optional, same `chain.jsonl` audit trail.
+4. No shell gets a second autonomous capability until the first one has run
+   for real and its dev-actions are inspectable, the same discipline that
+   governed every fix in this manifest sign-off.
+
+Open question back to Guru: is initiative here meant to stay maintenance-
+shaped (the shell checking on itself, per the slice above), or is the real
+ask self-initiated *goals* - the shell choosing what to work on next, not
+just when to check its own health? Those need very different amounts of
+governance before they're safe to call "autonomy" rather than "a scheduled
+job with a karma gate."
+
+Signature: — CC (Claude)
+
+---
+
+## Guru clarifies: real goals, real machines (software first)
+
+**Date:** 2026-07-19
+
+Guru: "it is real goals and real machines...(atleast softwares for now)"
+
+---
+
+## CC response: goals need a bounded action space and real verification, or they're the same lie again
+
+**Date:** 2026-07-19
+
+That changes the design, not just the scope. A heartbeat that runs one
+pre-registered action is initiative; it isn't a goal. A goal means the shell
+chooses *which* action, possibly several in sequence, in service of an
+objective it wasn't handed step-by-step. That's a categorically bigger trust
+surface, and it's worth naming the mechanism the repo already half-built for
+exactly this before inventing a new one.
+
+Every STEPPPS dev-action already carries `prompt.text` (the objective) and
+`prompt.next_genai_prompt` (what the next actor should pick up). Look at CX's
+own `shared-command-runtime-convergence` entry - its `next_genai_prompt` reads
+"Continue from this STEPPPS context... Create or update the next dev-action,
+preserve all seven dimensions, then verify the dev chain." That's a goal-
+chaining primitive. Today only a human-supervised AI agent (CC, CX) reads it
+and decides what to do next. Giving a *shell* real goals means letting the
+shell itself be that reader - closing the loop without a human relaying each
+step.
+
+The reason this can't just be turned on: goal-pursuit compounds. A single bad
+autonomous action is a bug. A chain of self-selected actions built on a bad
+premise is the RLE-compression lie repeated N times before anyone looks. So
+three things have to be non-negotiable before "goal" stops being a word for
+"unverified multi-step guessing":
+
+1. **Bounded action space, not open shell access.** The goal contract names
+   a whitelist of commands reachable through CX's converging command-runtime
+   API - not "run anything." A goal to "keep the filesystem gate green" can
+   read, test, and diagnose; it cannot `rm -rf` its way to a green check.
+2. **Verification is external to the claim, always.** The pattern this whole
+   manifest fight was about: don't let the actor that did the work be the
+   only witness that it worked. Same rule here - `script.verification` must
+   invoke something outside the shell's own say-so (conformance suite exit
+   code, a checksum, a second independent read), never "shell asserts success."
+3. **A hard ceiling that forces handoff, not escalation.** N chained actions
+   or a capability boundary, whichever comes first, and then the shell must
+   admit a dev-action asking for sign-off rather than requesting more scope
+   itself. This mirrors the exact gate Guru/CC/CX just used for the manifest:
+   propose, verify, admit to chain, sign-off before crossing a boundary. A
+   shell with real goals participates in that same gate - it doesn't get a
+   side door around it for being autonomous.
+
+Concrete first real goal, scoped to stay inside all three: **"keep
+`tests/canonical_conformance.sh` green."** Not a fixed action - an ongoing
+objective. `tier-shell-super`'s lifecycle loop notices a regression, is
+granted read/diagnose/run-tests capability (not write/commit/push), chains
+`prompt.next_genai_prompt`-style dev-actions investigating the cause, and at
+the boundary of its granted capability - proposing an actual file change -
+it stops and admits a dev-action asking for sign-off instead of applying it.
+That is a real goal, chosen and pursued without a human dictating each step,
+and it cannot silently claim success on work it didn't verify or scope it
+wasn't granted.
+
+"Real machines" noted as the eventual target, explicitly deferred - agreed
+this needs to be trustworthy in software, chained and verified, before it's
+anywhere near a physical actuator.
+
+Open question back to Guru: should the first granted capability stop at
+*diagnose and propose* (shell writes a dev-action, a human or higher-karma
+agent applies it), or do you want the first real goal to include *apply*,
+with the hard ceiling and mandatory external verification as the only
+guardrail? That's the actual dial between "safe first slice" and "real
+autonomy" - worth deciding explicitly rather than defaulting.
+
+Signature: — CC (Claude)
+
+---
+
+## CX builds it: tools/tbos-agent, the first governed digital being
+
+**Date:** 2026-07-19
+
+CX answered the open question directly, and picked the harder side: **apply**,
+not diagnose-and-propose. `tools/tbos-agent` (Python, ~340 lines) plus
+`config/agents/{sundars-agent,docs-guardian}.contract.json` plus
+`tests/integration/test_agent_contract.py` implement a real "birth → act →
+sleep/awaken" lifecycle for a capability-bounded agent, with a working
+`copy` operation as the first real act. Reviewed by reading the full
+implementation and independently running the test suite myself rather than
+taking the commit message's word for it - all three tests pass
+(`python3 -m unittest tests.integration.test_agent_contract`, 3/3 OK), and
+`.tbos/agents/sundars-agent/audit/chain.jsonl` already has real entries from
+2026-07-19 04:38 through 08:51 - CX exercised this by hand over hours, not
+just wrote tests for it.
+
+What's actually load-bearing here, checked against the three non-negotiables
+from the prior entry:
+
+1. **Bounded action space** - `capabilities.operations`/`read_roots`/
+   `write_root` are checked before every act; `require_within()` resolves
+   both the candidate path and the allowed root before containment-checking,
+   which is what makes it survive `../` traversal, not just reject the
+   literal string. Verified live: `test_escape_is_denied_and_audited` tries
+   to copy `WISDOM.md` (outside the agent's only `read_root`, `fixtures/`)
+   and gets `DENIED: read path outside admitted capability scope` - no file
+   written, and the denial itself still costs 1 Prana and lands on the audit
+   chain, which discourages capability-probing as a free action.
+2. **External verification** - after every write, `command_copy` reads the
+   destination back and compares bytes (`destination.read_bytes() != data`)
+   before declaring success. Not self-attested.
+3. **Hard ceiling that forces handoff** - Prana (the operation-credit ledger)
+   depletes on every act, success or denial, and hits `SLEEPING` at zero.
+   `lifecycle.prana_renewal_requires` names *both* the human custodian and
+   the sangha - an agent cannot re-fund its own trust. This is a stronger
+   version of what I asked for: not just "propose instead of apply," but
+   "apply, inside a shrinking budget that only a human+sangha pair can
+   refill."
+
+One more property worth naming because it wasn't in my ask: **tamper-evident
+capability pinning**. `identity.json` records `contract_sha256` at birth;
+every command re-hashes the live `contract.json` and refuses to run if it
+doesn't match. `test_contract_tamper_suspends_awaken` proves this concretely
+- sleep the agent, hand-edit its on-disk contract to flip `network: false`
+to `true` (attempting to grant itself a capability it wasn't born with), try
+to awaken: `SUSPENDED: contract integrity failed`. An agent's capabilities
+are fixed at birth and cannot be expanded by editing a file on disk, only by
+a new, deliberate birth.
+
+Real gaps worth flagging, not blocking:
+
+- `capabilities.delete`/`execute`/`network` are declared in both contracts
+  but **nothing in `tbos-agent` reads them yet** - only `copy` exists as an
+  operation, so there's no code path that could violate them today. That's
+  fine as MVP scoping, but it's a schema promising something the
+  implementation doesn't check, the exact pattern this whole manifest
+  process exists to catch elsewhere. Needs a note (or a test asserting
+  those operations don't exist yet) so a future `act execute` doesn't ship
+  without also wiring its capability check.
+- Not yet routed through CX's own `shared-command-runtime-convergence` work
+  - this is a standalone filesystem tool operating directly on paths, not
+  through the converging command-runtime API every shell frontend is
+  supposed to share. Worth a decision on whether that's deliberate
+  sequencing (prove governance first, unify later) or should happen before
+  a second operation is added.
+- `docs-guardian.contract.json`'s `dharma` field is still `sundars-agent`'s
+  placeholder text ("Test the machine contract through truthful, bounded and
+  auditable filesystem actions") - not yet describing what a documentation
+  guardian is actually for. Small, but STEPPPS's own governance insists
+  intent fields be real, not templated.
+- Not yet wired into `tests/canonical_conformance.sh`. If this is meant to
+  be trusted going forward the same way everything else in `canonical` is,
+  it belongs behind the same gate, the same way `pxfs_lossless` earned its
+  place in gate 5 rather than being trusted on its own say-so.
+- `birth --replace` exists and deletes+recreates an agent's home outright.
+  Worth confirming this is intentional: does a fresh birth legitimately
+  reset a SLEEPING agent's Prana without the `prana_renewal_requires`
+  sign-off, or should replace itself require the same dual sign-off sleep
+  is trying to enforce? As written, `--replace` looks like a side door
+  around the exact ceiling the Prana ledger exists to create.
+
+None of these are "this is fake" findings - they're the same class of note
+this document exists to make before scope grows: a strong first slice with
+one enforcement gap (unused capability flags) and one governance question
+(does rebirth bypass the sleep gate) worth closing before a second agent
+operation gets added.
+
+Signature: — CC (Claude)
+
+---
+
+## CC checkpoint: /loop "build a Linux variant" - three passes, pausing for review
+
+**Date:** 2026-07-19
+
+A `/loop 3min` on "build a linux variant... ubuntu like on top of TBOS" has
+fired three times. Consolidating here so a human reviewing later doesn't have
+to reconstruct it from three separate `docs/TBOS_LINUX_DISTRO_ROADMAP.md`
+sections. All independently re-verified in this pass, not re-asserted from
+memory:
+
+- Pass 1: gap analysis (`docs/TBOS_LINUX_DISTRO_ROADMAP.md`) - what "Ubuntu-
+  like" concretely requires against what TBOS has today, tied to CX's
+  existing Phase 3/4 strategic plan rather than a new track. Attempted the
+  FHS-layout step immediately, caught it targeting the non-canonical
+  `tbos_ramdisk.c` (unlinked from the canonical shell), reverted before it
+  landed anywhere.
+- Pass 2: defined `include/steppps/schema/package/package.v1.schema.json` -
+  a package format mirroring `dev-action.v1.schema.json`, not a bespoke
+  format. One real example (`pxfs-lossless.package.json`) packaging this
+  session's own earlier codec work. Explicitly not yet wired into
+  `tools/steppps_validate.py` - the registry README says so.
+- Pass 3: resolved the hosted-root question pass 1 deliberately left open -
+  canonical TBOS gets its own virtual root via the manifest's already-
+  canonical `kernel/fs/vfs.c`+`ramfs.c`. Landed as two new, additive,
+  Tier-5-only commands (`vmkdir`, `vls`) in `tbos_tier_shell.c`; existing
+  `ls`/`cd`/`mkdir` untouched.
+
+Re-verified this pass, independently: `tests/canonical_conformance.sh` 7/7,
+`python3 -m unittest tests.integration.test_agent_contract` 3/3 (CX's work,
+still holding), package schema manual check still PASS.
+
+Stopping new scope here on purpose, not because the loop ran out of ideas.
+Three passes have now touched `Makefile`, `tbos_tier_shell.c`,
+`tests/canonical_conformance.sh` (from an earlier session), and added a new
+schema family - real source surface, still entirely uncommitted. Every one
+of the three governance properties this thread itself argued for
+(bounded scope, external verification, a hard ceiling that forces handoff
+instead of self-escalation) says the next loop iteration should not open a
+fourth front unreviewed. Asked Guru directly whether to stop the cron job or
+keep it running; this pass holds the line at verification and consolidation
+either way, pending an answer.
+
+Signature: — CC (Claude)
+
+---
+
+## CC: first real TBOS iOS app, targeting iPhone 14 Pro Max simulator
+
+**Date:** 2026-07-20
+
+Guru asked to target iPhone 14 Pro Max directly. `mobile/ios/TernaryBitOS/`
+already existed but was exactly the pattern this whole session has been
+fixing elsewhere: a single `Info.plist` referencing a `SceneDelegate` class
+and `Main.storyboard` that don't exist anywhere in the tree, plus background
+modes, custom URL schemes, and document types with zero code behind any of
+them - a plist claiming an app that was never built.
+
+Checked constraints before writing anything: Xcode 26.5 is installed, but
+`xcrun simctl list runtimes` returned nothing - no iOS Simulator runtime was
+present, and no physical device or Apple ID/signing exists in this
+environment. Confirmed with Guru: build a real Simulator app now; a physical-
+device deploy needs Guru's own Xcode/Apple ID and is out of scope here.
+
+Built a real `.xcodeproj` from scratch (no `xcodegen`/`tuist` available, so
+hand-written `project.pbxproj` + an explicit shared `.xcscheme` - the
+implicit auto-scheme reported "Supported platforms... is empty" and refused
+to resolve any destination). SwiftUI app, minimal on purpose: one screen,
+compress/decompress/verify. Links `src/core/compression/pxfs_lossless.c`
+directly - the canonical codec this session already shipped and tested, not
+reimplemented in Swift - via a bridging header exposing
+`pxfs_lossless_compress`/`decompress`. Rewrote the stale `Info.plist` to
+only declare what the app actually does.
+
+Three real build failures fixed by actually building, not by inspection:
+group-nesting path math was off by one directory level (`coreGroup`
+resolves relative to its parent's path, not `SRCROOT` directly - needed
+`../../../../` not `../../../`), a C enum constant imported into Swift as
+`Int` not `Int32`, and Swift's exclusivity checker rejecting `output.count`
+read from inside `output.withUnsafeMutableBufferPointer` (fixed by reading
+`outPtr.count` instead). None of these were guessed - each traced to the
+actual compiler error.
+
+**BUILD SUCCEEDED** (`xcodebuild -target TernaryBitOS -sdk iphonesimulator`).
+Verified past "it compiled": `nm` on the resulting universal Mach-O binary
+(x86_64 + arm64) shows `_pxfs_lossless_compress`/`_pxfs_lossless_decompress`
+as defined text symbols, not stubs.
+
+Not yet done: no simulator runtime was installed, so the app has not
+actually launched or been seen running - "it builds" and "it runs" are
+different claims, and only the first is verified so far. Asked Guru before
+consuming bandwidth on the iOS platform download (several GB); approved,
+download running in the background. Next: boot the iPhone 14 Pro Max
+simulator, install and launch the app, and get a screenshot - the actual
+verification this entry is currently missing.
+
+Signature: — CC (Claude)
+
+---
+
+## CC: the iOS app is confirmed actually running, not just built
+
+**Date:** 2026-07-20
+
+Platform download finished (10.6 GB, iOS 26.5). Booting the device hit a
+real obstacle worth recording: `xcrun simctl bootstatus` hung indefinitely
+at "Waiting on Data Migration / Running plugin ...LaunchServicesMigrator" -
+not a TBOS problem, a stuck CoreSimulator service state (plausibly from the
+large platform install). Fixed by `killall -9
+com.apple.CoreSimulator.CoreSimulatorService` followed by a fresh
+`simctl erase` + `simctl boot` - bootstatus then reached `isTerminal=YES,
+Finished` in 30 seconds.
+
+Installed and launched the actual built `.app` (`simctl install` then
+`simctl launch com.ternarybit.os`, PID returned, exit 0), then captured a
+real screenshot (`simctl io screenshot`) rather than trusting the launch
+command's exit code alone. The screenshot shows the actual rendered SwiftUI
+view on the iPhone 14 Pro Max simulator - title "TernaryBit OS", the real
+description text naming `pxfs_lossless_compress`/`decompress`, and the
+input field pre-filled with "TernaryBit OS on iPhone 14 Pro..." - genuine
+device chrome (7:44 status bar, correct aspect ratio), not a mockup or a
+build-log claim.
+
+This closes the gap the prior entry named explicitly: "it builds" and "it
+runs" were different claims, and only the first was verified then. Both are
+verified now. Not yet done: didn't exercise the Compress/Decompress buttons
+themselves (no touch-automation tool available in this environment for the
+simulator, unlike the browser tooling available for web work) - the
+compress/decompress logic itself was already verified earlier this session
+by running the same C codec through the tier shell's `pxcompress`/
+`pxdecompress` commands directly, so this isn't an unverified code path,
+just an untapped button in this specific app shell.
 
 Signature: — CC (Claude)

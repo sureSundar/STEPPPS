@@ -1,0 +1,263 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		75B0FFAD4BC57546E018A9F2 /* TernaryBitOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9A0A40254887DCB8382C9A /* TernaryBitOSApp.swift */; };
+		34B886D0D104634122F9A6D2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D677A4AF7D07E757C7BD5526 /* ContentView.swift */; };
+		0FF8F2498FC5B750AF74E7F5 /* pxfs_lossless.c in Sources */ = {isa = PBXBuildFile; fileRef = A07398515505A92B01680555 /* pxfs_lossless.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2D9A0A40254887DCB8382C9A /* TernaryBitOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TernaryBitOSApp.swift; sourceTree = "<group>"; };
+		D677A4AF7D07E757C7BD5526 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A4A45854FC1AA138EA2EEE18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8395E851661E98DC4A3E2073 /* TBOSBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TBOSBridge.h; sourceTree = "<group>"; };
+		A07398515505A92B01680555 /* pxfs_lossless.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = pxfs_lossless.c; path = ../../../../src/core/compression/pxfs_lossless.c; sourceTree = "<group>"; };
+		4DC786A5AF1ACEF5CA9AACB1 /* pxfs_lossless.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = pxfs_lossless.h; path = ../../../../src/core/compression/pxfs_lossless.h; sourceTree = "<group>"; };
+		36CB914C3AF8A64CAF86CDB4 /* TernaryBitOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TernaryBitOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C17B2276E68039957F6BDAB4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		90696C05F4F247A8DCBA4A43 = {
+			isa = PBXGroup;
+			children = (
+				6A4FB6DA671620F7E0F3669B /* TernaryBitOS */,
+				C1469C5EBD77787B58C4F2CF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C1469C5EBD77787B58C4F2CF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				36CB914C3AF8A64CAF86CDB4 /* TernaryBitOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6A4FB6DA671620F7E0F3669B /* TernaryBitOS */ = {
+			isa = PBXGroup;
+			children = (
+				2D9A0A40254887DCB8382C9A /* TernaryBitOSApp.swift */,
+				D677A4AF7D07E757C7BD5526 /* ContentView.swift */,
+				8395E851661E98DC4A3E2073 /* TBOSBridge.h */,
+				A4A45854FC1AA138EA2EEE18 /* Info.plist */,
+				8C483ED01BF660FBCF36D45F /* TBOSCore */,
+			);
+			path = TernaryBitOS;
+			sourceTree = "<group>";
+		};
+		8C483ED01BF660FBCF36D45F /* TBOSCore */ = {
+			isa = PBXGroup;
+			children = (
+				A07398515505A92B01680555 /* pxfs_lossless.c */,
+				4DC786A5AF1ACEF5CA9AACB1 /* pxfs_lossless.h */,
+			);
+			name = TBOSCore;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		45960D1DCDE3CF0C86D84D08 /* TernaryBitOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D6A0FFB761CA07CDC330F4BE /* Build configuration list for PBXNativeTarget "TernaryBitOS" */;
+			buildPhases = (
+				126F295688B6BBB1B12F59C1 /* Sources */,
+				C17B2276E68039957F6BDAB4 /* Frameworks */,
+				4CF175E275C0D18A77545019 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TernaryBitOS;
+			productName = TernaryBitOS;
+			productReference = 36CB914C3AF8A64CAF86CDB4 /* TernaryBitOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FDEA2027D68361F00A7467C1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 2FABD236E98CD5326D047862 /* Build configuration list for PBXProject "TernaryBitOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 90696C05F4F247A8DCBA4A43;
+			productRefGroup = C1469C5EBD77787B58C4F2CF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				45960D1DCDE3CF0C86D84D08 /* TernaryBitOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4CF175E275C0D18A77545019 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		126F295688B6BBB1B12F59C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75B0FFAD4BC57546E018A9F2 /* TernaryBitOSApp.swift in Sources */,
+				34B886D0D104634122F9A6D2 /* ContentView.swift in Sources */,
+				0FF8F2498FC5B750AF74E7F5 /* pxfs_lossless.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A262FCDBAE96CCA521AEBBDD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		79A74BE01ADE59B650F84402 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		53C7A078A8D095A5675E3F26 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/../../../src/core/compression";
+				INFOPLIST_FILE = TernaryBitOS/Info.plist;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ternarybit.os;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "TernaryBitOS/TBOSBridge.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8D82704D90ECC6645675FE05 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/../../../src/core/compression";
+				INFOPLIST_FILE = TernaryBitOS/Info.plist;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ternarybit.os;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "TernaryBitOS/TBOSBridge.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2FABD236E98CD5326D047862 /* Build configuration list for PBXProject "TernaryBitOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A262FCDBAE96CCA521AEBBDD /* Debug */,
+				79A74BE01ADE59B650F84402 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D6A0FFB761CA07CDC330F4BE /* Build configuration list for PBXNativeTarget "TernaryBitOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				53C7A078A8D095A5675E3F26 /* Debug */,
+				8D82704D90ECC6645675FE05 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FDEA2027D68361F00A7467C1 /* Project object */;
+}
