@@ -1,0 +1,339 @@
+#!/usr/bin/env python3
+"""Minimal governed lifecycle runtime for a TBOS digital being."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import shutil
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_ROOT = REPO_ROOT / ".tbos" / "agents"
+
+
+class ContractError(RuntimeError):
+    pass
+
+
+def canonical(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def digest(value: Any) -> str:
+    return hashlib.sha256(canonical(value)).hexdigest()
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        with path.open(encoding="utf-8") as stream:
+            value = json.load(stream)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ContractError(f"cannot read {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractError(f"expected JSON object: {path}")
+    return value
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(value, stream, indent=2, ensure_ascii=False)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def runtime_root(args: argparse.Namespace) -> Path:
+    return Path(args.root or os.environ.get("TBOS_AGENT_ROOT", DEFAULT_ROOT)).resolve()
+
+
+def agent_home(args: argparse.Namespace) -> Path:
+    return runtime_root(args) / args.agent
+
+
+def state_payload(state: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in state.items() if key != "seal"}
+
+
+def seal_state(home: Path, state: dict[str, Any]) -> None:
+    key = (home / "state" / "continuity.key").read_bytes()
+    state["seal"] = hmac.new(key, canonical(state_payload(state)), hashlib.sha256).hexdigest()
+    atomic_json(home / "state" / "state.json", state)
+
+
+def verify_audit(home: Path) -> tuple[str, int]:
+    path = home / "audit" / "chain.jsonl"
+    previous = "0" * 64
+    count = 0
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ContractError(f"audit chain unavailable: {exc}") from exc
+    for number, line in enumerate(lines, 1):
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ContractError(f"audit entry {number} is invalid JSON") from exc
+        recorded = entry.pop("hash", None)
+        if entry.get("previous_hash") != previous or recorded != digest(entry):
+            raise ContractError(f"audit continuity failed at entry {number}")
+        previous = recorded
+        count += 1
+    if count == 0:
+        raise ContractError("audit chain is empty")
+    return previous, count
+
+
+def append_audit(home: Path, event: str, details: dict[str, Any]) -> str:
+    previous, _ = verify_audit(home)
+    entry = {
+        "sequence": sum(1 for _ in (home / "audit" / "chain.jsonl").open(encoding="utf-8")) + 1,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": event,
+        "details": details,
+        "previous_hash": previous,
+    }
+    entry["hash"] = digest(entry)
+    with (home / "audit" / "chain.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(entry, sort_keys=True, ensure_ascii=False) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return entry["hash"]
+
+
+def load_verified(home: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    contract = load_json(home / "contract.json")
+    identity = load_json(home / "identity.json")
+    state = load_json(home / "state" / "state.json")
+    if digest(contract) != identity.get("contract_sha256"):
+        raise ContractError("contract integrity failed")
+    audit_head, _ = verify_audit(home)
+    if audit_head != state.get("audit_head"):
+        raise ContractError("state does not reference the audit head")
+    try:
+        key = (home / "state" / "continuity.key").read_bytes()
+    except OSError as exc:
+        raise ContractError("continuity key unavailable") from exc
+    expected = hmac.new(key, canonical(state_payload(state)), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, str(state.get("seal", ""))):
+        raise ContractError("state continuity seal failed")
+    return contract, identity, state
+
+
+def require_within(path: Path, root: Path, label: str) -> Path:
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(root.resolve())
+    except ValueError as exc:
+        raise ContractError(f"DENIED: {label} outside admitted capability scope") from exc
+    return resolved
+
+
+def command_birth(args: argparse.Namespace) -> None:
+    source = Path(args.contract).resolve()
+    contract = load_json(source)
+    identity_spec = contract.get("identity", {})
+    if identity_spec.get("id") != f"steppps://agent/{args.agent}":
+        raise ContractError("contract identity does not match agent name")
+    initial = contract.get("prana", {}).get("initial")
+    if not isinstance(initial, int) or initial <= 0:
+        raise ContractError("contract requires positive integer Prana")
+    home = agent_home(args)
+    if home.exists():
+        if not args.replace:
+            raise ContractError(f"agent already exists: {home}")
+        shutil.rmtree(home)
+    for directory in ("memory", "workspace", "audit", "state"):
+        (home / directory).mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, home / "contract.json")
+    identity = {
+        **identity_spec,
+        "born_at": datetime.now(timezone.utc).isoformat(),
+        "lineage": secrets.token_hex(16),
+        "contract_sha256": digest(contract),
+    }
+    atomic_json(home / "identity.json", identity)
+    key_path = home / "state" / "continuity.key"
+    key_path.write_bytes(secrets.token_bytes(32))
+    os.chmod(key_path, 0o600)
+    genesis = {
+        "sequence": 1,
+        "timestamp": identity["born_at"],
+        "event": "BIRTH",
+        "details": {"prana": initial, "contract_sha256": identity["contract_sha256"]},
+        "previous_hash": "0" * 64,
+    }
+    genesis["hash"] = digest(genesis)
+    (home / "audit" / "chain.jsonl").write_text(
+        json.dumps(genesis, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    state = {"lifecycle": "AWAKE", "prana_remaining": initial, "audit_head": genesis["hash"]}
+    seal_state(home, state)
+    print(f"BORN: {identity_spec['name']}")
+    print(f"Identity: {identity_spec['id']}")
+    print(f"Prana: {initial}/{initial}")
+
+
+def command_copy(args: argparse.Namespace) -> None:
+    home = agent_home(args)
+    contract, _, state = load_verified(home)
+    if state["lifecycle"] != "AWAKE":
+        raise ContractError(f"agent is not awake: {state['lifecycle']}")
+    capabilities = contract["capabilities"]
+    def deny(reason: str) -> None:
+        cost = int(contract["costs"]["contract_evaluation"])
+        state["prana_remaining"] = max(0, state["prana_remaining"] - cost)
+        head = append_audit(home, "DENIED", {
+            "operation": "copy", "reason": reason, "prana_cost": cost
+        })
+        state["audit_head"] = head
+        if state["prana_remaining"] == 0:
+            state["lifecycle"] = "SLEEPING"
+        seal_state(home, state)
+        raise ContractError(f"DENIED: {reason}")
+
+    if "copy" not in capabilities.get("operations", []):
+        deny("copy capability not admitted")
+    source_candidate = (REPO_ROOT / args.source) if not Path(args.source).is_absolute() else Path(args.source)
+    source = None
+    for allowed in capabilities.get("read_roots", []):
+        allowed_root = (REPO_ROOT / allowed).resolve()
+        try:
+            source = require_within(source_candidate, allowed_root, "read path")
+            break
+        except ContractError:
+            continue
+    if source is None or not source.is_file():
+        deny("read path outside admitted capability scope")
+    destination_arg = Path(args.destination)
+    parts = destination_arg.parts
+    if parts and parts[0] == capabilities["write_root"]:
+        destination_arg = Path(*parts[1:])
+    destination_root = (home / capabilities["write_root"]).resolve()
+    try:
+        destination = require_within(destination_root / destination_arg, destination_root, "write path")
+    except ContractError:
+        deny("write path outside admitted capability scope")
+    if destination.exists() and destination.is_symlink():
+        deny("symbolic-link destination")
+    costs = contract["costs"]
+    cost = sum(costs[name] for name in ("contract_evaluation", "read", "write", "verify"))
+    if state["prana_remaining"] < cost:
+        state["lifecycle"] = "SLEEPING"
+        seal_state(home, state)
+        raise ContractError("Prana exhausted; agent entered sleep")
+    data = source.read_bytes()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    if destination.read_bytes() != data:
+        raise ContractError("write verification failed")
+    state["prana_remaining"] -= cost
+    head = append_audit(home, "COPY", {
+        "source": str(source.relative_to(REPO_ROOT)),
+        "destination": str(destination.relative_to(home)),
+        "bytes": len(data),
+        "prana_cost": cost,
+        "result": "PASS",
+    })
+    state["audit_head"] = head
+    seal_state(home, state)
+    print(f"COPY PASS: {len(data)} bytes")
+    print(f"Byte equality: PASS")
+    print(f"Prana: {state['prana_remaining']}/{contract['prana']['initial']}")
+
+
+def command_status(args: argparse.Namespace) -> None:
+    contract, identity, state = load_verified(agent_home(args))
+    print(f"Identity: {identity['id']}")
+    print(f"Dharma: {contract['dharma']}")
+    print(f"Lifecycle: {state['lifecycle']}")
+    print(f"Prana: {state['prana_remaining']}/{contract['prana']['initial']}")
+    print("Continuity: PASS")
+
+
+def command_audit(args: argparse.Namespace) -> None:
+    home = agent_home(args)
+    _, count = verify_audit(home)
+    load_verified(home)
+    print((home / "audit" / "chain.jsonl").read_text(encoding="utf-8"), end="")
+    print(f"Audit chain: PASS ({count} entries)")
+
+
+def lifecycle_command(args: argparse.Namespace, target: str, event: str) -> None:
+    home = agent_home(args)
+    _, _, state = load_verified(home)
+    if target == "AWAKE" and state["lifecycle"] != "SLEEPING":
+        raise ContractError(f"cannot awaken from {state['lifecycle']}")
+    if target == "SLEEPING" and state["lifecycle"] != "AWAKE":
+        raise ContractError(f"cannot sleep from {state['lifecycle']}")
+    head = append_audit(home, event, {"from": state["lifecycle"], "to": target})
+    state["lifecycle"] = target
+    state["audit_head"] = head
+    seal_state(home, state)
+    print(target)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="tbos-agent", description=__doc__)
+    parser.add_argument("--root", help="runtime root (default: .tbos/agents)")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    birth = subparsers.add_parser("birth")
+    birth.add_argument("agent")
+    birth.add_argument("contract")
+    birth.add_argument("--replace", action="store_true")
+    birth.set_defaults(handler=command_birth)
+    act = subparsers.add_parser("act")
+    act.add_argument("agent")
+    act.add_argument("operation", choices=["copy"])
+    act.add_argument("source")
+    act.add_argument("destination")
+    act.set_defaults(handler=command_copy)
+    for name, handler in (("status", command_status), ("audit", command_audit)):
+        command = subparsers.add_parser(name)
+        command.add_argument("agent")
+        command.set_defaults(handler=handler)
+    sleep = subparsers.add_parser("sleep")
+    sleep.add_argument("agent")
+    sleep.set_defaults(handler=lambda args: lifecycle_command(args, "SLEEPING", "SLEEP"))
+    awaken = subparsers.add_parser("awaken")
+    awaken.add_argument("agent")
+    awaken.set_defaults(handler=lambda args: lifecycle_command(args, "AWAKE", "AWAKEN"))
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    try:
+        args.handler(args)
+        return 0
+    except ContractError as exc:
+        print(f"SUSPENDED: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

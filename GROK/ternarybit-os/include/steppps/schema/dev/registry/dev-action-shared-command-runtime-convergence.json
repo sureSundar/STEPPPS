@@ -1,0 +1,87 @@
+{
+  "steppps_version": "1.0",
+  "kind": "dev-action",
+  "id": "steppps://dev-action/shared-command-runtime-convergence",
+  "space": {
+    "realm": "virtual",
+    "repo": "ternarybit-os",
+    "paths": [
+      "WISDOM.md",
+      "shell/command_provider.c",
+      "shell/command_provider.h",
+      "src/shell/tbos_tier_shell.c",
+      "src/gui/tbos_desktop.c",
+      "Makefile"
+    ]
+  },
+  "time": {
+    "created": "2026-07-18T15:25:37Z"
+  },
+  "event": {
+    "action": "document",
+    "intent": "Converge TBOS command semantics behind one structured command-runtime API shared by hosted, tier/persona, GUI, and future bare-metal frontends.",
+    "links": [
+      "include/steppps/schema/dev/contracts/dev-dogfood.v1.contract.json"
+    ]
+  },
+  "psychology": {
+    "awareness": "aware",
+    "karma_delta": 1,
+    "karma": {
+      "total": 1
+    }
+  },
+  "pixel": {
+    "form": "json",
+    "display_logic": "Render this development action as an inspectable JSON record with STEPPPS dimensions visible."
+  },
+  "prompt": {
+    "source": "guru",
+    "text": "Implement the smallest shared command-runtime vertical slice: define a structured result API, route one representative command through both the macOS hosted shell and a second frontend, prove identical results, preserve platform/persona/capability separation, then verify both governance chains.",
+    "next_genai_prompt": "Continue from this STEPPPS context: Converge TBOS command semantics behind one structured command-runtime API shared by hosted, tier/persona, GUI, and future bare-metal frontends. Create or update the next dev-action, preserve all seven dimensions, then verify the dev chain."
+  },
+  "script": {
+    "acts_on": [
+      "space",
+      "time",
+      "event",
+      "psychology",
+      "pixel",
+      "prompt",
+      "script"
+    ],
+    "commands": [
+      "./tests/canonical_conformance.sh",
+      "make hosted-shell-test HOST_PLATFORM=macos"
+    ],
+    "verification": [
+      "Execute the same command sequence through two frontends and compare identical structured results; verify canonical conformance and the development chain."
+    ]
+  },
+  "enterprise_context": {
+    "capability": "development-governance",
+    "stakeholders": [
+      "owner",
+      "agent",
+      "future-operator"
+    ],
+    "business_value": "Keep TBOS development auditable, restartable, and connected to the current intent: Converge TBOS command semantics behind one structured command-runtime API shared by hosted, tier/persona, GUI, and future bare-metal frontends.",
+    "risk": "Agents may generate structurally valid but context-poor STEPPPS actions.",
+    "acceptance_criteria": [
+      "The dev-action names concrete files or registry paths.",
+      "The intent explains why the change matters.",
+      "The next prompt preserves enterprise context for the next agent.",
+      "Verification proves schema and chain integrity."
+    ],
+    "operational_controls": [
+      "audit-chain",
+      "git-review",
+      "human-owner-review",
+      "schema-validation"
+    ]
+  },
+  "meta": {
+    "owner": "steppps://human/sundararaman",
+    "contract": "steppps://contract/dev-dogfood-v1"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "contract_version": "0.1",
+  "identity": {
+  "id": "steppps://agent/docs-guardian",
+  "name": "Documentation Guardian",
+    "custodian": "steppps://human/sundar",
+    "sangha": "steppps://sangha/vvs"
+  },
+  "dharma": "Test the machine contract through truthful, bounded and auditable filesystem actions.",
+  "prana": {
+    "initial": 1000,
+    "unit": "operation-credit",
+    "sleep_at_zero": true
+  },
+  "capabilities": {
+    "operations": ["copy"],
+    "read_roots": ["docs"],
+    "write_root": "workspace",
+    "delete": false,
+    "execute": false,
+    "network": false
+  },
+  "costs": {
+    "contract_evaluation": 1,
+    "read": 1,
+    "write": 2,
+    "verify": 1
+  },
+  "lifecycle": {
+    "emergency_suspend": "steppps://human/sundar",
+    "prana_renewal_requires": [
+      "steppps://human/sundar",
+      "steppps://sangha/vvs"
+    ]
+  }
+}

@@ -12,3 +12,6 @@ src/gui/*.dSYM/
 build_integrated/calc_4k/tbos
 src/shell/universal/tbos_shell
 src/shell/universal/tbos_api_server
+
+# Local digital-being runtime state and private continuity keys.
+.tbos/
