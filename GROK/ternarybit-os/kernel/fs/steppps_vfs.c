@@ -12,10 +12,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef TBOS_PLATFORM_WINDOWS
-#include <sys/stat.h>
-#endif
-
 /* ========================================================================= */
 /* GLOBAL CONTEXT                                                             */
 /* ========================================================================= */

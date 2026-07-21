@@ -1083,3 +1083,25 @@ mode_t umask(mode_t mask) {
     g_umask = mask & 0777;
     return old;
 }
+
+/* GCC emits calls to __udivmoddi4 for uint64_t division/modulo on a 32-bit
+ * target (x86 has no native 64-bit divide instruction) and expects it from
+ * libgcc. This toolchain (x86_64-elf-gcc, no i386 multilib) only ships a
+ * 64-bit libgcc.a, whose __udivmoddi4 object is the wrong ELF machine type
+ * to link into an elf_i386 kernel - so it's provided here instead, the
+ * standard approach when a full multilib libgcc isn't available. Plain
+ * binary long division, the same algorithm libgcc's own reference
+ * implementation uses. */
+unsigned long long __udivmoddi4(unsigned long long num, unsigned long long den,
+                                 unsigned long long* rem_out) {
+    unsigned long long quot = 0, rem = 0;
+    for (int bit = 63; bit >= 0; bit--) {
+        rem = (rem << 1) | ((num >> bit) & 1ULL);
+        if (rem >= den) {
+            rem -= den;
+            quot |= (1ULL << bit);
+        }
+    }
+    if (rem_out) *rem_out = rem;
+    return quot;
+}

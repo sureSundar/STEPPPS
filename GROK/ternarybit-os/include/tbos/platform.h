@@ -69,6 +69,15 @@
     #define PATH_SEPARATOR '\\'
     #define PATH_SEPARATOR_STR "\\"
     #define LINE_ENDING "\r\n"
+#elif defined(TBOS_PLATFORM_UNKNOWN)
+    /* Freestanding/bare-metal cross-compile (e.g. x86_64-elf-gcc): no host
+     * OS, so none of the POSIX headers below exist. This file's job is
+     * still done by the type/macro declarations further down; callers that
+     * need an actual filesystem here go through the HAL (kernel/hal_*.c),
+     * not these headers. */
+    #define PATH_SEPARATOR '/'
+    #define PATH_SEPARATOR_STR "/"
+    #define LINE_ENDING "\n"
 #else
     #include <unistd.h>
     #include <sys/stat.h>
@@ -84,6 +93,19 @@
     /* iOS has limited system access */
     #define TBOS_SANDBOXED 1
 #endif
+
+/* ========================================================================= */
+/* HOSTED-ONLY OS INTERACTION                                                 */
+/* ========================================================================= */
+/* Everything below - directories, env vars, spawning processes, wall-clock
+ * time, terminals - needs a host OS. On a freestanding/bare-metal target
+ * (TBOS_PLATFORM_UNKNOWN, e.g. x86_64-elf-gcc with no libc) none of it
+ * exists, so it's compiled out entirely rather than faked: calling
+ * tbos_getenv() on bare metal should be a compile error, not a silent
+ * wrong answer. The four functions callers outside this file actually
+ * reach on bare metal (tbos_file_exists, tbos_gethostname, tbos_can_execute,
+ * tbos_supports_color) get honest freestanding stubs in the #else branch. */
+#ifndef TBOS_PLATFORM_UNKNOWN
 
 /* ========================================================================= */
 /* DIRECTORY OPERATIONS                                                       */
@@ -383,6 +405,37 @@ static inline void tbos_closedir(tbos_dir_t* dir) {
 }
 
 #endif
+
+#else /* TBOS_PLATFORM_UNKNOWN: freestanding/bare-metal */
+
+static inline bool tbos_file_exists(const char* path) {
+    (void)path;
+    /* No raw host filesystem on bare metal - everything goes through the
+     * VFS (kernel/fs/vfs.c), not this header. Honest false, not a guess. */
+    return false;
+}
+
+static inline int tbos_gethostname(char* buf, size_t len) {
+    /* No network/hostname concept on bare metal. Fixed, clearly-labeled
+     * value rather than pretending to look one up. */
+    if (buf && len > 0) {
+        const char* name = "tbos-baremetal";
+        size_t i = 0;
+        for (; name[i] && i + 1 < len; i++) buf[i] = name[i];
+        buf[i] = '\0';
+    }
+    return 0;
+}
+
+static inline bool tbos_can_execute(void) {
+    return false;
+}
+
+static inline bool tbos_supports_color(void) {
+    return false;
+}
+
+#endif /* TBOS_PLATFORM_UNKNOWN */
 
 /* ========================================================================= */
 /* PATH UTILITIES                                                             */

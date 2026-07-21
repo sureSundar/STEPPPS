@@ -292,7 +292,11 @@ compile_c() {
     echo "    [$rel] Compiling 32-bit with $opt_level"
 
     # Build compiler flags for 32-bit protected mode kernel
-    local cflags="-m32 -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -nostdlib -Wall -Wextra"
+    # -g: debug info for GDB/LLDB remote debugging via QEMU's gdbstub. Free -
+    # objcopy -O binary strips all non-loadable sections (including debug
+    # info) when producing the final kernel.bin, so this doesn't bloat what
+    # actually ships.
+    local cflags="-m32 -g -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -nostdlib -Wall -Wextra"
     if $TBOS_CC -fcf-protection=none -E -x c /dev/null &> /dev/null 2>&1; then
         cflags="$cflags -fcf-protection=none"
     fi
@@ -355,6 +359,11 @@ assemble_bootloader_stage2() {
 
 link_kernel() {
     # Link as 32-bit ELF (matches stage2_protected.asm bootloader)
+    # Not linking libgcc.a: this toolchain (x86_64-elf-gcc) has no i386
+    # multilib, so -print-libgcc-file-name returns a 64-bit archive whose
+    # members are the wrong ELF machine type for an elf_i386 link. The one
+    # symbol that actually needed from it, __udivmoddi4, is implemented
+    # directly in kernel/libc.c instead.
     $TBOS_LD -m elf_i386 \
         -T "$TBOS_ROOT/kernel/linker.ld" \
         -o "$BUILD_DIR/kernel.elf" \
@@ -477,10 +486,13 @@ main() {
     if config_enabled "FS"; then
         compile_c "kernel/fs/ramfs.c"
         compile_c "kernel/fs/vfs.c"
+        compile_c "kernel/fs/steppps_vfs.c"
         compile_c "kernel/fs/ucfs_driver.c"
+        compile_c "kernel/fs/rf2s_driver.c"
         compile_c "src/core/filesystem/blockdev.c"
         compile_c "src/core/filesystem/ucfs_codec.c"
         compile_c "src/core/filesystem/ucfs_overlay.c"
+        compile_c "src/core/filesystem/rf2s_codec.c"
         compile_c "src/core/filesystem/ucfs_config.c"
     else
         echo "    [skip] VFS/RAMFS disabled by profile"

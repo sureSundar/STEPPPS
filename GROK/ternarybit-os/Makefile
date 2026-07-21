@@ -313,6 +313,76 @@ test-coverage: ## Run tests with coverage report
 	@echo "📊 Running tests with coverage..."
 	@./scripts/run-tests.sh --coverage
 
+# ─────────────────────────────────────────────────────────────────────────────
+# BARE-METAL BOOT SMOKE TEST
+# ─────────────────────────────────────────────────────────────────────────────
+# Builds the bare-metal image and boots it in QEMU headlessly for a bounded
+# time, watching for the one thing a "compiles fine" build can't tell you:
+# whether it actually runs without crashing. `-no-reboot -no-shutdown` is
+# load-bearing - without it, QEMU silently resets on a triple fault and the
+# run just looks like it's booting forever, with no evidence anything broke
+# (this is exactly how the disk-geometry bug documented in WISDOM.md,
+# 2026-07-21, stayed invisible for as long as it did).
+.PHONY: test-baremetal test-baremetal-screenshot
+BAREMETAL_IMG := build/tbos_universal.img
+BAREMETAL_SERIAL_LOG := /tmp/tbos_baremetal_serial.log
+BAREMETAL_DEBUG_LOG := /tmp/tbos_baremetal_debug.log
+BAREMETAL_BOOT_SECONDS ?= 8
+
+test-baremetal:
+	@echo "== Building bare-metal image =="
+	@./build_universal.sh > /tmp/tbos_baremetal_build.log 2>&1 || \
+		(echo "❌ BUILD FAILED - see /tmp/tbos_baremetal_build.log"; tail -30 /tmp/tbos_baremetal_build.log; exit 1)
+	@echo "Build OK."
+	@echo ""
+	@echo "== Booting in QEMU ($(BAREMETAL_BOOT_SECONDS)s, headless, fault-tracing on =="
+	@rm -f $(BAREMETAL_SERIAL_LOG) $(BAREMETAL_DEBUG_LOG)
+	@timeout $(BAREMETAL_BOOT_SECONDS) qemu-system-x86_64 \
+		-drive file=$(BAREMETAL_IMG),format=raw -m 512 -display none \
+		-serial file:$(BAREMETAL_SERIAL_LOG) -no-reboot -no-shutdown \
+		-d int,cpu_reset -D $(BAREMETAL_DEBUG_LOG) || true
+	@echo ""
+	@if grep -q "Triple fault" $(BAREMETAL_DEBUG_LOG) 2>/dev/null; then \
+		echo "❌ FAULT: kernel triple-faulted during boot."; \
+		echo "--- serial output ($(BAREMETAL_SERIAL_LOG)) ---"; \
+		cat $(BAREMETAL_SERIAL_LOG) 2>/dev/null; \
+		echo "--- last interrupt trace ($(BAREMETAL_DEBUG_LOG)) ---"; \
+		tail -20 $(BAREMETAL_DEBUG_LOG); \
+		exit 1; \
+	else \
+		echo "✅ No triple fault detected in $(BAREMETAL_BOOT_SECONDS)s."; \
+		echo "--- serial output ($(BAREMETAL_SERIAL_LOG)) ---"; \
+		cat $(BAREMETAL_SERIAL_LOG) 2>/dev/null; \
+		echo "-------------------------------------------"; \
+		echo "Note: this only proves no CPU fault occurred, not that the boot"; \
+		echo "banner/shell actually rendered correctly - serial only shows what"; \
+		echo "the bootloader/kernel explicitly write to COM1, not VGA text mode"; \
+		echo "output. Run 'make test-baremetal-screenshot' to see the screen."; \
+	fi
+
+test-baremetal-screenshot:
+	@echo "== Building bare-metal image =="
+	@./build_universal.sh > /tmp/tbos_baremetal_build.log 2>&1 || \
+		(echo "❌ BUILD FAILED - see /tmp/tbos_baremetal_build.log"; tail -30 /tmp/tbos_baremetal_build.log; exit 1)
+	@rm -f /tmp/tbos_baremetal_mon.sock /tmp/tbos_baremetal_boot.ppm /tmp/tbos_baremetal_boot.png $(BAREMETAL_SERIAL_LOG)
+	@echo "Booting in the background, waiting $(BAREMETAL_BOOT_SECONDS)s, then capturing the VGA screen..."
+	@(qemu-system-x86_64 -drive file=$(BAREMETAL_IMG),format=raw -m 512 -display none \
+		-monitor unix:/tmp/tbos_baremetal_mon.sock,server,nowait \
+		-serial file:$(BAREMETAL_SERIAL_LOG) -no-reboot -no-shutdown & echo $$! > /tmp/tbos_baremetal_qemu.pid)
+	@sleep $(BAREMETAL_BOOT_SECONDS)
+	@(echo "screendump /tmp/tbos_baremetal_boot.ppm"; sleep 1) | nc -U /tmp/tbos_baremetal_mon.sock > /dev/null 2>&1
+	@sleep 1
+	@kill -9 $$(cat /tmp/tbos_baremetal_qemu.pid) 2>/dev/null || true
+	@if command -v sips >/dev/null 2>&1; then \
+		sips -s format png /tmp/tbos_baremetal_boot.ppm --out /tmp/tbos_baremetal_boot.png >/dev/null 2>&1 && \
+		echo "✅ Screenshot: /tmp/tbos_baremetal_boot.png"; \
+	elif command -v convert >/dev/null 2>&1; then \
+		convert /tmp/tbos_baremetal_boot.ppm /tmp/tbos_baremetal_boot.png && \
+		echo "✅ Screenshot: /tmp/tbos_baremetal_boot.png"; \
+	else \
+		echo "✅ Screenshot (PPM, no PNG converter found): /tmp/tbos_baremetal_boot.ppm"; \
+	fi
+
 # Legacy test targets for backward compatibility
 test-steppps: test-unit
 	@# Alias for running STEPPPS framework tests
@@ -777,9 +847,9 @@ docker-test-riscv64:
 # HARDWARE TIER BUILDS (4-bit to Supercomputer)
 # ═══════════════════════════════════════════════════════════════════════════
 
-.PHONY: tier-all tier-arch-all tier-arch-host tier-arch-arm64 tier-arch-riscv64
+.PHONY: tier-all tier-demo-all tier-arch-all tier-arch-host tier-arch-arm64 tier-arch-riscv64
 .PHONY: tier-calc tier-embed tier-retro tier-desktop tier-server tier-super tier-info tier-test
-.PHONY: tier-shell-all tier-shell-calc tier-shell-embed tier-shell-retro tier-shell-desktop tier-shell-server tier-shell-super
+.PHONY: tier-shell-all tier-shell-smoke tier-shell-calc tier-shell-embed tier-shell-retro tier-shell-desktop tier-shell-server tier-shell-super
 
 # A hardware tier and a CPU architecture are independent dimensions. Keep each
 # architecture in its own directory so a cross-build cannot overwrite the host
@@ -848,15 +918,16 @@ tier-info:
 	@echo "  Compiler:           $(TIER_CC)"
 	@echo "  Output:             $(TIER_BUILD_DIR)"
 	@echo ""
-	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)   5 commands"
-	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)  15 commands"
-	@echo "  Tier 2: Retro        (32-bit,   64KB-16MB RAM) 25 commands"
-	@echo "  Tier 3: Desktop      (64-bit,   16MB-16GB RAM) 35 commands"
-	@echo "  Tier 4: Server       (64-bit,   16GB-1TB RAM)  40 commands"
-	@echo "  Tier 5: Supercomputer (64-bit+, 1TB+ distributed) 45 commands"
+	@echo "  Tier 0: Calculator   (4-8 bit,  256B-4KB RAM)  16 commands"
+	@echo "  Tier 1: Embedded     (16-bit,   4KB-64KB RAM)  27 commands"
+	@echo "  Tier 2: Retro        (32-bit,   64KB-16MB RAM) 36 commands"
+	@echo "  Tier 3: Desktop      (64-bit,   16MB-16GB RAM) 45 commands"
+	@echo "  Tier 4: Server       (64-bit,   16GB-1TB RAM)  50 commands"
+	@echo "  Tier 5: Supercomputer (64-bit+, 1TB+ distributed) 56 commands"
 	@echo ""
 	@echo "  Demo targets (display tier info):"
-	@echo "    make tier-all        Build all tier demos"
+	@echo "    make tier-all        Build interactive TBOS binaries and demos"
+	@echo "    make tier-demo-all   Build one-shot hardware demonstrations only"
 	@echo "    make tier-arch-all   Build demos and shells for every available CPU"
 	@echo "    make tier-all TIER_ARCH=arm64 TIER_CC=aarch64-linux-gnu-gcc"
 	@echo "    make tier-calc       Run calculator demo"
@@ -864,6 +935,7 @@ tier-info:
 	@echo ""
 	@echo "  Shell targets (full interactive shells):"
 	@echo "    make tier-shell-all     Build all tier shells"
+	@echo "    make tier-shell-smoke   Verify every tbos_* binary has a prompt"
 	@echo "    make tier-shell-calc    Calculator shell (5 cmds)"
 	@echo "    make tier-shell-embed   Embedded shell (15 cmds)"
 	@echo "    make tier-shell-retro   Retro shell (25 cmds)"
@@ -874,14 +946,14 @@ tier-info:
 	@echo ""
 
 tier-arch-host:
-	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+	@$(MAKE) --no-print-directory tier-all \
 		TIER_ARCH=$(TBOS_HOST_ARCH) TIER_CC=gcc
 
 tier-arch-arm64:
 ifeq ($(ARM64_ELF_CC),)
 	@echo "ARM64 tier build skipped: no aarch64 cross-compiler found"
 else
-	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+	@$(MAKE) --no-print-directory tier-all \
 		TIER_ARCH=arm64 TIER_CC=$(ARM64_ELF_CC) \
 		TIER_ARCH_FLAGS=-DTBOS_ARCH_ARM64
 endif
@@ -890,7 +962,7 @@ tier-arch-riscv64:
 ifeq ($(RISCV64_ELF_CC),)
 	@echo "RISC-V tier build skipped: no riscv64 cross-compiler found"
 else
-	@$(MAKE) --no-print-directory tier-all tier-shell-all \
+	@$(MAKE) --no-print-directory tier-all \
 		TIER_ARCH=riscv64 TIER_CC=$(RISCV64_ELF_CC) \
 		TIER_ARCH_FLAGS=-DTBOS_ARCH_RISCV64
 endif
@@ -904,35 +976,38 @@ ifneq ($(TBOS_HOST_ARCH),riscv64)
 endif
 	@echo "Tier architecture matrix complete under build/tiers/"
 
-tier-all: $(TIER_BUILD_DIR)/tbos_calc $(TIER_BUILD_DIR)/tbos_embed $(TIER_BUILD_DIR)/tbos_retro $(TIER_BUILD_DIR)/tbos_desktop $(TIER_BUILD_DIR)/tbos_server $(TIER_BUILD_DIR)/tbos_super
+tier-all: tier-shell-all tier-demo-all
 	@echo ""
-	@echo "All hardware tiers built:"
+	@echo "All interactive TBOS tiers and hardware demos built:"
 	@ls -la $(TIER_BUILD_DIR)/
+
+tier-demo-all: $(TIER_BUILD_DIR)/demo_calc $(TIER_BUILD_DIR)/demo_embed $(TIER_BUILD_DIR)/demo_retro $(TIER_BUILD_DIR)/demo_desktop $(TIER_BUILD_DIR)/demo_server $(TIER_BUILD_DIR)/demo_super
+	@echo "Hardware demonstrations built as $(TIER_BUILD_DIR)/demo_*"
 
 $(TIER_BUILD_DIR):
 	@mkdir -p $(TIER_BUILD_DIR)
 
-$(TIER_BUILD_DIR)/tbos_calc: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_calc: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator (8-bit, 256B RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=0 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/tbos_embed: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_embed: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 1] Building Embedded (16-bit, 4KB RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=1 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/tbos_retro: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_retro: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 2] Building Retro (32-bit, 64KB RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=2 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/tbos_desktop: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_desktop: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 3] Building Desktop (64-bit, 1MB RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=3 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/tbos_server: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_server: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 4] Building Server (64-bit SMP, 4MB RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=4 -Wall -Wextra -Iinclude -o $@ $<
 
-$(TIER_BUILD_DIR)/tbos_super: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
+$(TIER_BUILD_DIR)/demo_super: $(TIER_DEMO_SRC) | $(TIER_BUILD_DIR)
 	@echo "[Tier 5] Building Supercomputer (64-bit distributed, 16MB RAM)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DTBOS_TIER=5 -Wall -Wextra -Iinclude -o $@ $<
 
@@ -958,7 +1033,7 @@ tier-super: $(TIER_BUILD_DIR)/tbos_super
 # TIER-AWARE SHELLS (with actual commands, not just demos)
 # ─────────────────────────────────────────────────────────────────────────────
 
-tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIER_BUILD_DIR)/shell_retro $(TIER_BUILD_DIR)/shell_desktop $(TIER_BUILD_DIR)/shell_server $(TIER_BUILD_DIR)/shell_super
+tier-shell-all: $(TIER_BUILD_DIR)/tbos_calc $(TIER_BUILD_DIR)/tbos_embed $(TIER_BUILD_DIR)/tbos_retro $(TIER_BUILD_DIR)/tbos_desktop $(TIER_BUILD_DIR)/tbos_server $(TIER_BUILD_DIR)/tbos_super
 	@echo ""
 	@echo "All tier shells built:"
 	@ls -la $(TIER_BUILD_DIR)/shell_*
@@ -972,7 +1047,7 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@echo "  shell_retro   (Tier 2): 36 commands  - + head, grep, wc, history, resolve, etc."
 	@echo "  shell_desktop (Tier 3): 45 commands  - + meditate, sangha, dharma, ping, http"
 	@echo "  shell_server  (Tier 4): 50 commands  - + top, netstat, free, lscpu, listen"
-	@echo "  shell_super   (Tier 5): 54 commands  - + cluster, consciousness, quantum, netscan"
+	@echo "  shell_super   (Tier 5): 56 commands  - + cluster, consciousness, quantum, netscan"
 	@echo ""
 	@echo "Every tier has real POSIX-socket networking (net/send/resolve/http/"
 	@echo "listen/netscan), scaled per tier - not system()/popen() shell-outs."
@@ -982,6 +1057,31 @@ tier-shell-all: $(TIER_BUILD_DIR)/shell_calc $(TIER_BUILD_DIR)/shell_embed $(TIE
 	@echo "STEPPPS (linked against steppps/v2 - parse/verify/run/audit real"
 	@echo "entities, gated by trust risk not cost: show is Tier 0+,"
 	@echo "verify/run/audit climb tiers)."
+
+# User-facing TBOS names are the interactive shells. Keep shell_* as the
+# compatibility/build names used by older scripts, but never publish a
+# one-shot demo under a tbos_* name again.
+$(TIER_BUILD_DIR)/tbos_calc: $(TIER_BUILD_DIR)/shell_calc Makefile
+	@cp $< $@
+$(TIER_BUILD_DIR)/tbos_embed: $(TIER_BUILD_DIR)/shell_embed Makefile
+	@cp $< $@
+$(TIER_BUILD_DIR)/tbos_retro: $(TIER_BUILD_DIR)/shell_retro Makefile
+	@cp $< $@
+$(TIER_BUILD_DIR)/tbos_desktop: $(TIER_BUILD_DIR)/shell_desktop Makefile
+	@cp $< $@
+$(TIER_BUILD_DIR)/tbos_server: $(TIER_BUILD_DIR)/shell_server Makefile
+	@cp $< $@
+$(TIER_BUILD_DIR)/tbos_super: $(TIER_BUILD_DIR)/shell_super Makefile
+	@cp $< $@
+
+tier-shell-smoke: tier-shell-all
+	@set -e; \
+	for shell in calc embed retro desktop server super; do \
+		output=$$(printf 'help\nexit\n' | $(TIER_BUILD_DIR)/tbos_$$shell); \
+		printf '%s\n' "$$output" | grep -Eq '[>$$] '; \
+		printf '%s\n' "$$output" | grep -q 'Available commands'; \
+		echo "[PASS] tbos_$$shell presents an interactive prompt"; \
+	done
 
 $(TIER_BUILD_DIR)/shell_calc: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
 	@echo "[Tier 0] Building Calculator Shell (16 commands)..."
@@ -1004,7 +1104,7 @@ $(TIER_BUILD_DIR)/shell_server: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_S
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=4 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 $(TIER_BUILD_DIR)/shell_super: $(TIER_SHELL_SRC) $(TIER_SHELL_FS_SRCS) $(TIER_SHELL_HAL_SRCS) $(TIER_SHELL_STEPPPS_SRCS) | $(TIER_BUILD_DIR)
-	@echo "[Tier 5] Building Supercomputer Shell (54 commands)..."
+	@echo "[Tier 5] Building Supercomputer Shell (56 commands)..."
 	@$(TIER_CC) $(TIER_ARCH_FLAGS) -DTBOS_HOSTED -DHOST_BUILD -DTBOS_TIER=5 -Wall -Wextra -Iinclude $(TIER_SHELL_STEPPPS_INC) -o $@ $^ -lm
 
 # Run tier shells interactively
@@ -1471,13 +1571,13 @@ tier-test: tier-all
 	@echo "================================================================"
 	@echo ""
 	@echo "--- Tier 0: Calculator ---"
-	@$(TIER_BUILD_DIR)/tbos_calc
+	@$(TIER_BUILD_DIR)/demo_calc
 	@echo ""
 	@echo "--- Tier 1: Embedded ---"
-	@$(TIER_BUILD_DIR)/tbos_embed
+	@$(TIER_BUILD_DIR)/demo_embed
 	@echo ""
 	@echo "--- Tier 3: Desktop ---"
-	@$(TIER_BUILD_DIR)/tbos_desktop | head -40
+	@$(TIER_BUILD_DIR)/demo_desktop | head -40
 	@echo "..."
 	@echo ""
 	@echo "All tier demos complete!"

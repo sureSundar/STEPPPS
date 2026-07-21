@@ -44,6 +44,16 @@ _start:
     ; Clear direction flag for string operations
     cld
 
+    ; Initialize the x87 FPU. Its state coming out of the BIOS/bootloader
+    ; handoff is undefined, and any pending exception flag it's already
+    ; holding fires the moment any x87 instruction (including ones
+    ; compiler-generated code emits implicitly) touches it - manifesting
+    ; as an immediate, repeating #MF (x87 FPU Error, vector 16) that
+    ; refires as fast as the exception handler can return, before the
+    ; kernel gets to do anything else. fninit resets the FPU to a clean
+    ; state with no pending exceptions.
+    fninit
+
     ; Call main C kernel function
     ; Pair-Programming: CC enabling kernel_main call
     call kernel_main

@@ -102,55 +102,66 @@ enable_a20_line:
 ;==========================================
 ; Load Kernel from Disk
 ;==========================================
+; Loads the kernel via INT 13h extensions (EDD, function 0x42) instead of
+; CHS (function 0x02). CHS requires knowing the disk's sectors-per-track
+; and head count to translate an LBA - this bootloader assumed the classic
+; 1.44MB floppy geometry (18 sectors/track, 2 heads) unconditionally, which
+; does not describe this 10MB raw hard-disk-style image at all. Reads
+; within the first 18 LBAs (roughly the boot sector + stage2) worked by
+; coincidence; anything beyond that read the wrong physical sector, which
+; is why the kernel (loaded starting around LBA 11, meaning most of a
+; 189-sector kernel falls past that boundary) triple-faulted on
+; essentially uninitialized/wrong memory the moment execution reached
+; more than a few hundred bytes in. EDD reads by LBA directly - no
+; geometry to get wrong. See boot/universal_stage2.asm for the reference
+; DAP-based approach this mirrors.
+; Reads in <=64-sector (32KB) chunks, each entirely within one real-mode
+; segment, advancing the LBA and destination segment each iteration. A
+; single one-shot read of all KERNEL_SECTORS (189, ~96KB) failed outright
+; (int 0x13 set carry) - larger than a 64KB segment can hold starting at
+; offset 0, and not every BIOS's EDD implementation transfers across a
+; segment boundary in one call. Chunking avoids that without reintroducing
+; any CHS geometry assumption.
 load_kernel:
     mov si, msg_loading_kernel
     call print_string
 
-    ; Setup buffer to load kernel
-    mov ax, KERNEL_LOAD_ADDR >> 4
-    mov es, ax
-    xor bx, bx
-
-    ; Get boot drive
     mov dl, [BOOT_DRIVE_ADDR]
+    mov dword [remaining_sectors], KERNEL_SECTORS
+    mov dword [current_lba], KERNEL_START_SECTOR
+    mov word [current_segment], KERNEL_LOAD_ADDR >> 4
 
-    ; Load kernel sectors
-    mov si, KERNEL_START_SECTOR  ; Starting LBA
-    mov cx, KERNEL_SECTORS       ; Number of sectors
+.chunk_loop:
+    mov eax, [remaining_sectors]
+    cmp eax, 0
+    je .load_done
 
-.load_loop:
-    cmp cx, 0
-    jz .load_done
+    mov ecx, 64                     ; sectors per chunk (32KB, safely < 64KB)
+    cmp eax, ecx
+    jae .chunk_size_ok
+    mov ecx, eax                    ; final, smaller chunk
+.chunk_size_ok:
 
-    ; Save registers
-    push cx
-    push si
+    mov word [dap.count], cx
+    mov word [dap.offset], 0x0000
+    mov ax, [current_segment]
+    mov word [dap.segment], ax
+    mov eax, [current_lba]
+    mov dword [dap.lba_low], eax
+    mov dword [dap.lba_high], 0
 
-    ; Convert LBA to CHS
-    call lba_to_chs
-
-    ; Read sector
-    mov ah, 0x02    ; Read sectors function
-    mov al, 1       ; Read 1 sector
+    mov si, dap
+    mov ah, 0x42    ; Extended read (EDD)
     int 0x13        ; BIOS disk service
     jc .load_error
 
-    ; Restore and advance
-    pop si
-    pop cx
-    inc si          ; Next LBA
-    add bx, 512     ; Next buffer position
-
-    ; Handle segment wraparound if needed
-    cmp bx, 0
-    jne .no_wrap
-    mov ax, es
-    add ax, 0x1000
-    mov es, ax
-.no_wrap:
-
-    dec cx
-    jmp .load_loop
+    ; Advance: LBA by sectors just read, segment by (sectors*512)/16 paragraphs
+    movzx eax, cx
+    add [current_lba], eax
+    sub [remaining_sectors], eax
+    shl eax, 5                       ; sectors * 512 / 16 = sectors * 32
+    add [current_segment], ax
+    jmp .chunk_loop
 
 .load_done:
     mov si, msg_kernel_loaded
@@ -161,6 +172,20 @@ load_kernel:
     mov si, msg_load_error
     call print_string
     jmp halt_system
+
+remaining_sectors: dd 0
+current_lba:       dd 0
+current_segment:   dw 0
+
+; Disk Address Packet for INT 13h/AH=42h
+align 4
+dap:
+    db 0x10, 0x00           ; size of packet, reserved
+dap.count:   dw 0
+dap.offset:  dw 0
+dap.segment: dw 0
+dap.lba_low: dd 0
+dap.lba_high: dd 0
 
 ;==========================================
 ; Setup GDT (Global Descriptor Table)
@@ -272,33 +297,6 @@ print_string_pm:
 ; Utility Functions (16-bit Real Mode)
 ;==========================================
 [BITS 16]
-
-; Convert LBA (in SI) to CHS
-; Assumes standard floppy/disk geometry: 18 sectors/track, 2 heads
-lba_to_chs:
-    push ax
-    push bx
-    push dx
-
-    mov ax, si
-    mov bx, 18          ; Sectors per track
-    xor dx, dx
-    div bx              ; AX = track, DX = sector
-
-    mov cl, dl
-    inc cl              ; Sectors are 1-based
-
-    mov bx, 2           ; Heads per cylinder
-    xor dx, dx
-    div bx              ; AX = cylinder, DX = head
-
-    mov ch, al          ; Cylinder
-    mov dh, dl          ; Head
-
-    pop dx
-    pop bx
-    pop ax
-    ret
 
 ; Print string (SI points to null-terminated string)
 print_string:

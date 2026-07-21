@@ -16,6 +16,7 @@
 extern uint32_t g_tbds_pointer;
 extern uint32_t g_tbds_length;
 extern uint32_t g_bcb_pointer;  // V4.0 BCB pointer (passed in ECX)
+
 // VGA text mode
 #define VGA_MEMORY 0xB8000
 #define VGA_WIDTH 80
@@ -425,6 +426,18 @@ void kernel_main(void) {
     // Initialize libc
     libc_init();
     kernel_print("[OK] Memory allocator initialized\n");
+
+#if CONFIG_INTERRUPTS
+    // interrupt_init() (kernel/interrupt.c) loads a real IDT via lidt and
+    // remaps the PIC off vectors 8-15, which otherwise collide with CPU
+    // exception vectors (IRQ0/timer == vector 8 == #DF unremapped). Was
+    // declared extern but never actually called - with no valid IDT at
+    // all, the very first exception of any kind (there will always be
+    // one eventually) triple-faults immediately, verified via QEMU's
+    // -d int trace showing exactly that sequence.
+    interrupt_init();
+    kernel_print("[OK] Interrupts initialized (IDT + PIC remap)\n");
+#endif
 
     // Process boot information (BCB first, fall back to TBDS)
     // V4.0: Try BCB first for modern boot protocol

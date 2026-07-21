@@ -5839,3 +5839,111 @@ by running the same C codec through the tier shell's `pxcompress`/
 just an untapped button in this specific app shell.
 
 Signature: — CC (Claude)
+
+---
+
+## CC: the canonical bare-metal kernel compiles and links for the first time
+
+**Date:** 2026-07-21
+
+Guru asked to tackle the bare-metal build. First investigation found
+`build/kernel.bin` (the legacy `all` target) doesn't even build the
+canonical kernel - it links a blind `$(wildcard src/core/*.c)`, an entirely
+different, non-canonical implementation, and `src/core/memory_manager.c`
+in that path is internally duplicated (the same globals/functions defined
+2-3 times with conflicting signatures). Asked Guru how to proceed rather
+than picking a side of that duplication by expedience; Guru chose "do it
+properly." Turned out that was moot for the real goal: `build_universal.sh`
+(the manifest's actual canonical entry point, targeting `kernel/kernel_main.c`
++ `kernel/kernel_entry.asm`) doesn't touch `memory_manager.c` at all - a
+completely different, already-mostly-working path, blocked by real but much
+smaller "hosted-header leakage" (CX's Reality Check, Phase 2) issues.
+
+Fixed six concrete bugs, each found by actually attempting the build, not
+by inspection:
+
+1. `kernel/fs/ramfs.c`'s `ramfs_get_time()` called `clock_gettime()`
+   unconditionally - no host OS on a freestanding target. Guarded with
+   `#ifdef TBOS_HOSTED`, honest `return 0` on bare metal (no RTC driver
+   wired in yet, not a fabricated timestamp).
+2. `kernel/fs/steppps_vfs.c` and `kernel/fs/rf2s_driver.c` were missing
+   from `build_universal.sh`'s compile list entirely (linker: undefined
+   `steppps_vfs_check`, `rf2s_driver`). Added, along with
+   `src/core/filesystem/rf2s_codec.c` which `rf2s_driver.c` itself needs.
+3. `include/tbos/platform.h` - a ~475-line "cross-platform compatibility
+   layer" - assumed "not Windows" means "has POSIX," with zero freestanding
+   branch, despite the file's own platform detection already producing
+   `TBOS_PLATFORM_UNKNOWN` for exactly this target. ~20 functions
+   (`tbos_getenv`, `tbos_system`, `tbos_opendir`, etc.) all called real
+   POSIX functions unconditionally. Wrapped the entire hosted-OS-interaction
+   section in `#ifndef TBOS_PLATFORM_UNKNOWN`; on bare metal these are
+   compile errors now, not silently wrong stubs. Added honest freestanding
+   versions of only the four functions other files actually call
+   (`tbos_file_exists` → false, `tbos_gethostname` → fixed
+   "tbos-baremetal" string, `tbos_can_execute`/`tbos_supports_color` →
+   false) - not a guess at what they should return, the honest "this
+   doesn't exist without a host" answer for each.
+4. `kernel/fs/steppps_vfs.c` had a dead `#include <sys/stat.h>` - confirmed
+   zero symbols from it used anywhere in the file, removed rather than
+   guarded.
+5. `__udivmoddi4` (GCC's 64-bit-division runtime helper x86 needs since it
+   has no native 64-bit divide instruction) was undefined at link time -
+   this toolchain (`x86_64-elf-gcc`, no i386 multilib) only ships a 64-bit
+   `libgcc.a`, whose `__udivmoddi4` object is the wrong ELF machine type to
+   link into an `elf_i386` kernel. Implemented directly in `kernel/libc.c`
+   (plain 64-bit binary long division, the same algorithm libgcc's own
+   reference implementation uses) rather than fighting the toolchain.
+
+Result: `./build_universal.sh` completes - `Build complete!`, produces
+`kernel.elf`, `kernel.bin`, a bootable disk image, and a TBPX roundtrip
+pass. Verified past "it links": booted it in QEMU
+(`qemu-system-x86_64 -drive file=build/tbos_universal.img,format=raw`) and
+screenshotted the VGA output via the QEMU monitor's `screendump` - real,
+substantial text: "TBOS x STEPPPS Framework," the bootloader initializing
+all seven STEPPPS dimensions (SPACE/TIME/EVENT/PSYCHOLOGY/PIXEL/PROMPT/
+SCRIPT), A20 line enabled, "Loading TBOS kernel..." - the bootloader chain
+genuinely works, not just "compiles."
+
+What's not fixed: the kernel crashes shortly after that handoff. Serial
+output shows `[S2PM]` (stage-2-protected-mode) repeating every ~2.5 seconds
+across a 15-second run - a reboot loop. QEMU's `-d int` debug log shows
+`check_exception old: 0x8 new 0xd` (a double fault escalating to a general-
+protection fault while already handling the double fault) immediately
+before each reset - the classic triple-fault signature. This is not a
+regression from anything above: this kernel has never successfully compiled
+and linked before, so nobody has ever seen it actually attempt to boot.
+Whatever causes this crash has been there all along, invisible behind the
+build failures. Diagnosing it (GDT/IDT/stack setup around the kernel_entry.asm
+→ kernel_main() handoff, most likely) is a different, deeper kind of work
+than the build-system fixes above - flagged rather than continued into
+without checking in first.
+
+Verified: `tests/canonical_conformance.sh` remains 7/7 (none of the above
+touches the hosted build path).
+
+Signature: — CC (Claude)
+
+---
+
+## CC: found and fixed the real bare-metal crash - a disk-geometry bug, exactly where Guru pointed
+
+**Date:** 2026-07-21
+
+Guru's instinct ("it should be dynamic and hardware based... try old bootloaders") led somewhere real, even though the specific old bootloaders tried were dead ends (see prior entry). Checked two of the most confidently-named archived candidates - `stage2_working.asm` copies a hardcoded stub instead of reading the real kernel from disk, behind unreachable code; `tbos_final_working.asm` never enters protected mode at all, just prints hardcoded colored text and calls it a kernel. Neither was usable. But "hardware based" was the right instinct about the *current* bootloader's actual bug, just not about needing a different one.
+
+Diagnosed properly via bisection, not guesswork - no GDB/LLDB available for i386 bare-metal remote debugging that worked reliably (lldb's gdb-remote support for a no-OS target kept losing frame state), so used the same serial-checkpoint technique already proven in this file: single-character `out 0x3F8` writes at each step, rebuilding and re-running after each one. Traced the crash from "somewhere in kernel_main" down to "not even kernel_main's own prologue is ever reached" down to "the bytes actually loaded into memory past a specific point don't match the compiled kernel at all."
+
+**Root cause**: `boot/stage2_protected.asm`'s `lba_to_chs` correctly computed `DH` (disk head) via division, then immediately destroyed it with a plain `pop dx` that restored the *caller's original* `DX` instead. With the hardcoded 18-sectors/2-heads floppy geometry this function assumed, every read at LBA >= 18 requested head 1 but silently read head 0 instead - `int 0x13` reported success, just for the wrong physical sector. The kernel loads starting around LBA 11; a 189-sector kernel spans well past LBA 18, so everything past roughly the first 9KB of the loaded image was quietly wrong. `kernel_main` itself sits at kernel-relative offset ~4.4KB - past that boundary - which is why not even its own compiled prologue was ever really executing, despite disassembly of the *intended* ELF looking completely correct.
+
+Two real fixes, not a workaround for the symptom:
+
+1. Fixed `lba_to_chs` to preserve only `DL` (drive number, a genuine multi-call invariant) instead of all of `DX`, leaving the freshly computed `DH` alone.
+2. Replaced the whole CHS approach with INT 13h extensions (EDD, function 0x42) - LBA addressing directly, no geometry to assume or get wrong, following the working pattern already present in `boot/universal_stage2.asm`. A single one-shot 189-sector read failed outright (exceeds what fits in one 64KB real-mode segment from offset 0) - chunked into <=64-sector reads, advancing both LBA and destination segment per chunk. `lba_to_chs` itself, now unused, was deleted rather than left as dead code.
+
+Verified past "boots without crashing" - re-ran with `-d int,cpu_reset`: zero exceptions, zero double/triple faults, for the full run (previously: double fault -> GPF -> triple fault, repeating every ~2.5s). This is the real, underlying bug the earlier `interrupt_init()` fix (previous entries) was correct to make but couldn't have been the actual cause of, since execution never reached far enough into the kernel for a missing IDT to matter.
+
+New, different, smaller issue surfaced once the kernel actually runs: a real, repeating `[EXCEPTION] x87 FPU Error` from `kernel/interrupt.c`'s own (working, correctly-wired) exception handler - progress, not the same crash, since the CPU is now catching and reporting a specific fault instead of triple-faulting silently. Added `fninit` early in `kernel_entry.asm` (the standard fix for stale/pending x87 exception state) - did not resolve it, so the actual cause is still open. Stopping here to report rather than going deeper unprompted.
+
+Verified: `tests/canonical_conformance.sh` remains 7/7 throughout every step above.
+
+Signature: — CC (Claude)

@@ -40,11 +40,18 @@ typedef struct {
 } ramfs_ctx_t;
 
 static time_t ramfs_get_time(void) {
+#ifdef TBOS_HOSTED
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
         return ts.tv_sec;
     }
     return 0;
+#else
+    /* Freestanding: no RTC driver wired in yet. Honest 0, not a fabricated
+     * timestamp - clock_gettime()/CLOCK_REALTIME need a host OS this build
+     * doesn't have. */
+    return 0;
+#endif
 }
 
 static ramfs_node_t* ramfs_node_create(const char* name, vfs_node_type_t type, ramfs_node_t* parent) {
