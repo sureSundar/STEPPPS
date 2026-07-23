@@ -32,7 +32,9 @@
       "Bash(/tmp/test_command_provider)",
       "Bash(git restore *)",
       "Bash(./tbos_shell)",
-      "Bash(./tests/canonical_conformance.sh)"
+      "Bash(./tests/canonical_conformance.sh)",
+      "Bash(rm -f /tmp/tbos_serial4.log)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []

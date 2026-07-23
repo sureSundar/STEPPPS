@@ -158,6 +158,10 @@ static void kernel_serial_write(char c) {
 
 // Print character (with newline handling) - using direct VGA
 void kernel_putchar(char c) {
+    /* Mirror the VGA console to COM1 so boot-to-shell can be verified and
+     * used with QEMU's -nographic mode as well as through the GUI. */
+    kernel_serial_write(c);
+
     if (c == '\n') {
         cursor_x = 0;
         cursor_y++;
@@ -409,6 +413,8 @@ static void kernel_process_tbds(hal_capabilities_t* caps) {
 
 // Main kernel entry point
 void kernel_main(void) {
+    kernel_serial_init();
+
     // Clear screen
     volatile uint16_t *vga = (volatile uint16_t*)0xB8000;
     for (int i = 0; i < 80 * 25; i++) {

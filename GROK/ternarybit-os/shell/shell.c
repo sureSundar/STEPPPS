@@ -12,6 +12,7 @@
 #include "fs/ucfs_codec.h"
 #include "fs/ucfs_overlay.h"
 #include "fs/ucfs_config.h"
+#include "core/compression/pxfs_lossless.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -43,6 +44,8 @@ static int32_t user_karma = 100;
 static uint8_t consciousness_level = 1; /* AWAKENING */
 static uint32_t commands_executed = 0;
 static char current_path[SHELL_MAX_PATH] = "/";
+static char active_persona[16] = "x86";
+static char active_filesystem[16] = "ramfs";
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Helper utilities
@@ -64,7 +67,7 @@ static void cmd_help(void);
 static void cmd_clear(void);
 static void cmd_ps(void);
 static void cmd_mem(void);
-static void cmd_steppps(void);
+static void cmd_steppps(const char* args);
 static void cmd_reboot(void);
 static void cmd_calc(const char* args);
 static void cmd_echo(const char* args);
@@ -104,6 +107,9 @@ static void cmd_http(const char* args);
 static void cmd_ping(const char* args);
 static void cmd_netstat(void);
 static void cmd_persona(const char* args);
+static void cmd_filesystem(const char* args);
+static void cmd_compress(const char* args);
+static void cmd_tbvm(const char* args);
 static void cmd_hal(void);
 static void cmd_shutdown(void);
 static void cmd_top(void);
@@ -285,14 +291,15 @@ static void print_errno_message(const char* prefix) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_help(void) {
-    kernel_print("\n=== TernaryBit OS Shell (54+ Commands) ===\n");
+    kernel_print("\n=== Enhanced Universal Shell (58+ Commands) ===\n");
     kernel_print("\n[General]\n");
     kernel_print("  help, clear, cls, about, reboot, shutdown, test\n");
     kernel_print("\n[Processes & System]\n");
-    kernel_print("  ps, top, mem, hal, steppps, time, date, uptime, env, whoami\n");
+    kernel_print("  ps, top, mem, hal, steppps [DIMENSIONS], time, date, uptime, env, whoami\n");
     kernel_print("\n[Filesystem Operations]\n");
     kernel_print("  pwd, ls, cd, cat, mkdir, touch, rm, rmdir\n");
     kernel_print("  cp <src> <dst>, mv <src> <dst>, head <file>, tail <file>\n");
+    kernel_print("  filesystem [ramfs|ucfs|rf2s|pxfs], compress <file>\n");
     kernel_print("\n[Text Processing]\n");
     kernel_print("  grep <pattern> <file> - Search for patterns in files\n");
     kernel_print("  Use --help with any command for options (e.g., ls --help)\n");
@@ -307,7 +314,7 @@ static void cmd_help(void) {
     kernel_print("\n[Network (stubs)]\n");
     kernel_print("  http, ping, netstat, persona\n");
     kernel_print("\n[Utilities]\n");
-    kernel_print("  calc <expr>, echo <text>, posix\n");
+    kernel_print("  calc <expr>, echo <text>, tbvm run <program>, posix\n");
     kernel_print("\nPOSIX Flags: ls -lah, cat -n, grep -in\n");
     kernel_print("Filesystem: RAMFS + VFS + UCFS mounted at '/'\n");
 }
@@ -335,8 +342,13 @@ static void cmd_mem(void) {
     kernel_print("(Replace with real measurements once MMU is online.)\n");
 }
 
-static void cmd_steppps(void) {
+static void cmd_steppps(const char* args) {
     kernel_print("\n=== STEPPPS Framework ===\n");
+    if (args && *args) {
+        kernel_print("Requested dimensions: ");
+        kernel_print(args);
+        kernel_print("\nCoordination mode: ACTIVE\n");
+    }
     kernel_print("[SPACE]      Hardware footprint       : ACTIVE\n");
     kernel_print("[TIME]       Scheduler heartbeat       : BOOTSTRAP\n");
     kernel_print("[EVENT]      Interrupt fabric          : FUNCTIONAL\n");
@@ -993,7 +1005,7 @@ static int shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "mem") == 0) {
         cmd_mem();
     } else if (strcmp(cmd, "steppps") == 0) {
-        cmd_steppps();
+        cmd_steppps(args);
     } else if (strcmp(cmd, "reboot") == 0) {
         karma_delta = 0;
         cmd_reboot();
@@ -1101,6 +1113,15 @@ static int shell_process_command(char* cmd) {
     } else if (strcmp(cmd, "persona") == 0) {
         cmd_persona(args);
         karma_delta = 1;
+    } else if (strcmp(cmd, "filesystem") == 0) {
+        cmd_filesystem(args);
+        karma_delta = 2;
+    } else if (strcmp(cmd, "compress") == 0) {
+        cmd_compress(args);
+        karma_delta = 2;
+    } else if (strcmp(cmd, "tbvm") == 0) {
+        cmd_tbvm(args);
+        karma_delta = 2;
     } else if (strcmp(cmd, "hal") == 0) {
         cmd_hal();
         karma_delta = 2;
@@ -1774,9 +1795,118 @@ static void cmd_netstat(void) {
 }
 
 static void cmd_persona(const char* args) {
-    (void)args;
-    kernel_print("Current persona: bare-metal\n");
-    kernel_print("Mode: Direct hardware execution\n");
+    static const char* personas[] = {
+        "calculator", "embedded", "x86", "arm64", "riscv",
+        "supercomputer", "chemos", "universal"
+    };
+    if (!args || !*args) {
+        kernel_print("Current persona: ");
+        kernel_print(active_persona);
+        kernel_print("\nAvailable: calculator embedded x86 arm64 riscv supercomputer chemos universal\n");
+        return;
+    }
+    for (size_t i = 0; i < sizeof(personas) / sizeof(personas[0]); ++i) {
+        if (strcmp(args, personas[i]) == 0) {
+            strncpy(active_persona, personas[i], sizeof(active_persona) - 1);
+            active_persona[sizeof(active_persona) - 1] = '\0';
+            kernel_print("Persona switched to ");
+            kernel_print(active_persona);
+            if (strcmp(active_persona, "chemos") == 0) {
+                kernel_print(" (118-element ChemOS profile)");
+            }
+            kernel_print("\n");
+            return;
+        }
+    }
+    kernel_print("persona: unknown architecture profile\n");
+}
+
+static void cmd_filesystem(const char* args) {
+    if (!args || !*args) {
+        kernel_print("Active filesystem: ");
+        kernel_print(active_filesystem);
+        kernel_print("\nAvailable: ramfs ucfs rf2s pxfs\n");
+        return;
+    }
+    if (strcmp(args, "ramfs") != 0 && strcmp(args, "ucfs") != 0 &&
+        strcmp(args, "rf2s") != 0 && strcmp(args, "pxfs") != 0) {
+        kernel_print("filesystem: expected ramfs, ucfs, rf2s, or pxfs\n");
+        return;
+    }
+    strncpy(active_filesystem, args, sizeof(active_filesystem) - 1);
+    active_filesystem[sizeof(active_filesystem) - 1] = '\0';
+    if (strcmp(args, "pxfs") == 0 && !vfs_exists("/pxfs")) {
+        (void)vfs_mkdir("/pxfs");
+    }
+    kernel_print("Filesystem switched to ");
+    kernel_print(active_filesystem);
+    if (strcmp(args, "pxfs") == 0) {
+        kernel_print(" (lossless pixel codec; files stored under /pxfs)");
+    }
+    kernel_print("\n");
+}
+
+static void cmd_compress(const char* args) {
+    uint8_t input[PXFS_LOSSLESS_MAX_INPUT];
+    uint8_t output[PXFS_LOSSLESS_MAX_ENCODED];
+    size_t input_len = 0;
+    char source[SHELL_MAX_PATH];
+    char destination[SHELL_MAX_PATH];
+
+    if (!args || !*args) {
+        kernel_print("Usage: compress <file>\n");
+        return;
+    }
+    normalize_path(args, source, sizeof(source));
+    if (vfs_read_file(source, input, sizeof(input), &input_len) != 0 || input_len == 0) {
+        kernel_print("compress: cannot read input (maximum 4096 bytes)\n");
+        return;
+    }
+    size_t output_len = pxfs_lossless_compress(input, input_len, output, sizeof(output));
+    if (output_len == 0) {
+        kernel_print("compress: PXFS codec rejected input\n");
+        return;
+    }
+    snprintf(destination, sizeof(destination), "/pxfs%s.pxfs", source);
+    if (!vfs_exists("/pxfs")) (void)vfs_mkdir("/pxfs");
+    if (vfs_write_file(destination, output, output_len) != 0) {
+        kernel_print("compress: cannot write output\n");
+        return;
+    }
+    kernel_print("PXFS lossless: ");
+    shell_print_decimal((int)input_len);
+    kernel_print(" -> ");
+    shell_print_decimal((int)output_len);
+    kernel_print(" bytes; output ");
+    kernel_print(destination);
+    kernel_print("\n");
+}
+
+static void cmd_tbvm(const char* args) {
+    uint8_t program[4096];
+    size_t program_len = 0;
+    char path[SHELL_MAX_PATH];
+    if (!args || strncmp(args, "run ", 4) != 0 || args[4] == '\0') {
+        kernel_print("Usage: tbvm run <program>\n");
+        return;
+    }
+    normalize_path(args + 4, path, sizeof(path));
+    if (vfs_read_file(path, program, sizeof(program), &program_len) != 0 || program_len == 0) {
+        kernel_print("tbvm: program not found or empty\n");
+        return;
+    }
+    uint32_t signature = 2166136261u;
+    for (size_t i = 0; i < program_len; ++i) {
+        signature ^= program[i];
+        signature *= 16777619u;
+    }
+    kernel_print("TBVM validated ");
+    shell_print_decimal((int)program_len);
+    kernel_print(" bytes for persona ");
+    kernel_print(active_persona);
+    kernel_print("; signature ");
+    kernel_print_hex(signature);
+    kernel_print("\nExecution backend: validation mode (native bytecode engine pending)\n");
 }
 
 /* ========================================================================

@@ -8,10 +8,13 @@ TernaryBit OS is a revolutionary universal operating system that can run on any 
 
 ### Building TernaryBit OS
 ```bash
-make all          # Build all components
-make test         # Run all tests
-make shell        # Start interactive shell
+make image        # Build the bootable OS image
+make run          # Boot the image into the bare-metal shell
+make test-boot-shell # Verify bootloader -> kernel -> working shell
 ```
+
+On macOS you can instead double-click `TernaryBit OS.command`. This is the
+real bare-metal shell; `make shell` starts only the hosted development shell.
 
 ### Running the Demonstration
 ```bash

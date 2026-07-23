@@ -261,6 +261,25 @@ ensure_build_dir() {
     mkdir -p "$BUILD_DIR"
 }
 
+acquire_build_lock() {
+    local lock_dir="$BUILD_DIR/.universal-build.lock"
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+        local owner=""
+        [[ -f "$lock_dir/pid" ]] && owner=$(cat "$lock_dir/pid")
+        if [[ -n "$owner" ]] && kill -0 "$owner" 2>/dev/null; then
+            echo "error: another universal image build is running (PID $owner)" >&2
+            exit 1
+        fi
+        rmdir "$lock_dir" 2>/dev/null || {
+            echo "error: stale build lock could not be removed: $lock_dir" >&2
+            exit 1
+        }
+        mkdir "$lock_dir"
+    fi
+    echo "$$" > "$lock_dir/pid"
+    trap 'rm -f "$BUILD_DIR/.universal-build.lock/pid"; rmdir "$BUILD_DIR/.universal-build.lock" 2>/dev/null || true' EXIT
+}
+
 build_objects=()
 
 compile_asm() {
@@ -436,7 +455,7 @@ report_summary() {
     fi
     echo ""
     echo "Run with:"
-    echo "  qemu-system-x86_64 -drive file=$OUTPUT_IMG,format=raw -m 512 -serial stdio"
+    echo "  qemu-system-i386 -drive file=$OUTPUT_IMG,format=raw,if=ide -boot c -m 512"
     echo ""
 }
 
@@ -448,6 +467,7 @@ main() {
     detect_cross_compiler
 
     ensure_build_dir
+    acquire_build_lock
     load_profile
 
     if [[ "$PROFILE" == "host" ]]; then
@@ -494,6 +514,7 @@ main() {
         compile_c "src/core/filesystem/ucfs_overlay.c"
         compile_c "src/core/filesystem/rf2s_codec.c"
         compile_c "src/core/filesystem/ucfs_config.c"
+        compile_c "src/core/compression/pxfs_lossless.c"
     else
         echo "    [skip] VFS/RAMFS disabled by profile"
         compile_c "src/core/filesystem/fs_disabled.c"

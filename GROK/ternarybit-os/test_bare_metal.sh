@@ -26,7 +26,7 @@ echo "Boot sequence:"
 echo "  1. BIOS loads MBR (sector 0)"
 echo "  2. Stage 1 bootloader loads Stage 2"
 echo "  3. Stage 2 enters protected mode"
-echo "  4. Kernel initializes and displays message"
+echo "  4. Kernel initializes and starts the interactive shell"
 echo ""
 echo "Press Ctrl+C to exit QEMU"
 echo "----------------------------------------"
@@ -34,7 +34,8 @@ echo ""
 
 # Run QEMU
 qemu-system-i386 \
-    -drive file=build/tbos_universal.img,format=raw,if=floppy \
+    -drive file=build/tbos_universal.img,format=raw,if=ide \
+    -boot c \
     -nographic \
     -no-reboot
 

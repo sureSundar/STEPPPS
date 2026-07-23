@@ -314,7 +314,7 @@ test-coverage: ## Run tests with coverage report
 	@./scripts/run-tests.sh --coverage
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BARE-METAL BOOT SMOKE TEST
+# CANONICAL BOOTABLE OS IMAGE
 # ─────────────────────────────────────────────────────────────────────────────
 # Builds the bare-metal image and boots it in QEMU headlessly for a bounded
 # time, watching for the one thing a "compiles fine" build can't tell you:
@@ -323,42 +323,22 @@ test-coverage: ## Run tests with coverage report
 # run just looks like it's booting forever, with no evidence anything broke
 # (this is exactly how the disk-geometry bug documented in WISDOM.md,
 # 2026-07-21, stayed invisible for as long as it did).
-.PHONY: test-baremetal test-baremetal-screenshot
+.PHONY: image run test-boot-shell test-baremetal test-baremetal-screenshot
 BAREMETAL_IMG := build/tbos_universal.img
 BAREMETAL_SERIAL_LOG := /tmp/tbos_baremetal_serial.log
 BAREMETAL_DEBUG_LOG := /tmp/tbos_baremetal_debug.log
 BAREMETAL_BOOT_SECONDS ?= 8
 
-test-baremetal:
-	@echo "== Building bare-metal image =="
-	@./build_universal.sh > /tmp/tbos_baremetal_build.log 2>&1 || \
-		(echo "❌ BUILD FAILED - see /tmp/tbos_baremetal_build.log"; tail -30 /tmp/tbos_baremetal_build.log; exit 1)
-	@echo "Build OK."
-	@echo ""
-	@echo "== Booting in QEMU ($(BAREMETAL_BOOT_SECONDS)s, headless, fault-tracing on =="
-	@rm -f $(BAREMETAL_SERIAL_LOG) $(BAREMETAL_DEBUG_LOG)
-	@timeout $(BAREMETAL_BOOT_SECONDS) qemu-system-x86_64 \
-		-drive file=$(BAREMETAL_IMG),format=raw -m 512 -display none \
-		-serial file:$(BAREMETAL_SERIAL_LOG) -no-reboot -no-shutdown \
-		-d int,cpu_reset -D $(BAREMETAL_DEBUG_LOG) || true
-	@echo ""
-	@if grep -q "Triple fault" $(BAREMETAL_DEBUG_LOG) 2>/dev/null; then \
-		echo "❌ FAULT: kernel triple-faulted during boot."; \
-		echo "--- serial output ($(BAREMETAL_SERIAL_LOG)) ---"; \
-		cat $(BAREMETAL_SERIAL_LOG) 2>/dev/null; \
-		echo "--- last interrupt trace ($(BAREMETAL_DEBUG_LOG)) ---"; \
-		tail -20 $(BAREMETAL_DEBUG_LOG); \
-		exit 1; \
-	else \
-		echo "✅ No triple fault detected in $(BAREMETAL_BOOT_SECONDS)s."; \
-		echo "--- serial output ($(BAREMETAL_SERIAL_LOG)) ---"; \
-		cat $(BAREMETAL_SERIAL_LOG) 2>/dev/null; \
-		echo "-------------------------------------------"; \
-		echo "Note: this only proves no CPU fault occurred, not that the boot"; \
-		echo "banner/shell actually rendered correctly - serial only shows what"; \
-		echo "the bootloader/kernel explicitly write to COM1, not VGA text mode"; \
-		echo "output. Run 'make test-baremetal-screenshot' to see the screen."; \
-	fi
+image:
+	@./build_universal.sh
+
+run: image
+	@qemu-system-i386 -drive file=$(BAREMETAL_IMG),format=raw,if=ide -boot c -m 512 -name "TernaryBit OS"
+
+test-boot-shell:
+	@./test_boot_to_shell.sh --build
+
+test-baremetal: test-boot-shell
 
 test-baremetal-screenshot:
 	@echo "== Building bare-metal image =="

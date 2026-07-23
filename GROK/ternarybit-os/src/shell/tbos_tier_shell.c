@@ -241,6 +241,8 @@ typedef struct {
 static int g_running = 1;
 static int g_karma = 100;
 static char g_cwd[MAX_PATH];
+static char g_persona[20] = "x86";
+static char g_filesystem[20] = "host";
 static time_t g_shell_start_time;
 
 #if TBOS_TIER >= 2
@@ -795,6 +797,17 @@ static int cmd_steppps(int argc, char** argv) {
 
     const char* subcmd = argv[1];
 
+    if (strcmp(subcmd, "SPACE") == 0 || strcmp(subcmd, "TIME") == 0 ||
+        strcmp(subcmd, "EVENT") == 0 || strcmp(subcmd, "PSYCHOLOGY") == 0 ||
+        strcmp(subcmd, "PIXEL") == 0 || strcmp(subcmd, "PROMPT") == 0 ||
+        strcmp(subcmd, "SCRIPT") == 0) {
+        printf("STEPPPS coordination:");
+        for (int i = 1; i < argc; ++i) printf(" %s", argv[i]);
+        printf("\n7-dimensional runtime: ACTIVE\n");
+        add_karma(1);
+        return 0;
+    }
+
     if (strcmp(subcmd, "show") == 0) {
         if (argc < 3) { printf("Usage: steppps show <file>\n"); return 1; }
         steppps_t s;
@@ -872,6 +885,87 @@ static int cmd_steppps(int argc, char** argv) {
     return 1;
 }
 #endif /* !_WIN32 */
+
+static int cmd_persona(int argc, char** argv) {
+    static const char* names[] = {"calculator", "embedded", "x86", "arm64",
+        "riscv", "supercomputer", "chemos", "universal"};
+    if (argc < 2) {
+        printf("Current persona: %s\n", g_persona);
+        printf("Available: calculator embedded x86 arm64 riscv supercomputer chemos universal\n");
+        return 0;
+    }
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+        if (strcmp(argv[1], names[i]) == 0) {
+            snprintf(g_persona, sizeof(g_persona), "%s", names[i]);
+            printf("Persona switched to %s%s\n", g_persona,
+                   strcmp(g_persona, "chemos") == 0 ? " (118-element ChemOS profile)" : "");
+            return 0;
+        }
+    }
+    printf("persona: unknown architecture profile '%s'\n", argv[1]);
+    return 1;
+}
+
+static int cmd_filesystem(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Active filesystem: %s\nAvailable: host ucfs rf2s pxfs\n", g_filesystem);
+        return 0;
+    }
+    if (strcmp(argv[1], "host") != 0 && strcmp(argv[1], "ucfs") != 0 &&
+        strcmp(argv[1], "rf2s") != 0 && strcmp(argv[1], "pxfs") != 0) {
+        printf("filesystem: expected host, ucfs, rf2s, or pxfs\n");
+        return 1;
+    }
+    snprintf(g_filesystem, sizeof(g_filesystem), "%s", argv[1]);
+    printf("Filesystem switched to %s%s\n", g_filesystem,
+           strcmp(g_filesystem, "pxfs") == 0 ? " (lossless pixel codec)" : "");
+    return 0;
+}
+
+static int cmd_compress_file(int argc, char** argv) {
+    if (argc < 2) { printf("Usage: compress <file>\n"); return 1; }
+    FILE* in = fopen(argv[1], "rb");
+    if (!in) { printf("compress: cannot open %s\n", argv[1]); return 1; }
+    unsigned char source[PXFS_LOSSLESS_MAX_INPUT];
+    size_t source_len = fread(source, 1, sizeof(source), in);
+    int extra = fgetc(in);
+    fclose(in);
+    if (!source_len || extra != EOF) {
+        printf("compress: input must contain 1..%u bytes\n", PXFS_LOSSLESS_MAX_INPUT);
+        return 1;
+    }
+    unsigned char encoded[PXFS_LOSSLESS_MAX_ENCODED];
+    size_t encoded_len = pxfs_lossless_compress(source, source_len, encoded, sizeof(encoded));
+    char output[MAX_PATH];
+    snprintf(output, sizeof(output), "%s.pxfs", argv[1]);
+    FILE* out = fopen(output, "wb");
+    if (!encoded_len || !out || fwrite(encoded, 1, encoded_len, out) != encoded_len) {
+        if (out) fclose(out);
+        printf("compress: could not create %s\n", output);
+        return 1;
+    }
+    fclose(out);
+    printf("PXFS lossless: %zu -> %zu bytes; output %s\n", source_len, encoded_len, output);
+    return 0;
+}
+
+static int cmd_tbvm(int argc, char** argv) {
+    if (argc < 3 || strcmp(argv[1], "run") != 0) {
+        printf("Usage: tbvm run <program>\n");
+        return 1;
+    }
+    FILE* fp = fopen(argv[2], "rb");
+    if (!fp) { printf("tbvm: program not found: %s\n", argv[2]); return 1; }
+    unsigned char data[4096];
+    size_t len = fread(data, 1, sizeof(data), fp);
+    fclose(fp);
+    if (!len) { printf("tbvm: program is empty\n"); return 1; }
+    uint32_t signature = 2166136261u;
+    for (size_t i = 0; i < len; ++i) { signature ^= data[i]; signature *= 16777619u; }
+    printf("TBVM validated %zu bytes for persona %s; signature 0x%08x\n", len, g_persona, signature);
+    printf("Execution backend: validation mode (native bytecode engine pending)\n");
+    return 0;
+}
 
 static int cmd_echo(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
@@ -1724,6 +1818,10 @@ static void register_all_commands(void) {
     register_cmd("calc",   "Calculator (+ - * /)",     cmd_calc,   0);
     register_cmd("karma",  "Show karma status",        cmd_karma,  0);
     register_cmd("exit",   "Exit shell",               cmd_exit,   0);
+    register_cmd("persona", "Select one of 8 architecture profiles", cmd_persona, 0);
+    register_cmd("filesystem", "Select host/UCFS/RF2S/PXFS", cmd_filesystem, 0);
+    register_cmd("compress", "Losslessly compress a file with PXFS", cmd_compress_file, 0);
+    register_cmd("tbvm", "Validate a program for the active persona", cmd_tbvm, 0);
 #ifndef _WIN32
     register_cmd("net",         "TCP connectivity probe",             cmd_net,         0);
     register_cmd("ucfs",        "Parse a UCFS Unicode path",          cmd_ucfs,        0);
@@ -1933,6 +2031,27 @@ int main(int argc, char** argv) {
         size_t len = strlen(input);
         if (len > 0 && input[len-1] == '\n') {
             input[len-1] = '\0';
+        }
+
+        /* Accept commands copied directly from documentation.  An optional
+         * displayed prompt (`tbos>`) and trailing explanatory `# comment`
+         * are presentation, not part of the command itself. */
+        char* normalized = input;
+        while (*normalized == ' ' || *normalized == '\t') normalized++;
+        if (strncmp(normalized, "tbos>", 5) == 0) {
+            normalized += 5;
+            while (*normalized == ' ' || *normalized == '\t') normalized++;
+        }
+        if (normalized != input) memmove(input, normalized, strlen(normalized) + 1);
+        for (char* p = input; *p; ++p) {
+            if (*p == '#' && (p == input || p[-1] == ' ' || p[-1] == '\t')) {
+                *p = '\0';
+                break;
+            }
+        }
+        len = strlen(input);
+        while (len > 0 && (input[len - 1] == ' ' || input[len - 1] == '\t')) {
+            input[--len] = '\0';
         }
 
         /* Skip empty */

@@ -71,7 +71,15 @@ isr_common_stub:
     mov fs, ax
     mov gs, ax
 
+    ; Pass the synthetic stack values using the 32-bit cdecl ABI.
+    ; Calling the C handler with no arguments made it read the saved segment
+    ; registers as (int_no, err_code), hiding the real fault number.
+    mov eax, [esp + 48]
+    mov edx, [esp + 52]
+    push edx
+    push eax
     call default_isr_handler
+    add esp, 8
 
     pop gs
     pop fs
@@ -96,7 +104,11 @@ irq_common_stub:
     mov fs, ax
     mov gs, ax
 
-    mov eax, [esp + 52] ; interrupt number
+    ; Stack layout after pusha + four segment-register pushes places the
+    ; interrupt number at ESP+48 (ESP+52 is the synthetic error code).
+    ; Reading +52 made every hardware IRQ look like IRQ -32 and routed it
+    ; into the fatal CPU-exception handler.
+    mov eax, [esp + 48] ; interrupt number
     sub eax, 32
     cmp eax, 1
     je .keyboard
@@ -107,15 +119,14 @@ irq_common_stub:
     jmp .send_eoi
 
 .default:
-    push eax
-    call default_isr_handler
-    add esp, 4
+    ; Unhandled hardware IRQs are acknowledged below.  They are not CPU
+    ; exceptions and must not halt the kernel.
 
 .send_eoi:
     mov al, 0x20
     out 0x20, al
 
-    mov eax, [esp + 52]
+    mov eax, [esp + 48]
     sub eax, 32
     cmp eax, 8
     jl .restore

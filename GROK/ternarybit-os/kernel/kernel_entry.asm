@@ -44,14 +44,25 @@ _start:
     ; Clear direction flag for string operations
     cld
 
-    ; Initialize the x87 FPU. Its state coming out of the BIOS/bootloader
-    ; handoff is undefined, and any pending exception flag it's already
-    ; holding fires the moment any x87 instruction (including ones
-    ; compiler-generated code emits implicitly) touches it - manifesting
-    ; as an immediate, repeating #MF (x87 FPU Error, vector 16) that
-    ; refires as fast as the exception handler can return, before the
-    ; kernel gets to do anything else. fninit resets the FPU to a clean
-    ; state with no pending exceptions.
+    ; Initialize the x87 FPU. fninit alone (added earlier) didn't stop a
+    ; repeating #MF (x87 FPU Error, vector 16) - diagnosed via a serial
+    ; dump of CR0 at every exception entry, which showed CR0.NE (bit 5)
+    ; clear on every single one. With NE=0, the CPU expects the legacy
+    ; 80387-era FERR#/IRQ13 signaling for FPU errors, not the modern
+    ; direct #MF exception - and since nothing here implements that
+    ; legacy dance (no IRQ13 handler, no port 0xF0 clear-latch write),
+    ; whatever QEMU does instead of true legacy signaling never actually
+    ; clears the underlying condition, so it re-manifests continuously.
+    ; Setting NE=1 switches to the modern model, where a freshly-fninit'd
+    ; (all exceptions masked, nothing pending) FPU simply has nothing left
+    ; to report.
+    mov eax, cr0
+    and eax, ~(1 << 2)  ; clear EM (allow FPU instructions)
+    or eax, 0x22        ; CR0.MP | CR0.NE
+    mov cr0, eax
+    mov eax, cr4
+    or eax, 0x600       ; CR4.OSFXSR | CR4.OSXMMEXCPT
+    mov cr4, eax
     fninit
 
     ; Call main C kernel function

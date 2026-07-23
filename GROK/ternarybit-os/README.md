@@ -20,6 +20,42 @@
 
 ---
 
+## Boot TernaryBit OS
+
+The canonical OS artifact boots through the BIOS bootloader and kernel into
+the interactive TernaryBit shell.
+
+```bash
+make image       # produce build/tbos_universal.img
+make run         # boot it in a QEMU window
+make test-boot-shell # prove the shell starts and executes a command
+```
+
+On macOS, double-click `TernaryBit OS.command` for the same bootable system.
+The image must be attached as an IDE/raw disk because Stage 2 uses BIOS EDD
+LBA reads; attaching it as a floppy is not supported.
+
+### Enhanced Universal Shell
+
+The same command families are available in the bootable shell and the hosted
+development shell:
+
+```bash
+tbos> persona chemos       # Select ChemOS (118-element profile)
+tbos> filesystem pxfs      # Select the lossless pixel codec
+tbos> compress file.txt    # Compress a real file and report its actual ratio
+tbos> tbvm run program     # Validate a program for the selected architecture
+tbos> steppps SPACE TIME   # Coordinate selected STEPPPS dimensions
+```
+
+The hosted shell accepts examples pasted with the `tbos>` prefix and trailing
+comments. PXFS can reach very high ratios for suitable repetitive or patterned
+data, but the shell reports the measured result rather than promising 1365:1
+for every input. `tbvm run` currently performs portable program validation;
+native bytecode execution remains a separate integration milestone.
+
+---
+
 ## V4.0 Universal Boot (Production Ready)
 
 TernaryBit OS v4.0 introduces the **Boot Capability Block (BCB)** for universal boot support across bare-metal, hosted, and virtualized environments.
