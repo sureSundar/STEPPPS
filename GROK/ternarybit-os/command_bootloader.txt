@@ -1,0 +1,5 @@
+qemu-system-i386 -drive file=build/tbos_universal.img,format=raw,if=ide -boot c -nographic -no-reboot
+
+./build_universal.sh
+
+qemu-system-x86_64 -drive file=build/tbos_universal.img,format=raw,if=ide -boot c -m 512 -name "TernaryBit OS"
